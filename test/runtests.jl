@@ -1,6 +1,6 @@
-using IsotopicDistribution
+using MSChemicals
 using Test
 
-@testset "IsotopicDistribution.jl" begin
+@testset "MSChemicals.jl" begin
     # Write your tests here.
 end
