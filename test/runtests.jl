@@ -1,6 +1,6 @@
-using MSChemicals
+using MassSpecChemicals
 using Test
 
-@testset "MSChemicals.jl" begin
+@testset "MassSpecChemicals.jl" begin
     # Write your tests here.
 end
