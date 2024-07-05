@@ -1,10 +1,10 @@
 module Lipids
 using Reexport, IterTools, MLStyle
 @reexport using ..BioChemicals
-using ..MSChemicals: AbstractChemical
+using ..MassSpecChemicals: AbstractChemical
 @reexport using ..BioChemicals.BasicCompounds, ..BioChemicals.Metabolites, ..BioChemicals.AminoAcids, ..BioChemicals.Glycans
 import ..BioChemicals: originalmolecule, leavinggroup, conjugation
-import ..MSChemicals: chemicalname
+import ..MassSpecChemicals: chemicalname
 using ..BioChemicals: lk, makemolecule, makelinkage
 using ..BioChemicals.Glycans: ap, α, β
 export AbstractCarbonChain, CarbonChain, IsoprenoidChain, Acyl, Alkyl, Alkenyl, SPB, AbstractSTRing, STRing, SRing, DSMSRing, DCRing, CASRing, BRSRing, EGSRing, DEGSRing, SISRing, STSRing,
@@ -42,7 +42,7 @@ function CarbonChain{T}(carbon::UInt8,
         doublebond::D, 
         substituent::S, 
         isotopiclabel::I = nothing
-    ) where {D <: Union{UInt8, Vector{UInt8}, Vector{<: Pair{UInt8, Bool}}}, S <: Union{Nothing, UInt8, Vector{<: Pair{<: FunctionalGroup, UInt8}}, Vector{<: Pair{UInt8, <: FunctionalGroup}}}, I, T}
+    ) where {D <: Union{UInt8, Vector{UInt8}}, S <: Union{Nothing, UInt8, Vector{<: Pair{<: FunctionalGroup, UInt8}}, Vector{<: Pair{UInt8, <: FunctionalGroup}}}, I, T}
     CarbonChain{T, D, S, I}(carbon, doublebond, substituent, isotopiclabel)
 end
 
@@ -75,8 +75,7 @@ CarbonChainType
 Tuple: order STRing, SPB, Alkenyl Alkyl Acyl, more -> few
 D
 UInt8: ndoublebond
-Vector{UInt8}: doublebond position
-Vector{Pair{UInt8, Bool}}: doublebond position => Z(false)/E(true)
+Vector{UInt8}: doublebond position divrem(x, 3) 0 unknown 1 Z 2 E
 
 F
 UInt8: noxygen
@@ -166,9 +165,9 @@ struct Radylglycerophosphate{B <: DehydratedChemical, C} <: Glycerophospholipid{
 end
 
 const PPA = includeSIL(PhosphoricAcid)
-glycerophospho(T) = DehydratedChemical{<: Tuple{<: includeSIL(Glycerol), <: PPA, <: Union{<: T, <: IsotopiclabeledChemical{<: T}}}}
-glycerophospho(T, S) = DehydratedChemical{<: Tuple{<: includeSIL(Glycerol), <: PPA, <: Union{<: T, <: IsotopiclabeledChemical{<: T}}, <: Union{<: S, <: IsotopiclabeledChemical{<: S}}}}
-glycerophosphophosphate(T) = DehydratedChemical{<: Tuple{<: includeSIL(Glycerol), <: PPA, <: Union{<: T, <: IsotopiclabeledChemical{<: T}}, <: PPA}}
+glycerophospho(T) = DehydratedChemical{<: Tuple{<: Union{<: T, <: IsotopiclabeledChemical{<: T}}, <: PPA, <: includeSIL(Glycerol)}}
+glycerophospho(T, S) = DehydratedChemical{<: Tuple{<: Union{<: T, <: IsotopiclabeledChemical{<: T}}, <: Union{<: S, <: IsotopiclabeledChemical{<: S}}, <: PPA, <: includeSIL(Glycerol)}}
+glycerophosphophosphate(T) = DehydratedChemical{<: Tuple{<: PPA, <: Union{<: T, <: IsotopiclabeledChemical{<: T}}, <: PPA, <: includeSIL(Glycerol)}}
 const Monoradylglycerophosphate{B, C} = Radylglycerophosphate{B, C} where {B, C <: MonoradylChain}
 const Diradylglycerophosphate{B, C} = Radylglycerophosphate{B, C} where {B, C <: DiradylChain}
 const Lysophosphatidicacid{B, C} = Monoradylglycerophosphate{B, C} where {B <: DehydratedChemical{<: Tuple{<: includeSIL(Glycerol), <: PPA}}, C}
@@ -185,8 +184,8 @@ const LysophosphatidylNNdimethylethanolamine{B, C} = Monoradylglycerophosphate{B
 const PhosphatidylNNdimethylethanolamine{B, C} = Diradylglycerophosphate{B, C} where {B <: glycerophospho(NNdimethylethanolamine), C}
 const Lysophosphatidylserine{B, C} = Monoradylglycerophosphate{B, C} where {B <: glycerophospho(Serine), C}
 const Phosphatidylserine{B, C} = Diradylglycerophosphate{B, C} where {B <: glycerophospho(Serine), C}
-const LysophosphatidylNmodifiedserine{B, C} = Monoradylglycerophosphate{B, C} where {D, B <: glycerophospho(Serine, D), C}
-const PhosphatidylNmodifiedserine{B, C} = Diradylglycerophosphate{B, C} where {D, B <: glycerophospho(Serine, D), C}
+const LysophosphatidylNmodifiedserine{B, C} = Monoradylglycerophosphate{B, C} where {D, B <: glycerophospho(D, Serine), C}
+const PhosphatidylNmodifiedserine{B, C} = Diradylglycerophosphate{B, C} where {D, B <: glycerophospho(D, Serine), C}
 const Lysophosphatidylinositol{B, C} = Monoradylglycerophosphate{B, C} where {B <: glycerophospho(Inositol), C}
 const Phosphatidylinositol{B, C} = Diradylglycerophosphate{B, C} where {B <: glycerophospho(Inositol), C} # include PIP
 const Lysophosphatidylglycerol{B, C} = Monoradylglycerophosphate{B, C} where {B <: glycerophospho(Glycerol), C}

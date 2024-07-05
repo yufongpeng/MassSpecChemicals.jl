@@ -1,7 +1,7 @@
 module AminoAcids
 using Reexport
 @reexport using ..BioChemicals
-using ..MSChemicals: AbstractChemical
+using ..MassSpecChemicals: AbstractChemical
 import ..BioChemicals: originalmolecule, leavinggroup, conjugation
 export AminoAcid, Glycine, Serine, Ornithine
 abstract type AminoAcid <: AbstractChemical end

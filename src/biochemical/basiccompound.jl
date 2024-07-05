@@ -1,7 +1,7 @@
 module BasicCompounds
 using Reexport
 @reexport using ..BioChemicals
-using ..MSChemicals: AbstractChemical
+using ..MassSpecChemicals: AbstractChemical
 export BasicCompound, 
        Dihydrogen,
        Hydrogen,

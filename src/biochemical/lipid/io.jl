@@ -55,7 +55,7 @@ const CLASS_STRUCT = Dict{String, Function}(
     "GlcADG"    => (mod, cls, pos, sil) -> (Omodifiedradylglycerol, makemolecule(DehydratedChemical, GlcA(), Glycerol(); sil, linkage =  [α(0x01) => lk(0x03)]), (Radyl, Radyl)),
     "PA"    => (mod, cls, pos, sil) -> (Radylglycerophosphate, makemolecule(DehydratedChemical, PhosphoricAcid(), Glycerol(); sil), (Radyl, Radyl)), 
     "LPA"   => (mod, cls, pos, sil) -> (Radylglycerophosphate, makemolecule(DehydratedChemical, PhosphoricAcid(), Glycerol(); sil), Radyl, Radyl), 
-    "PC"    => (mod, cls, pos, sil) -> (Radylglycerophosphate, makemolecule(Choline(); sil), (Radyl, Radyl)), 
+    "PC"    => (mod, cls, pos, sil) -> (Radylglycerophosphate, makemolecule(DehydratedChemical, Choline(), PhosphoricAcid(), Glycerol(); sil), (Radyl, Radyl)), 
     "LPC"   => (mod, cls, pos, sil) -> (Radylglycerophosphate, makemolecule(DehydratedChemical, Choline(), PhosphoricAcid(), Glycerol(); sil), Radyl), 
     "PE"    => (mod, cls, pos, sil) -> (Radylglycerophosphate, makemolecule(DehydratedChemical, Ethanolamine(), PhosphoricAcid(), Glycerol(); sil), (Radyl, Radyl)), 
     "LPE"   => (mod, cls, pos, sil) -> (Radylglycerophosphate, makemolecule(DehydratedChemical, Ethanolamine(), PhosphoricAcid(), Glycerol(); sil), Radyl), 
@@ -178,12 +178,12 @@ function parse_lipid(s::AbstractString)
     any(==(s), SPECIFIC_LIPID) && return parse_spesific(s)
     result = match(REGEX[:class], s)
     mod = result.captures[begin]
-    mod = isempty(mod) ? nothing : mod
+    mod = isnothing(mod) ? nothing : isempty(mod) ? nothing : mod
     cls = result.captures[begin + 1]
     pos = result.captures[end - 1]
-    pos = isempty(pos) ? nothing : pos
+    pos = isnothing(pos) ? nothing : isempty(pos) ? nothing : pos
     sil = result.captures[end]
-    sil = isempty(sil) ? nothing : sil
+    sil = isnothing(sil) ? nothing : isempty(sil) ? nothing : sil
     parse_head = get(CLASS_STRUCT, string(cls), nothing)
     parse_head = isnothing(parse_head) ? get(CLASS_STRUCT, string(match(REGEX[:clsmod], cls).captures[2]), nothing) : parse_head
     # parse head first, parse chain with head
@@ -247,6 +247,7 @@ function parse_chain(Con::Type{<: Union{<: Glycerolipid, <: Glycerophospholipid}
 end
 function parse_chain(Con::Type{<: Sphingolipid}, Bone, Chain, schain)
     mchain = collect(eachmatch(REGEX[:chain], schain))
+    maxsn = length(snposition(Con))
     if length(Chain) == 3 # ACer...
         # take chain from Bone
         addchain = pop!(Bone)
@@ -264,6 +265,19 @@ function parse_chain(Con::Type{<: Sphingolipid}, Bone, Chain, schain)
     else
         pchain = parse_fattychain(Chain, mchain)
     end
+    position = map(enumerate(pchain)) do (i, c)
+        @match first(c) begin 
+            :s => 0x01
+            :o => UInt8(i)
+        end
+    end
+    sn = 0x00
+    bs = convert(typeof(sn), maxsn + 1)
+    for p in position
+        sn *= bs
+        sn += p
+    end
+    Con(Bone, length(pchain) == 1 ? last(first(pchain)) : ntuple(i -> last(pchain[i]), length(pchain)), sn)
 end
 
 function parse_fattychain(T, mchain::RegexMatch; position = nothing)
@@ -310,16 +324,61 @@ end
 
 function parse_carbonchain(::Type{T}, cchain, pos, sil, mod) where {T <: Radyl}
     rad, cchain = match(r"([d,t,e]?[P,O]?-?)(\d+:\d+.*)", cchain)
-    Chain = isnothing(rad) ? Acyl : isempty(rad) ? Acyl : endswith(rad, "P-") ? Alkenyl : endswith(rad, "O-") ? Alkyl : throw(ArgumentError("Invalid fattyacyl chain."))
+    Chain = isnothing(rad) ? Acyl : isempty(rad) ? Acyl : endswith(rad, "P-") ? Alkenyl : endswith(rad, "O-") ? Alkyl : throw(ArgumentError("Invalid fattyacyl chain"))
     Chain <: T || throw(ArgumentError("Fattyacyl chain does not match to class"))
     CarbonChain{Chain}(parse_singlechain(Chain, cchain, pos, sil, mod)...)
+end
+
+function parse_carbonchain(::Type{T}, cchain, pos, sil, mod) where {T <: SPB}
+    rad, cchain = match(r"([d,t,e]?[P,O]?-?)(\d+:\d+.*)", cchain)
+    isempty(rad) || throw(ArgumentError("Invalid fattyacyl chain"))
+    CarbonChain{T}(parse_singlechain(T, cchain, pos, sil, mod)...)
 end
 
 function parse_singlechain(::Type{T}, cchain, pos, sil, mod) where {T <: Radyl}
     cb, db = match(r"(\d+):(\d+)", cchain)
     cb = parse(UInt8, cb)
     db = parse(UInt8, db)
-    cb, db, nothing, nothing
+    isnothing(pos) && return cb, db, nothing, nothing
+    ps = collect(eachmatch(r"(\d+)([EZ])?", pos))
+    db = zeros(UInt8, length(ps))
+    for (i, p) in enumerate(ps)
+        x, e = p
+        x = parse(UInt8, x) * 0x03
+        e = isnothing(e) ? 0x00 : e == "Z" ? 0x01 : e == "E" ? 0x02 : throw(ArgumentError("Invalid fattyacyl chain"))
+        db[i] = x + e
+    end
+    return cb, db, nothing, nothing
+end
+
+function parse_singlechain(::Type{T}, cchain, pos, sil, mod) where {T <: SPB}
+    cb, db = match(r"(\d+):(\d+)", cchain)
+    cb = parse(UInt8, cb)
+    db = parse(UInt8, db)
+    m = match(r";O(\d*)", mod)
+    if isnothing(m)
+        m = eachmatch(r"(\d+)OH", mod)
+        if isempty(m)
+            m = match(r";\(+OH\)+(\d*)", mod)
+            n, = m
+            sub = [Hydroxy() => isnothing(n) ? 0x01 : parse(UInt8, n)]
+        else
+            sub = [parse(UInt8, first(x.captures)) => Hydroxy() for x in m]
+        end
+    else
+        n, = m
+        sub = isnothing(n) ? 0x01 : parse(UInt8, n)
+    end
+    isnothing(pos) && return cb, db, sub, nothing
+    ps = collect(eachmatch(r"(\d+)([EZ])?", pos))
+    db = zeros(UInt8, length(ps))
+    for (i, p) in enumerate(ps)
+        x, e = p
+        x = parse(UInt8, x) * 0x03
+        e = isnothing(e) ? 0x00 : e == "Z" ? 0x01 : e == "E" ? 0x02 : throw(ArgumentError("Invalid fattyacyl chain"))
+        db[i] = x + e
+    end
+    return cb, db, sub, nothing
 end
 
 function parse_sil(s)
@@ -328,6 +387,18 @@ function parse_sil(s)
 end # TO FORMULA
 
 function chemicalname(lipid::T) where {T <: Glycerophospholipid}
+    position = interpretate_sn(lipid)
+    sep = any(==(0), position) ? "_" : "/"
+    string(class_abbr(lipid), " ", join(repr_singlechain.(lipid.chain), sep))
+end
+
+function chemicalname(lipid::T) where {T <: Sphingolipid}
+    position = interpretate_position(lipid)
+    sep = any(==(0), position) ? "_" : "/"
+    string(class_abbr(lipid), " ", join(repr_singlechain.(lipid.chain), sep))
+end
+
+function interpretate_sn(lipid::T) where {T <: Lipid}
     position = zeros(Int, length(lipid.chain))
     sn = lipid.sn
     ep = length(lipid.chain) - 1
@@ -337,12 +408,191 @@ function chemicalname(lipid::T) where {T <: Glycerophospholipid}
         position[i] = p
         ep -= 1
     end
-    sep = any(==(0), position) ? "_" : "/"
-    string(class_abbr(lipid), " ", join(repr_singlechain.(lipid.chain), sep))
+    position
 end
 
+function interpretate_position(lipid::T) where {T <: Sphingolipid}
+    position = zeros(Int, length(lipid.chain))
+    sn = lipid.position
+    ep = length(lipid.chain) - 1
+    bs = length(snposition(T)) + 1
+    for i in eachindex(position)
+        p, sn = divrem(sn, bs ^ ep)
+        position[i] = p
+        ep -= 1
+    end
+    position
+end
+
+function interpretate_db(db::UInt8)
+    a, b = divrem(db, 3)
+    string(a, b == 0 ? "" : b == 1 ? "Z" : b == 2 ? "E" : throw(ArgumentError("Invalid fattyacyl chain")))
+end
+
+function interpretate_sub(sub::UInt8)
+    sub == 0 ? "" : string(";O", sub > 1 ? Int(sub) : "")
+end 
+
+function interpretate_sub(sub::Vector{<: Pair{UInt8, <: FunctionalGroup}})
+    isempty(sub) && return ""
+    sub = sort(sub; by = sub_abbr ∘ last)
+    s = ""
+    prev = ""
+    for x in sub
+        p, next = x
+        next = sub_abbr(next)
+        if next == prev
+            s *= string(",", Int(p), next)
+        else
+            s *= string(";", Int(p), next)
+            prev = next
+        end
+    end
+    s
+end 
+
+class_abbr(::Ceramide) = "Cer"
 class_abbr(::Phosphatidylcholine) = "PC"
+class_abbr(::Phosphatidylethanolamine) = "PE"
 class_abbr(::Cardiolipin) = "CL"
-repr_singlechain(c) = string(ncarbon(c), ":", ndoublebond(c)) 
-repr_singlechain(c::CarbonChain{<: Alkyl}) = string("O-", ncarbon(c), ":", ndoublebond(c)) 
-repr_singlechain(c::CarbonChain{<: Alkenyl}) = string("P-", ncarbon(c), ":", ndoublebond(c)) 
+sub_abbr(::Hydroxy) = "OH"
+repr_singlechain(c::CarbonChain{<: SPB}) = string(ncarbon(c), ":", ndoublebond(c), c.doublebond isa Vector ? string("(", join([interpretate_db(x) for x in c.doublebond], ","), ")") : "", interpretate_sub(c.substituent)) 
+repr_singlechain(c::CarbonChain{<: Acyl}) = string(ncarbon(c), ":", ndoublebond(c), c.doublebond isa Vector ? string("(", join([interpretate_db(x) for x in c.doublebond], ","), ")") : "") 
+repr_singlechain(c::CarbonChain{<: Alkyl}) = string("O-", ncarbon(c), ":", ndoublebond(c), c.doublebond isa Vector ? string("(", join([interpretate_db(x) for x in c.doublebond], ","), ")") : "") 
+repr_singlechain(c::CarbonChain{<: Alkenyl}) = string("P-", ncarbon(c), ":", ndoublebond(c), c.doublebond isa Vector ? string("(", join([interpretate_db(x) for x in c.doublebond], ","), ")") : "") 
+
+function repr_smiles(lipid::Glycerophospholipid)
+    position = interpretate_sn(lipid)
+    p = sortperm(position)
+    cs = [string("(", repr_smiles(c), ")") for c in lipid.chain[p]]
+    smi = repr_smiles(lipid.backbone)
+    r = collect(eachmatch(r"\(O\)", smi))
+    id = r[end - length(cs) + 1].match.offset
+    s = smi[begin:id]
+    prev = -3
+    for (x, y) in zip(r[end - length(cs) + 1:end], cs)
+        next = x.match.offset
+        s *= smi[prev + 4:next]
+        prev = next
+        s *= y
+    end
+    s
+end
+
+function repr_smiles(back::DehydratedChemical)
+    "OC(O)C(O)"
+end
+repr_smiles(chain::CarbonChain{Acyl, UInt8}) = "OC(=O)" * "C" ^ (ncarbon(chain) - 1)
+function repr_smiles(chain::CarbonChain{Acyl})
+    i = 2
+    pos = sort!([divrem(db, 3) for db in chain.doublebond]; by = first)
+    j = 1
+    s = "OC(=O)"
+    while i <= ncarbon(chain)
+        if j <= lastindex(pos) && i == first(pos[j])
+            if last(pos[j]) == 0
+                s *= "C=C"
+            elseif last(pos[j]) == 1
+                if last(s) == '\\'
+                    s *= "C=C/"
+                elseif last(s) == '/'
+                    s *= "C=C\\"
+                else
+                    s *= "\\C=C/"
+                end
+            elseif last(pos[j]) == 2
+                if last(s) == '\\'
+                    s *= "C=C\\"
+                elseif last(s) == '/'
+                    s *= "C=C/"
+                else
+                    s *= "\\C=C\\"
+                end
+            end
+            j += 1
+            i += 2
+        else
+            s *= "C"
+            i += 1
+        end
+    end
+    s
+end
+
+function repr_smiles(chain::CarbonChain{Alkyl, UInt8})
+    "O" * "C" ^ ncarbon(chain)
+end
+function repr_smiles(chain::CarbonChain{Alkyl})
+    i = 2
+    pos = sort!([divrem(db, 3) for db in chain.doublebond]; by = first)
+    j = 1
+    s = "OC"
+    while i <= ncarbon(chain)
+        if j <= lastindex(pos) && i == first(pos[j])
+            if last(pos[j]) == 0
+                s *= "C=C"
+            elseif last(pos[j]) == 1
+                if last(s) == '\\'
+                    s *= "C=C/"
+                elseif last(s) == '/'
+                    s *= "C=C\\"
+                else
+                    s *= "\\C=C/"
+                end
+            elseif last(pos[j]) == 2
+                if last(s) == '\\'
+                    s *= "C=C\\"
+                elseif last(s) == '/'
+                    s *= "C=C/"
+                else
+                    s *= "\\C=C\\"
+                end
+            end
+            j += 1
+            i += 2
+        else
+            s *= "C"
+            i += 1
+        end
+    end
+    s
+end
+
+function repr_smiles(chain::CarbonChain{Alkenyl, UInt8})
+    "OC=C" * "C" ^ (ncarbon(chain) - 1)
+end
+function repr_smiles(chain::CarbonChain{Alkenyl})
+    i = 3
+    pos = sort!([divrem(db, 3) for db in chain.doublebond]; by = first)
+    j = 1
+    s = "O\\C=C/"
+    while i <= ncarbon(chain)
+        if j <= lastindex(pos) && i == first(pos[j])
+            if last(pos[j]) == 0
+                s *= "C=C"
+            elseif last(pos[j]) == 1
+                if last(s) == '\\'
+                    s *= "C=C/"
+                elseif last(s) == '/'
+                    s *= "C=C\\"
+                else
+                    s *= "\\C=C/"
+                end
+            elseif last(pos[j]) == 2
+                if last(s) == '\\'
+                    s *= "C=C\\"
+                elseif last(s) == '/'
+                    s *= "C=C/"
+                else
+                    s *= "\\C=C\\"
+                end
+            end
+            j += 1
+            i += 2
+        else
+            s *= "C"
+            i += 1
+        end
+    end
+    s
+end

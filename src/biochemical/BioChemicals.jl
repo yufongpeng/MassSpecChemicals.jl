@@ -1,7 +1,7 @@
 module BioChemicals
 
-using ..MSChemicals
-using ..MSChemicals: AbstractChemical
+using ..MassSpecChemicals
+using ..MassSpecChemicals: AbstractChemical
 using IterTools
 export FunctionalGroup, LeavingGroup, Dehydrogen, Odehydrogen, Ndehydrogen, Didehydrogen, Odidehydrogen, Ndidehydrogen, Deamine, Dehydroxy, 
         Substituent, SubstitutedChemical, ChainedChemical, DehydratedChemical, IsotopiclabeledChemical,
@@ -76,9 +76,9 @@ function makemolecule(m; sil)
     isnothing(sil) ? m : IsotopiclabeledChemical(m, s)
 end
 function makemolecule(::Type{T}, ms...; linkage = nothing, sil) where T
-    sils = distribute_sil(sil)
+    sils = isnothing(sil) ? sil : distribute_sil(sil)
     molecules = ntuple(length(ms)) do i
-        j = findfirst(x -> i == first(x), sils)
+        j = isnothing(sils) ? nothing : findfirst(x -> i == first(x), sils)
         isnothing(j) ? ms[i] : 
         in(typeof(ms[i]), AbstractChainedChemical) ? makemolecule(typeof(ms[i]), ms[i].chain...; linkage = ms[i].linkage, sil = last(sils[j])) : 
         IsotopiclabeledChemical(ms[i], last(sils[j]))

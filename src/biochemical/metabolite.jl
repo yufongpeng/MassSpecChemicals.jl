@@ -1,7 +1,7 @@
 module Metabolites
 using Reexport
 @reexport using ..BioChemicals
-using ..MSChemicals: AbstractChemical
+using ..MassSpecChemicals: AbstractChemical
 import ..BioChemicals: originalmolecule, leavinggroup, conjugation
 export Metabolite, 
        Ethanolamine, 

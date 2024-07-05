@@ -8,6 +8,7 @@ originalmolecule(chain::CarbonChain{<: AbstractSTRing}) = SterolBone(chain)
 leavinggroup(::CarbonChain{<: AbstractSTRing}) = Dehydrogen()
 
 snposition(::Type{<: Glycerophospholipid}) = ["sn-1", "sn-2"]
+snposition(::Type{<: Sphingolipid}) = ["sn-1", "sn-2"]
 snposition(::Type{<: Glycerolipid}) = ["sn-1", "sn-2", "sn-3"]
 snposition(::Type{<: Bisradylglycerophosphoglycerol}) = ["sn-1", "sn-2", "sn-1'", "sn-2'"]
 snposition(::Type{<: Bisphosphatidicacid}) = ["sn-2", "sn-3", "sn-2'", "sn-3'"]

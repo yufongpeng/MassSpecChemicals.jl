@@ -1,4 +1,4 @@
-module MSChemicals
+module MassSpecChemicals
 
 using Combinatorics, TypedTables, MLStyle
 using UnitfulMoles: parse_compound, ustrip, @u_str

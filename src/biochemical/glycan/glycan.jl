@@ -2,7 +2,7 @@ module Glycans
 
 using Reexport
 @reexport using ..BioChemicals
-using ..MSChemicals: AbstractChemical
+using ..MassSpecChemicals: AbstractChemical
 export Saccharide, Monosaccharide, 
         AbstractHex, Hex, Glc, Gal, Man, 
         AbstractdHex, dHex, Fuc, 
