@@ -96,6 +96,8 @@ function real_interval(ct::Criteria, lop = <=, rop = <=)
     Criteria(real_interval(ct.aval, lop, rop), real_interval(ct.rval, lop, rop))
 end
 
+tuplize(x::Tuple) = x
+tuplize(x) = (x, )
 vectorize(x::AbstractVector) = x
 vectorize(x::AbstractVector, n::Int) = x[begin:begin + n]
 vectorize(x) = [x]

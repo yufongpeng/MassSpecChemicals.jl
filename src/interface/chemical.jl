@@ -1,6 +1,11 @@
+parse_chemical(name, formula, x...; kwargs...) = parse_chemical(Chemical, name, formula; kwargs...)
+parse_chemical(formula; kwargs...) = parse_chemical(Chemical, "", formula; kwargs...)
+parse_chemical(::Type{<: Chemical}, name::AbstractString, formula::AbstractString; kwargs...) = Chemical(name, formula, collect(kwargs))
+
 ischemicalequal(x::AbstractChemical, y::AbstractChemical) = isequal(x, y)
 ischemicalequal(x::Chemical, y::Chemical) = isequal(chemicalname(x), chemicalname(y)) || isequal(unique_elements(parse_compound(interpret_isotope(chemicalformula(x)))), unique_elements(parse_compound(interpret_isotope(chemicalformula(y)))))
 
+chemicalname(m::T) where {T <: AbstractChemical} = string(T, "()")
 chemicalname(m::Chemical) = m.name
 chemicalformula(m::Chemical) = m.formula
 chemicalformula(m::AbstractChemical, adduct::AbstractAdduct) = chemicalformula(Ion(m, adduct))
@@ -106,3 +111,7 @@ function transform_chemicals(chemical::AbstractChemical, elements::Vector{<: Uni
         [Chemical(n, chemicalformula(e), collect(infopairs(chemical))) for (n, e) in zip(names, elements)]
     end
 end
+
+chemicalabbr(x) = chemicalname(x)
+repr_smiles(x) = ""
+length(x::AbstractChemical) = 1

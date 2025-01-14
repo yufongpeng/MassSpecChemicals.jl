@@ -39,7 +39,9 @@ mz(ion::AbstractIon) = adductmw(ion)(mw(ioncore(ion)))
 mz(ions::IonCluster) = sum(ions.abundance .* mz.(ions.ions)) / sum(ions.abundance)
 
 function adductmw(adduct::AbstractString)
-    adduct = replace(adduct, ADDUCT_ALIAS...)
+    ad = get(DEFAULT_ADDUCT, string(adduct), nothing)
+    isnothing(ad) || return adductmw(ad)
+    adduct = replace(adduct, ADDUCT_FORMULA...)
     ion, charge = split(adduct, "]")
     charge = split(charge, "+", keepempty = false)
     charge = isempty(charge) ? 1 : begin

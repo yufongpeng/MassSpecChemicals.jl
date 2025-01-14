@@ -1,8 +1,15 @@
 module Glycans
 
-using Reexport
+using Reexport, MLStyle
 @reexport using ..BioChemicals
+@reexport using ..BioChemicals.BasicCompounds, ..BioChemicals.Metabolites
 using ..MassSpecChemicals: AbstractChemical
+import ..MassSpecChemicals: chemicalname, parse_chemical, chemicalformula, chemicalabbr, repr_smiles
+using ..BioChemicals.Proteins: parse_aa_fg
+using ..BioChemicals: lk
+using IterTools
+import Base: show
+import ..BioChemicals: repr_linkage, makelinkage, transformlinkage, getchaincomponent, getchainlinkage, ischainedchemical, dehydroxyposition, dehydrogenposition
 export Saccharide, Monosaccharide, 
         AbstractHex, Hex, Glc, Gal, Man, 
         AbstractdHex, dHex, Fuc, 
@@ -11,7 +18,7 @@ export Saccharide, Monosaccharide,
         AbstractHexA, HexA, GlcA, GalA, ManA,
         SialicAcid, Neu, Neu5Ac, NeuAc, Neu5Gc, NeuGc, Kdb,
         AbstractPen, Pen, Rib, Ara, Xyl, AbstractdPen, dPen, dRib, 
-        Inositol, Sulfoquinovose, Glycan, GlyComp,
+        Ino, Sulfoquinovose, Glycan, GlyComp,
         AbstractGlycan,
         AbstractAnomerposition, Anomerposition, Alphaposition, Betaposition,
         Ganglioseries,
@@ -23,6 +30,7 @@ export Saccharide, Monosaccharide,
         SM1a,
         SM1b,
         SB1a,
+        SB1,
         Ganglio0series,
         GA2,
         GA1,
@@ -37,24 +45,31 @@ export Saccharide, Monosaccharide,
         GM1a,
         GD1a,
         GD1aα,
+        GD1aa,
         GT1a,
         GT1aα,
+        GT1aa,
         GanglioBseries,
         GD3,
         GD2,
         GD1b,
         GT1b,
         GT1bα,
+        GT1ba,
         GQ1b,
         GQ1bα,
+        GQ1ba,
         GanglioCseries,
         GT3,
         GT2,
         GT1c,
         GQ1c,
         GQ1cα,
+        GQ1ca,
         GP1c,
         GP1cα,
+        GP1ca,
+        SM1,
         GM1,
         GD1,
         GT1,
@@ -83,8 +98,8 @@ abstract type AbstractdPen{T} <: Monosaccharide{T} end
 #=
 T
 Nothing
-Vector{<: Union{FunctionalGroup, AbstractChemical}}
-Vector{<: Pair{UInt8, <: Union{FunctionalGroup, AbstractChemical}}
+Vector{<: Pair{<: FunctionalGroup, UInt8}}
+Vector{<: Pair{UInt8, <: FunctionalGroup}}
 =#
 """
     Hex{T} <: AbstractHex{T}
@@ -348,10 +363,10 @@ struct dRib{T} <: AbstractdPen{T}
 end
 dRib() = dRib(nothing)
 
-struct Inositol{T} <: Monosaccharide{T}
+struct Ino{T} <: Monosaccharide{T}
     substituent::T
 end
-Inositol() = Inositol(nothing)
+Ino() = Ino(nothing)
 
 struct Sulfoquinovose{T} <: Monosaccharide{T}
     substituent::T
@@ -361,13 +376,14 @@ Sulfoquinovose() = Sulfoquinovose(nothing)
 abstract type AbstractGlycan <: Saccharide end
 struct GM4 <: AbstractGlycan end
 struct SM4 <: AbstractGlycan end
-struct Lac <: AbstractGlycan end
+struct Lac <: AbstractGlycan end #?
 abstract type Ganglioseries <: AbstractGlycan end
 struct SM3 <: Ganglioseries end
 struct SM2 <: Ganglioseries end
 struct SM1a <: Ganglioseries end
 struct SM1b <: Ganglioseries end
 struct SB1a <: Ganglioseries end
+const SB1 =  SB1a
 abstract type Ganglio0series <: Ganglioseries end
 struct GA2 <: Ganglio0series end
 struct GA1 <: Ganglio0series end
@@ -382,39 +398,89 @@ struct GM2 <: GanglioAseries end
 struct GM1a <: GanglioAseries end
 struct GD1a <: GanglioAseries end
 struct GD1aα <: GanglioAseries end
+const GD1aa = GD1aα
 struct GT1a <: GanglioAseries end
 struct GT1aα <: GanglioAseries end
+const GT1aa = GT1aα
 abstract type GanglioBseries <: Ganglioseries end
 struct GD3 <: GanglioBseries end
 struct GD2 <: GanglioBseries end
 struct GD1b <: GanglioBseries end
 struct GT1b <: GanglioBseries end
 struct GT1bα <: GanglioBseries end
+const GT1ba = GT1bα
 struct GQ1b <: GanglioBseries end
 struct GQ1bα <: GanglioBseries end
+const GQ1ba = GQ1bα
 abstract type GanglioCseries <: Ganglioseries end
 struct GT3 <: GanglioCseries end
 struct GT2 <: GanglioCseries end
 struct GT1c <: GanglioCseries end
 struct GQ1c <: GanglioCseries end
 struct GQ1cα <: GanglioCseries end
+const GQ1ca = GQ1cα
 struct GP1c <: GanglioCseries end
 struct GP1cα <: GanglioCseries end
-struct GM1 <: Ganglioseries
-    code::UInt8
+const GP1ca = GP1cα
+
+struct SM1{T} <: Ganglioseries
+    isomer::T
+end # SM1a, SM1b, xxxxx
+
+struct GM1{T} <: Ganglioseries
+    isomer::T
 end # GM1a, x, x, GM1b, x, x, x, GM1α
-struct GD1 <: Ganglioseries
-    code::UInt8
+
+struct GD1{T} <: Ganglioseries
+    isomer::T
 end # GD1a, GD1b, x, GD1c, GD1aα, x, x, GD1α 
-struct GT1 <: Ganglioseries
-    code::UInt8
+struct GT1{T} <: Ganglioseries
+    isomer::T
 end # GT1a, GT1b, GT1c, x, GT1aα, GT1bα, x, x
-struct GQ1 <: Ganglioseries
-    code::UInt8
+struct GQ1{T} <: Ganglioseries
+    isomer::T
 end # x, GQ1b, GQ1c, x, x, GQ1bα, GQ1cα, x
-struct GP1 <: Ganglioseries
-    code::UInt8
+struct GP1{T} <: Ganglioseries
+    isomer::T
 end # x, x GP1c, x, x, x, GP1cα, x
+
+function SM1()
+    SM1(SM1a(), SM1b())
+end
+function GM1()
+    GM1(GM1a(), GM1b(), GM1α())
+end
+function GD1()
+    GD1(GD1a(), GD1aα(), GD1b(), GD1c(), GD1α())
+end
+function GT1()
+    GT1(GT1a(), GT1aα(), GT1b(), GT1bα(), GT1c())
+end
+function GQ1()
+    GQ1(GQ1b(), GQ1bα(), GQ1c(), GQ1cα())
+end
+function GP1()
+    GP1(GP1c(), GP1cα())
+end
+function SM1(isomer...)
+    SM1(isomer)
+end
+function GM1(isomer...)
+    GM1(isomer)
+end
+function GD1(isomer...)
+    GD1(isomer)
+end
+function GT1(isomer...)
+    GT1(isomer)
+end
+function GQ1(isomer...)
+    GQ1(isomer)
+end
+function GP1(isomer...)
+    GP1(isomer)
+end
+
 abstract type Globoseries <: AbstractGlycan end
 struct Gb3 <: Globoseries end
 struct Gb4 <: Globoseries end
@@ -444,9 +510,9 @@ Oligosaccarides or Polysaccharides with or without defined order.
 """
 struct Glycan{T} <: AbstractGlycan
     chain::T
-    linkage::Vector{Pair{AbstractAnomerposition, UInt8}}
+    linkage::Vector{Pair{AbstractAnomerposition, Linkageposition}}
 end
-Glycan(sugar...) = Glycan(sugar, Pair{AbstractAnomerposition, UInt8}[])
+Glycan(sugar::Vararg{<: Saccharide}) = Glycan(sugar, Pair{AbstractAnomerposition, UInt8}[])
 #= Tuple: order, length of linkage == chain, defined reducing end anomer, 
 S::UInt8
 
@@ -454,10 +520,25 @@ S::Pair{UInt8, UInt8} x, y => p, a = divrem(x, 3) ap-y, ay
 a = 0, unknown anomer; a = 1, α; a = 2, β
 p = 0, default reducing end 1/2
 =#
-push!(AbstractChainedChemical, Glycan)
 
 struct GlyComp{T} <: AbstractGlycan
     comp::Vector{Pair{T, UInt8}}
 end
 # Vector{Pair{Monosaccharide, UInt8}}: type => number, no order
+getchaincomponent(sugar::Glycan) = sugar.chain
+getchainlinkage(sugar::Glycan) = sugar.linkage
+getchaincomponent(sugar::GlyComp) = sugar.comp
+dehydroxyposition(sugar::Saccharide) = 0x01
+dehydrogenposition(sugar::Saccharide) = 0x00
+makelinkage(::Type{Glycan}, a, b) = lk(dehydroxyposition(a)) => lk(dehydrogenposition(b))
+function transformlinkage(::Type{Glycan}, m::ChainedChemical)
+    Tuple(first(first(ls)) => first(last(ls)) for ls in getchainlinkage(m))
+end
+function transformlinkage(::Type{ChainedChemical}, m::Glycan)
+    Tuple((first(ls), Dehydroxy()) => (last(ls), Dehydrogen()) for ls in getchainlinkage(m))
+end
+
+ischainedchemical(::Glycan) = true
+
+include("io.jl")
 end

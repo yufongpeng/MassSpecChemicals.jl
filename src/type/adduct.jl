@@ -52,6 +52,14 @@ struct Add2NH4 <: AbstractPosAdduct end
 struct Sodization <: AbstractPosAdduct end
 struct SodizationProtonation <: AbstractPosAdduct end
 struct DiSodization <: AbstractPosAdduct end
+struct SodizationAddNH4 <: AbstractPosAdduct end
+struct Potassiation <: AbstractPosAdduct end
+struct PotassiationProtonation <: AbstractPosAdduct end
+struct DiPotassiation <: AbstractPosAdduct end
+struct Lithiation <: AbstractPosAdduct end
+struct LithiationProtonation <: AbstractPosAdduct end
+struct DiLithiation <: AbstractPosAdduct end
+struct Silveration <: AbstractPosAdduct end
 
 struct AddElectron <: AbstractNegAdduct end
 struct Deprotonation <: AbstractNegAdduct end
@@ -59,7 +67,7 @@ struct DeprotonationNLH2O <: AbstractNegAdduct end
 struct DiDeprotonation <: AbstractNegAdduct end
 struct TriDeprotonation <: AbstractNegAdduct end
 struct AddOAc <: AbstractNegAdduct end
-struct AddHCOO <: AbstractNegAdduct end
+struct AddOFo <: AbstractNegAdduct end
 
 struct LossCH2O <: AbstractNegAdduct end
 struct AddO <: AbstractNegAdduct end
@@ -70,3 +78,5 @@ struct AddC3H5NO <: AbstractNegAdduct end
 struct AddC2H5NO <: AbstractNegAdduct end
 struct LossCH3 <: AbstractNegAdduct end
 struct DeprotonationLossSerineAddH2O <: AbstractNegAdduct end
+struct AddFluorine <: AbstractNegAdduct end
+struct AddChlorine <: AbstractNegAdduct end
