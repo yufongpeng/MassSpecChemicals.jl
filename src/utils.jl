@@ -1,9 +1,22 @@
-(c::Criteria)(x) = (c.aval, c.rval * x)
-(c::Criteria{Missing})(x) = (c.rval * x, )
-(c::Criteria{A, Missing})(x) where A = (c.aval, )
+"""
+    acrit(x)
 
+Cnstructing a `Criteria` with only absolute criteria.
+"""
 acrit(x) = Criteria(x, missing)
+"""
+    rcrit(x)
+
+Cnstructing a `Criteria` with only relative criteria. 
+"""
 rcrit(x) = Criteria(missing, x)
+"""
+    crit(absolute)
+    crit(x::Criteria)
+    crit(absolute, relative)
+
+Cnstructing a `Criteria`. When a non `Criteria` value is given, it consider it as absolute criteria; when two values are given, the first one is absolute, the second one is relative.
+"""
 crit(x) = acrit(x)
 crit(x::Criteria) = x
 crit(x, y) = Criteria(x, y)
@@ -30,13 +43,12 @@ Create a `RealInterval` by mathematical real interval notation.
 
 # Examples
 ```julia
-julia> f = ri"[4, 7)"
-(::MSChemicals.RealInterval) (generic function with 1 method)
+julia> interval = ri"[4, 7)";
 
-julia> f(4)
+julia> 4 in interval
 true
 
-julia> f(7)
+julia> 7 in interval
 false
 ```
 """
@@ -82,6 +94,40 @@ function _real_interval(lb, ub, lop = <=, rop = <=)
     RealInterval(lb, ub, lop, rop)
 end
 
+"""
+    real_interval(val, lop = <=, rop = <=)
+    real_interval(ct::Criteria, lop = <=, rop = <=)
+    real_interval(val::Missing, lop = <=, rop = <=) = missing
+    real_interval(val::RealIntervals, lop = <=, rop = <=) = val
+
+Construct a `RealInterval`.
+
+When a value aside from `missing`, criteria, and real interval is given, it constructs a real interval from `-abs(val)` to `abs(val)`.
+
+When a criteira is given, it constructs a criteria whose criteria values become real intervals.
+
+# Examples
+```julia
+julia> ct = Criteria(10, 0.2);
+
+julia> peak_crit = real_interval(ct);
+
+julia> qualified_peak(x, x̂, ct) = all(c -> in(x - x̂, c), ct(x̂)); # The difference of x and x̂ should be within ±10 and ±20%
+
+julia> peak_crit(100) # create criteria with true value 100
+([-10, 10], [-20, 20])
+
+julia> peak_crit(10) # create criteria with true value 10
+([-10, 10], [-2, 2])
+
+julia> qualified_peak(85, 100, peak_crit)
+false
+
+julia> qualified_peak(9, 10, peak_crit)
+true 
+
+```
+"""
 function real_interval(val, lop = <=, rop = <=)
     lb, ub = val > 0 ? (-val, val) : (val, -val)
     lop(lb, ub) || return EmptyInterval()

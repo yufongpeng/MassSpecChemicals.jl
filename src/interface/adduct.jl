@@ -1,10 +1,46 @@
+"""
+    isadductequal(x::AbstractAdduct, y::AbstractAdduct)
+
+Determine whether two adducts are chemically equivalent. It defaults to `isequal`.
+"""
 isadductequal(x::AbstractAdduct, y::AbstractAdduct) = isequal(x, y)
 
+"""
+    kmer(adduct)
+
+The number of core chemical. For instance, 2 for "[2M+H]+".
+"""
 kmer(adduct::T) where {T <: AbstractAdduct} = hasfield(T, :kmer) ? adduct.kmer : 1
-adductformula(adduct::T) where {T <: AbstractAdduct} = hasfield(T, :formula) ? adduct.formula : ""
-charge(adduct::T) where {T <: AbstractAdduct} = hasfield(T, :charge) ? adduct.charge : 1
+"""
+    adductformula(adduct)
+
+The formula for adduct. For instance, "-H" for "[M-H]-", "+OAc" for "[M+OAc]-".
+"""
+adductformula(adduct::T) where {T <: AbstractAdduct} = hasfield(T, :formula) ? adduct.formula : nothing
+"""
+    charge(adduct)
+
+The charge of adduct (signed). For instance, -1 for "[M-H]-", 2 for "[M+2H]2+". The default value for positive/negative adduct is 1/-1.
+"""
+charge(adduct::T) where {T <: AbstractPosAdduct} = 1
+charge(adduct::T) where {T <: AbstractNegAdduct} = -1
+charge(adduct::PosAdduct) = adduct.ncharge
+charge(adduct::NegAdduct) = -1 * adduct.ncharge
+"""
+    ncharge(adduct)
+
+The number of charges of adduct. For instance, 1 for "[M-H]-", 2 for "[M+2H]2+".
+"""
+ncharge(adduct::T) where {T <: AbstractAdduct} = abs(charge(adduct))
+ncharge(adduct::PosAdduct) = adduct.ncharge
+ncharge(adduct::NegAdduct) = adduct.ncharge
+"""
+    adductelement(adduct)
+
+The elements changed with adduct. For generic adduct, it uses `adductformula` to calculate elements. If non-element strings are used in `adductformula`, defining custumized `adductelement` is required.
+"""
 function adductelement(adduct::AbstractAdduct)
-    el = Pair{SubString{String}, Int64}[]
+    el = Pair{String, Int}[]
     pos_adds = split(adductformula(adduct), "+", keepempty = false)
     for pos_add in pos_adds
         # M-H / M+FA-H
@@ -60,17 +96,18 @@ adductformula(::DiDeprotonation) = "-2H"
 adductformula(::TriDeprotonation) = "-3H"
 adductformula(::AddOAc) = "+OAc"
 adductformula(::AddOFo) = "+OFo"
-adductformula(::LossCH2O) = "-CH2O"
-adductformula(::AddO) = "+O"
-adductformula(::AddC2H2O) = "+C2H2O"
-adductformula(::LossCH8NO) = "-CH8NO"
-adductformula(::LossC2H8NO) = "-C2H8NO"
-adductformula(::AddC3H5NO) = "+C3H5NO"
-adductformula(::AddC2H5NO) = "+C2H5NO"
-adductformula(::LossCH3) = "-CH3"
-adductformula(::DeprotonationLossSerineAddH2O) = "-H-Serine+H2O"
-adductformula(::AddFluorine) = "+F"
-adductformula(::AddChlorine) = "+Cl"
+# adductformula(::LossCH2O) = "-CH2O"
+# adductformula(::AddO) = "+O"
+# adductformula(::AddC2H2O) = "+C2H2O"
+# adductformula(::LossCH8NO) = "-CH8NO"
+# adductformula(::LossC2H8NO) = "-C2H8NO"
+# adductformula(::AddC3H5NO) = "+C3H5NO"
+# adductformula(::AddC2H5NO) = "+C2H5NO"
+# adductformula(::LossCH3) = "-CH3"
+# adductformula(::DeprotonationLossSerineAddH2O) = "-H-Serine+H2O"
+adductformula(::Fluoridation) = "+F"
+adductformula(::Chloridation) = "+Cl"
+adductformula(::Demethylation) = "-Me"
 
 charge(::LossElectron) = 1
 charge(::Protonation) = 1
@@ -94,60 +131,64 @@ charge(::LithiationProtonation) = 2
 charge(::DiLithiation) = 2
 charge(::Silveration) = 1
 charge(::AddElectron) = 1
-charge(::Deprotonation) = 1
-charge(::DeprotonationNLH2O) = 1
-charge(::DiDeprotonation) = 2
-charge(::TriDeprotonation) = 3
-charge(::AddOAc) = 1
-charge(::AddOFo) = 1
-charge(::LossCH2O) = 1
-charge(::AddO) = 1
-charge(::AddC2H2O) = 1
-charge(::LossCH8NO) = 1
-charge(::LossC2H8NO) = 1
-charge(::AddC3H5NO) = 1
-charge(::AddC2H5NO) = 1
-charge(::LossCH3) = 1
-charge(::DeprotonationLossSerineAddH2O) = 1
-charge(::AddFluorine) = 1
-charge(::AddChlorine) = 1
+charge(::Deprotonation) = -1
+charge(::DeprotonationNLH2O) = -1
+charge(::DiDeprotonation) = -2
+charge(::TriDeprotonation) = -3
+charge(::AddOAc) = -1
+charge(::AddOFo) = -1
+# charge(::LossCH2O) = -1
+# charge(::AddO) = -1
+# charge(::AddC2H2O) = -1
+# charge(::LossCH8NO) = -1
+# charge(::LossC2H8NO) = -1
+# charge(::AddC3H5NO) = -1
+# charge(::AddC2H5NO) = -1
+# charge(::LossCH3) = -1
+# charge(::DeprotonationLossSerineAddH2O) = -1
+charge(::Fluoridation) = -1
+charge(::Chloridation) = -1
+charge(::Demethylation) = -1
 
-adductelement(::LossElectron) = Pair{SubString{String}, Int64}[]
-adductelement(::Protonation) = Pair{SubString{String}, Int64}["H" => 1]
-adductelement(::ProtonationNLH2O) = Pair{SubString{String}, Int64}["H" => -1, "O" => -1]
-adductelement(::ProtonationNL2H2O) = Pair{SubString{String}, Int64}["H" => -3, "O" => -2]
-adductelement(::ProtonationNL3H2O) = Pair{SubString{String}, Int64}["H" => -5, "O" => -3]
-adductelement(::DiProtonation) = Pair{SubString{String}, Int64}["H" => 2]
-adductelement(::TriProtonation) = Pair{SubString{String}, Int64}["H" => 3]
-adductelement(::AddNH4) = Pair{SubString{String}, Int64}["N" => 1, "H" => 4]
-adductelement(::AddHNH4) = Pair{SubString{String}, Int64}["N" => 1, "H" => 5]
-adductelement(::Add2NH4) = Pair{SubString{String}, Int64}["N" => 2, "H" => 8]
-adductelement(::Sodization) = Pair{SubString{String}, Int64}["Na" => 1]
-adductelement(::SodizationProtonation) = Pair{SubString{String}, Int64}["Na" => 1, "H" => 1]
-adductelement(::DiSodization) = Pair{SubString{String}, Int64}["Na" => 2]
-adductelement(::SodizationAddNH4) = Pair{SubString{String}, Int64}["Na" => 1, "N" => 1, "H" => 4]
-adductelement(::Potassiation) = Pair{SubString{String}, Int64}["K" => 1]
-adductelement(::PotassiationProtonation) = Pair{SubString{String}, Int64}["K" => 1, "H" => 1]
-adductelement(::DiPotassiation) = Pair{SubString{String}, Int64}["K" => 2]
-adductelement(::Lithiation) = Pair{SubString{String}, Int64}["Li" => 1]
-adductelement(::LithiationProtonation) = Pair{SubString{String}, Int64}["Li" => 1, "H" => 1]
-adductelement(::DiLithiation) = Pair{SubString{String}, Int64}["Li" => 2]
-adductelement(::Silveration) = Pair{SubString{String}, Int64}["Ag" => 1]
-adductelement(::AddElectron) = Pair{SubString{String}, Int64}[]
-adductelement(::Deprotonation) = Pair{SubString{String}, Int64}["H" => -1]
-adductelement(::DeprotonationNLH2O) = Pair{SubString{String}, Int64}["H" => -3, "O" => -1]
-adductelement(::DiDeprotonation) = Pair{SubString{String}, Int64}["H" => -2]
-adductelement(::TriDeprotonation) = Pair{SubString{String}, Int64}["H" => -3]
-adductelement(::AddOAc) = Pair{SubString{String}, Int64}["C" => 2, "H" => 3, "O" => 2]
-adductelement(::AddOFo) = Pair{SubString{String}, Int64}["C" => 1, "H" => 1, "O" => 2]
-adductelement(::LossCH2O) = Pair{SubString{String}, Int64}["C" => -1, "H" => -2, "O" => -1]
-adductelement(::AddO) = Pair{SubString{String}, Int64}["O" => 1]
-adductelement(::AddC2H2O) = Pair{SubString{String}, Int64}["C" => 2, "H" => 2, "O" => 1]
-adductelement(::LossCH8NO) = Pair{SubString{String}, Int64}["C" => -1, "H" => -8, "N" => -1, "O" => -1]
-adductelement(::LossC2H8NO) = Pair{SubString{String}, Int64}["C" => -2, "H" => -8, "N" => -1, "O" => -1]
-adductelement(::AddC3H5NO) = Pair{SubString{String}, Int64}["C" => 3, "H" => 5, "N" => 1, "O" => 1]
-adductelement(::AddC2H5NO) = Pair{SubString{String}, Int64}["C" => 2, "H" => 5, "N" => 1, "O" => 1]
-adductelement(::LossCH3) = Pair{SubString{String}, Int64}["C" => -1, "H" => -3]
-adductelement(::DeprotonationLossSerineAddH2O) = Pair{SubString{String}, Int64}["C" => -3, "H" => -6, "N" => -1, "O" => -2]
-adductelement(::AddFluorine) = Pair{SubString{String}, Int64}["F" => 1]
-adductelement(::AddChlorine) = Pair{SubString{String}, Int64}["Cl" => 1]
+adductelement(::LossElectron) = Pair{String, Int64}[]
+adductelement(::Protonation) = ["H" => 1]
+adductelement(::ProtonationNLH2O) = ["H" => -1, "O" => -1]
+adductelement(::ProtonationNL2H2O) = ["H" => -3, "O" => -2]
+adductelement(::ProtonationNL3H2O) = ["H" => -5, "O" => -3]
+adductelement(::DiProtonation) = ["H" => 2]
+adductelement(::TriProtonation) = ["H" => 3]
+adductelement(::AddNH4) = ["N" => 1, "H" => 4]
+adductelement(::AddHNH4) = ["N" => 1, "H" => 5]
+adductelement(::Add2NH4) = ["N" => 2, "H" => 8]
+adductelement(::Sodization) = ["Na" => 1]
+adductelement(::SodizationProtonation) = ["Na" => 1, "H" => 1]
+adductelement(::DiSodization) = ["Na" => 2]
+adductelement(::SodizationAddNH4) = ["Na" => 1, "N" => 1, "H" => 4]
+adductelement(::Potassiation) = ["K" => 1]
+adductelement(::PotassiationProtonation) = ["K" => 1, "H" => 1]
+adductelement(::DiPotassiation) = ["K" => 2]
+adductelement(::Lithiation) = ["Li" => 1]
+adductelement(::LithiationProtonation) = ["Li" => 1, "H" => 1]
+adductelement(::DiLithiation) = ["Li" => 2]
+adductelement(::Silveration) = ["Ag" => 1]
+adductelement(::AddElectron) = []
+adductelement(::Deprotonation) = ["H" => -1]
+adductelement(::DeprotonationNLH2O) = ["H" => -3, "O" => -1]
+adductelement(::DiDeprotonation) = ["H" => -2]
+adductelement(::TriDeprotonation) = ["H" => -3]
+adductelement(::AddOAc) = ["C" => 2, "H" => 3, "O" => 2]
+adductelement(::AddOFo) = ["C" => 1, "H" => 1, "O" => 2]
+# adductelement(::LossCH2O) = ["C" => -1, "H" => -2, "O" => -1]
+# adductelement(::AddO) = ["O" => 1]
+# adductelement(::AddC2H2O) = ["C" => 2, "H" => 2, "O" => 1]
+# adductelement(::LossCH8NO) = ["C" => -1, "H" => -8, "N" => -1, "O" => -1]
+# adductelement(::LossC2H8NO) = ["C" => -2, "H" => -8, "N" => -1, "O" => -1]
+# adductelement(::AddC3H5NO) = ["C" => 3, "H" => 5, "N" => 1, "O" => 1]
+# adductelement(::AddC2H5NO) = ["C" => 2, "H" => 5, "N" => 1, "O" => 1]
+# adductelement(::LossCH3) = ["C" => -1, "H" => -3]
+# adductelement(::DeprotonationLossSerineAddH2O) = ["C" => -3, "H" => -6, "N" => -1, "O" => -2]
+adductelement(::Fluoridation) = ["F" => 1]
+adductelement(::Chloridation) = ["Cl" => 1]
+adductelement(::Demethylation) = ["C" => -1, "H" => -3]
+
+Broadcast.broadcastable(x::AbstractAdduct) = Ref(x)

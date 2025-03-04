@@ -2,33 +2,19 @@ function Base.show(io::IO, m::AbstractChemical)
     print(io, isempty(chemicalname(m)) ? chemicalformula(m) : chemicalname(m))
 end
 
-function Base.show(io::IO, adduct::AbstractAdduct)
+function Base.show(io::IO, adduct::T) where {T <: AbstractAdduct}
+    radd = adductformula(adduct)
+    isnothing(radd) && return print(io, T)
     k = kmer(adduct) > 1 ? string("[", kmer(adduct), "M") : "[M"
-    print(io, k, adductformula(adduct), "]", charge(adduct) > 1 ? charge(adduct) : "", adduct isa AbstractPosAdduct ? "+" : "-")
+    print(io, k, radd, "]", ncharge(adduct) > 1 ? ncharge(adduct) : "", adduct isa AbstractPosAdduct ? "+" : "-")
 end
 
 function Base.show(io::IO, ion::AbstractIon)
-    print(io, ionadduct(ion), " of ", ioncore(ion))
+    print(io, chemicalname(ion))
 end
 
-function Base.show(io::IO, v::IonCluster)
-    adds = AbstractAdduct[]
-    names = String[]
-    for ion in v.ions
-        m = ioncore(ion)
-        id = findfirst(==(ionadduct(ion)), adds)
-        if isnothing(id)
-            push!(adds, ionadduct(ion))
-            push!(names, isempty(chemicalname(m)) ? chemicalformula(m) : chemicalname(m))
-        else
-            names[id] *= string(", ", isempty(chemicalname(m)) ? chemicalformula(m) : chemicalname(m))
-        end
-
-    end
-    for i in eachindex(names)
-        names[i] = string(adds[i], " of ", names[i])
-    end
-    print(io, join(names, " | "))
+function Base.show(io::IO, m::Isobars)
+    print(io, chemicalname(m))
 end
 
 

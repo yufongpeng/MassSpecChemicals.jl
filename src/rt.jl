@@ -1,14 +1,24 @@
-function getisobars(ion::AbstractIon, lib::AbstractVector{T}; rt_tol = 0.3, mz_tol = crit(0.01, 20e-6)) where {T <: Union{AbstractIon, IonCluster}}
-    isnothing(rt(ion)) && return nothing
+"""
+    getisobars_rt(ion::AbstractIon, lib::AbstractVector{T}; rt_tol = 0.3, mz_tol = crit(0.01, 20e-6))
+    getisobars_rt(ion::AbstractIon, lib::Table; libchemical = :Ion, libmz = :MZ, librt = :RT, rt_tol = 0.3, mz_tol = crit(0.01, 20e-6))
+
+Return a subvector of `lib` such that all elements are isobaric to `ion` within specific tolerance of rt and mz. 
+
+Keyword arguments `libchemical`, `libmz`, and `librt` specify the columns of `Ion` objects, m/z values, and rt values. 
+
+Tolerance can be a number or criteria, representing maximum allowed difference. For criteria with multiple allowed intervals, lying in any of them is considered to fulfill the criteria. 
+"""
+function getisobars_rt(ion::AbstractIon, lib::AbstractVector{T}; rt_tol = 0.3, mz_tol = crit(0.01, 20e-6)) where {S <: AbstractIon, T <: Union{AbstractIon, Isobars{S}}}
+    isnan(rt(ion)) && return T[]
     rrt = rt(ion)
     rmz1 = mz(ion)
     mz_tol = union(crit(real_interval(mz_tol))(rmz1)...)
     rt_tol = union(crit(real_interval(rt_tol))(rrt)...)
     c = T[]
     for i in lib
-        isionequal(ion, i) && continue
+        ischemicalequal(ion, i) && continue
         irt = rt(i)
-        isnothing(irt) && continue
+        isnan(irt) && continue
         in(irt - rrt, rt_tol) || continue
         imz1 = mz(i)
         in(imz1 - rmz1, mz_tol) || continue
@@ -16,19 +26,38 @@ function getisobars(ion::AbstractIon, lib::AbstractVector{T}; rt_tol = 0.3, mz_t
     end
     c
 end
-isobar_rt_mz1(ion::AbstractIon, lib::AbstractVector{T}; rt_tol = 0.3, mz_tol = crit(0.01, 20e-6)) where {T <: Union{AbstractIon, IonCluster}} = 
-    isobar_rt_mz1(ion, rt(ion), mz(ion), lib; rt_tol, mz_tol)
-function isobar_rt_mz1(ion::AbstractIon, rrt, rmz1, lib::AbstractVector{T}; rt_tol = 0.3, mz_tol = crit(0.01, 20e-6)) where {T <: Union{AbstractIon, IonCluster}}
-    isnothing(rrt) && return nothing
+
+"""
+    isobartable_rt(ion::AbstractIon, lib::AbstractVector{T}; rt_tol = 0.3, mz_tol = crit(0.01, 20e-6))
+    isobartable_rt(exp::Vector, lib::AbstractVector{T}; kwargs...)
+    isobartable_rt(exp::Table, lib::AbstractVector{T}; expid = true, expchemical = :Ion, expmz = :MZ, exprt = :RT, rt_tol = 0.3, mz_tol = crit(0.01, 20e-6))
+    isobartable_rt(ion::AbstractIon, lib::Table; libid = true, libchemical = :Ion, libmz = :MZ, librt = :RT, rt_tol = 0.3, mz_tol = crit(0.01, 20e-6))
+    isobartable_rt(exp::Vector, lib::Table; libid = true, libchemical = :Ion, libmz = :MZ, librt = :RT, rt_tol = 0.3, mz_tol = crit(0.01, 20e-6))
+    isobartable_rt(exp::Table, lib::Table; expid = true, expchemical = :Ion, expmz = :MZ, exprt = :RT, libid = true, libchemical = :Ion, libmz = :MZ, librt = :RT, rt_tol = 0.3, mz_tol = crit(0.01, 20e-6))
+
+Return a `Table` such that all rows representing an ion from `lib` which are isobaric to `ion` or ions from `exp` within specific tolerance of rt and mz. 
+
+Tolerance can be a number or criteria, representing maximum allowed difference. For criteria with multiple allowed intervals, lying in any of them is considered to fulfill the criteria. 
+
+Keyword arguments `libchemical`, `libmz`, and `librt` specify the columns of `Ion` objects, m/z values, and rt values from `lib`. 
+
+Keyword arguments `expchemical`, `expmz`, and `exprt` specify the columns of `Ion` objects, m/z values, and rt values from `exp`. 
+
+Keyword arguments `libid` and `expid` determine whether creates columns to store row id of `lib` or `exp`.
+"""
+isobartable_rt(ion::AbstractIon, lib::AbstractVector{T}; rt_tol = 0.3, mz_tol = crit(0.01, 20e-6)) where {S <: AbstractIon, T <: Union{AbstractIon, Isobars{S}}} = 
+    isobartable_rt(ion, rt(ion), mz(ion), lib; rt_tol, mz_tol)
+function isobartable_rt(ion::AbstractIon, rrt, rmz1, lib::AbstractVector{T}; rt_tol = 0.3, mz_tol = crit(0.01, 20e-6)) where {S <: AbstractIon, T <: Union{AbstractIon, Isobars{S}}}
+    isnan(rrt) && return nothing
     mz_tol = union(crit(real_interval(mz_tol))(rmz1)...)
     rt_tol = union(crit(real_interval(rt_tol))(rrt)...)
     c = T[]
     Δrt = Float64[]
     Δmz = Float64[]
     for i in lib
-        isionequal(ion, i) && continue
+        ischemicalequal(ion, i) && continue
         irt = rt(i)
-        isnothing(irt) && continue
+        isnan(irt) && continue
         drt = irt - rrt
         in(drt, rt_tol) || continue
         imz1 = mz(i)
@@ -45,16 +74,16 @@ function isobar_rt_mz1(ion::AbstractIon, rrt, rmz1, lib::AbstractVector{T}; rt_t
     Table(; Isobar = c, ΔRT = Δrt, var"ΔRT(%)" = Δrt ./ rrt .* 100, ΔMZ = Δmz, var"ΔMZ(ppm)" = Δmz ./ rmz1 .* 1e6)
 end
 
-function isobar_rt_mz1(exp::Vector, lib::AbstractVector{T}; kwargs...) where {T <: Union{AbstractIon, IonCluster}}
+function isobartable_rt(exp::Vector, lib::AbstractVector{T}; kwargs...) where {S <: AbstractIon, T <: Union{AbstractIon, Isobars{S}}}
     if length(exp) < Threads.nthreads()
         mapreduce(vcat, exp) do x
-            it = isobar_rt_mz1(x, lib; kwargs...)
+            it = isobartable_rt(x, lib; kwargs...)
             Table((Ion = vectorize(x, length(it)), ), it)
         end |> Table
     else
         t = Vector{Table}(undef, length(exp))
         Threads.@threads for i in eachindex(t)
-            it = isobar_rt_mz1(exp[i], lib; kwargs...)
+            it = isobartable_rt(exp[i], lib; kwargs...)
             t[i] = Table((Ion = vectorize(exp[i], length(it)), ), it)
         end
         Table(; (map(propertynames(t[1])) do p
@@ -63,7 +92,7 @@ function isobar_rt_mz1(exp::Vector, lib::AbstractVector{T}; kwargs...) where {T 
     end
 end
 
-function isobar_rt_mz1(exp::Table, lib::AbstractVector{T}; expid = true, expchemical = :Ion, expmz = :MZ, exprt = :RT, rt_tol = 0.3, mz_tol = crit(0.01, 20e-6)) where {T <: Union{AbstractIon, IonCluster}}
+function isobartable_rt(exp::Table, lib::AbstractVector{T}; expid = true, expchemical = :Ion, expmz = :MZ, exprt = :RT, rt_tol = 0.3, mz_tol = crit(0.01, 20e-6)) where {S <: AbstractIon, T <: Union{AbstractIon, Isobars{S}}}
     expchemical = Symbol(expchemical)
     expmz = isnothing(expmz) ? nothing : Symbol(expmz)
     exprt = isnothing(exprt) ? nothing : Symbol(exprt)
@@ -71,13 +100,13 @@ function isobar_rt_mz1(exp::Table, lib::AbstractVector{T}; expid = true, expchem
     rmz1 = isnothing(expmz) ? mz.(getproperty(exp, expchemical)) : getproperty(exp, expmz)
     if length(exp) < Threads.nthreads()
         mapreduce(vcat, eachindex(exp), getproperty(exp, expchemical), rrt, rmz1) do i, x, xrt, xmz1
-            it = isobar_rt_mz1(x, xrt, xmz1, lib; rt_tol, mz_tol)
+            it = isobartable_rt(x, xrt, xmz1, lib; rt_tol, mz_tol)
             Table(expid ? (ExpID = vectorize(i, length(it)), Ion = vectorize(x, length(it)), ) : (Ion = vectorize(x, length(it)), ), it)
         end |> Table
     else
         t = Vector{Table}(undef, length(exp))
         Threads.@threads for i in eachindex(t)
-            it = isobar_rt_mz1(getproperty(exp, expchemical)[i], rrt[i], rmz1[i], lib; rt_tol, mz_tol)
+            it = isobartable_rt(getproperty(exp, expchemical)[i], rrt[i], rmz1[i], lib; rt_tol, mz_tol)
             t[i] = Table(expid ? (ExpID = vectorize(i, length(it)), Ion = vectorize(getproperty(exp, expchemical)[i], length(it)), ) : (Ion = vectorize(getproperty(exp, expchemical)[i], length(id)), ), it)
         end
         Table(; (map(propertynames(t[1])) do p
@@ -86,11 +115,11 @@ function isobar_rt_mz1(exp::Table, lib::AbstractVector{T}; expid = true, expchem
     end
 end
 
-function getisobars(ion::AbstractIon, lib::Table; libchemical = :Ion, libmz = :MZ, librt = :RT, rt_tol = 0.3, mz_tol = crit(0.01, 20e-6))
+function getisobars_rt(ion::AbstractIon, lib::Table; libchemical = :Ion, libmz = :MZ, librt = :RT, rt_tol = 0.3, mz_tol = crit(0.01, 20e-6))
     libchemical = Symbol(libchemical)
     libmz = isnothing(libmz) ? nothing : Symbol(libmz)
     librt = isnothing(librt) ? nothing : Symbol(librt)
-    isnothing(rt(ion)) && return nothing
+    isnan(rt(ion)) && return eltype(getproperty(lib, libchemical))[]
     getmz = isnothing(libmz) ? (i -> mz(getproperty(i, libchemical))) : (i -> getproperty(i, libmz))
     getrt = isnothing(librt) ? (i -> rt(getproperty(i, libchemical))) : (i -> getproperty(i, librt))
     rrt = rt(ion)
@@ -99,9 +128,9 @@ function getisobars(ion::AbstractIon, lib::Table; libchemical = :Ion, libmz = :M
     rt_tol = union(crit(real_interval(rt_tol))(rrt)...)
     c = eltype(getproperty(lib, libchemical))[]
     for i in lib
-        isionequal(ion, getproperty(i, libchemical)) && continue
+        ischemicalequal(ion, getproperty(i, libchemical)) && continue
         irt = getrt(i)
-        isnothing(irt) && continue
+        isnan(irt) && continue
         in(irt - rrt, rt_tol) || continue
         imz1 = getmz(i)
         in(imz1 - rmz1, mz_tol) || continue
@@ -109,10 +138,10 @@ function getisobars(ion::AbstractIon, lib::Table; libchemical = :Ion, libmz = :M
     end
     c
 end
-isobar_rt_mz1(ion::AbstractIon, lib::Table; libid = true, libchemical = :Ion, libmz = :MZ, librt = :RT, rt_tol = 0.3, mz_tol = crit(0.01, 20e-6)) = 
-    isobar_rt_mz1(ion, rt(ion), mz(ion), lib; libid, libchemical = Symbol(libchemical), libmz = isnothing(libmz) ? nothing : Symbol(libmz), librt = isnothing(librt) ? nothing : Symbol(librt), rt_tol, mz_tol)
-function isobar_rt_mz1(ion::AbstractIon, rrt, rmz1, lib::Table; libid = true, libchemical = :Ion, libmz = :MZ, librt = :RT, rt_tol = 0.3, mz_tol = crit(0.01, 20e-6))
-    isnothing(rrt) && return nothing
+isobartable_rt(ion::AbstractIon, lib::Table; libid = true, libchemical = :Ion, libmz = :MZ, librt = :RT, rt_tol = 0.3, mz_tol = crit(0.01, 20e-6)) = 
+    isobartable_rt(ion, rt(ion), mz(ion), lib; libid, libchemical = Symbol(libchemical), libmz = isnothing(libmz) ? nothing : Symbol(libmz), librt = isnothing(librt) ? nothing : Symbol(librt), rt_tol, mz_tol)
+function isobartable_rt(ion::AbstractIon, rrt, rmz1, lib::Table; libid = true, libchemical = :Ion, libmz = :MZ, librt = :RT, rt_tol = 0.3, mz_tol = crit(0.01, 20e-6))
+    isnan(rrt) && return nothing
     getmz = isnothing(libmz) ? (i -> mz(getproperty(i, libchemical))) : (i -> getproperty(i, libmz))
     getrt = isnothing(librt) ? (i -> rt(getproperty(i, libchemical))) : (i -> getproperty(i, librt))
     mz_tol = union(crit(real_interval(mz_tol))(rmz1)...)
@@ -121,9 +150,9 @@ function isobar_rt_mz1(ion::AbstractIon, rrt, rmz1, lib::Table; libid = true, li
     Δrt = Float64[]
     Δmz = Float64[]
     for (j, i) in enumerate(lib)
-        isionequal(ion, getproperty(i, libchemical)) && continue
+        ischemicalequal(ion, getproperty(i, libchemical)) && continue
         irt = getrt(i)
-        isnothing(irt) && continue
+        isnan(irt) && continue
         drt = irt - rrt
         in(drt, rt_tol) || continue
         imz1 = getmz(i)
@@ -141,20 +170,20 @@ function isobar_rt_mz1(ion::AbstractIon, rrt, rmz1, lib::Table; libid = true, li
         Table(; Isobar = getproperty(lib, libchemical)[lid], ΔRT = Δrt, var"ΔRT(%)" = Δrt ./ rrt .* 100, ΔMZ = Δmz, var"ΔMZ(ppm)" = Δmz ./ rmz1 .* 1e6)
 end
 
-function isobar_rt_mz1(exp::Vector, lib::Table; libid = true, libchemical = :Ion, libmz = :MZ, librt = :RT, rt_tol = 0.3, mz_tol = crit(0.01, 20e-6))
+function isobartable_rt(exp::Vector, lib::Table; libid = true, libchemical = :Ion, libmz = :MZ, librt = :RT, rt_tol = 0.3, mz_tol = crit(0.01, 20e-6))
     libchemical = Symbol(libchemical)
     libmz = isnothing(libmz) ? nothing : Symbol(libmz)
     librt = isnothing(librt) ? nothing : Symbol(librt)
     if length(v) < Threads.nthreads()
-        mapreduce(vcat, v) do x, m
-            it = isobar_rt_mz1(x, lib; lidid, libchemical, libmz, librt, rt_tol, mz_tol)
+        mapreduce(vcat, exp) do x, m
+            it = isobartable_rt(x, lib; libid, libchemical, libmz, librt, rt_tol, mz_tol)
             Table((Ion = vectorize(x, length(it)), ), it)
         end |> Table
     else
-        t = Vector{Table}(undef, length(v))
+        t = Vector{Table}(undef, length(exp))
         Threads.@threads for i in eachindex(t)
-            it = isobar_rt_mz1(v[i], lib; lidid, libchemical, libmz, librt, rt_tol, mz_tol)
-            t[i] = Table((Ion = vectorize(v[i], length(it)), ), it)
+            it = isobartable_rt(exp[i], lib; libid, libchemical, libmz, librt, rt_tol, mz_tol)
+            t[i] = Table((Ion = vectorize(exp[i], length(it)), ), it)
         end
         Table(; (map(propertynames(t[1])) do p
             p => ChainedVector(getproperty.(t, p))
@@ -162,7 +191,7 @@ function isobar_rt_mz1(exp::Vector, lib::Table; libid = true, libchemical = :Ion
     end
 end
 
-function isobar_rt_mz1(exp::Table, lib::Table; expid = true, expchemical = :Ion, expmz = :MZ, exprt = :RT, libid = true, libchemical = :Ion, libmz = :MZ, librt = :RT, rt_tol = 0.3, mz_tol = crit(0.01, 20e-6))
+function isobartable_rt(exp::Table, lib::Table; expid = true, expchemical = :Ion, expmz = :MZ, exprt = :RT, libid = true, libchemical = :Ion, libmz = :MZ, librt = :RT, rt_tol = 0.3, mz_tol = crit(0.01, 20e-6))
     libchemical = Symbol(libchemical)
     libmz = isnothing(libmz) ? nothing : Symbol(libmz)
     librt = isnothing(librt) ? nothing : Symbol(librt)
@@ -173,13 +202,13 @@ function isobar_rt_mz1(exp::Table, lib::Table; expid = true, expchemical = :Ion,
     rmz1 = isnothing(expmz) ? mz.(getproperty(exp, expchemical)) : getproperty(exp, expmz)
     if length(exp) < Threads.nthreads()
         mapreduce(vcat, eachindex(exp), getproperty(exp, expchemical), rrt, rmz1) do i, x, xrt, xmz1
-            it = isobar_rt_mz1(x, xrt, xmz1, lib; libid, libchemical, librt, libmz, rt_tol, mz_tol)
+            it = isobartable_rt(x, xrt, xmz1, lib; libid, libchemical, librt, libmz, rt_tol, mz_tol)
             Table(expid ? (ExpID = vectorize(i, length(it)), Ion = vectorize(x, length(it)), ) : (Ion = vectorize(x, length(it)), ), it)
         end |> Table
     else
         t = Vector{Table}(undef, length(exp))
         Threads.@threads for i in eachindex(t)
-            it = isobar_rt_mz1(getproperty(exp, expchemical)[i], rrt[i], rmz1[i], lib; libid, libchemical, librt, libmz, rt_tol, mz_tol)
+            it = isobartable_rt(getproperty(exp, expchemical)[i], rrt[i], rmz1[i], lib; libid, libchemical, librt, libmz, rt_tol, mz_tol)
             t[i] = Table(expid ? (ExpID = vectorize(i, length(it)), Ion = vectorize(getproperty(exp, expchemical)[i], length(it)), ) : (Ion = vectorize(getproperty(exp, expchemical)[i], length(id)), ), it)
         end
         Table(; (map(propertynames(t[1])) do p
