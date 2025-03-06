@@ -1,47 +1,59 @@
 """
-    chemicalname(m::T; kwargs...) 
+    chemicalname(chemical::T; kwargs...) 
 
-Get name of `m`. It is equivalent to `getchemicalattr(m, :name; kwargs...)` except that it returns `string("::", T)` when name is not available.
+Get name of `chemical`. It is equivalent to `getchemicalattr(chemical, :name; kwargs...)` except that it returns `string("::", T)` when name is not available.
 """
-function chemicalname(m::T; kwargs...) where {T <: AbstractChemical}
-    result = getchemicalattr(m, :name; kwargs...)
+function chemicalname(cc::T; kwargs...) where {T <: AbstractChemical}
+    result = getchemicalattr(cc, :name; kwargs...)
     isnothing(result) ? string("::", T) : result
 end
 
 """
-    chemicalformula(m::AbstractChemical; kwargs...)
+    chemicalformula(chemical::AbstractChemical; kwargs...)
 
-Get formula of `m`. It is equivalent to `getchemicalattr(m, :formula; kwargs...)` except that it returns `""` when formula is not available.
+Get formula of `chemical`. It is equivalent to `getchemicalattr(chemical, :formula; kwargs...)` except that it returns `""` when formula is not available.
 """
-function chemicalformula(m::AbstractChemical; kwargs...) 
-    result = getchemicalattr(m, :formula; kwargs...)
+function chemicalformula(cc::AbstractChemical; kwargs...) 
+    result = getchemicalattr(cc, :formula; kwargs...)
     isnothing(result) ? "" : result
 end
-"""
-    chemicalabbr(m::AbstractChemical; kwargs...)
 
-Get abbreviation of `m`. It is equivalent to `getchemicalattr(m, :abbreviation; kwargs...)` except that it returns `chemicalname(m; kwargs...)` when abbreviation is not available.
 """
-function chemicalabbr(m::AbstractChemical; kwargs...) 
-    result = getchemicalattr(m, :abbreviation; kwargs...)
+    chemicalelements(chemical::AbstractChemical; kwargs...)
+
+Get elements of `chemical`. It is equivalent to `getchemicalattr(chemical, :elements; kwargs...)` except that it returns `Pair{String, Int}[]` when elements are not available.
+"""
+function chemicalelements(cc::AbstractChemical; kwargs...) 
+    result = getchemicalattr(cc, :elements; kwargs...)
+    isnothing(result) ? Pair{String, Int}[] : result
+end
+
+"""
+    chemicalabbr(chemical::AbstractChemical; kwargs...)
+
+Get abbreviation of `chemical`. It is equivalent to `getchemicalattr(chemical, :abbreviation; kwargs...)` except that it returns `chemicalname(chemical; kwargs...)` when abbreviation is not available.
+"""
+function chemicalabbr(cc::AbstractChemical; kwargs...) 
+    result = getchemicalattr(cc, :abbreviation; kwargs...)
     isnothing(result) ? chemicalname(m; kwargs...) : result
 end
-"""
-    chemicalsmiles(m::AbstractChemical; kwargs...)
 
-Get SMILES of `m`. It is equivalent to `getchemicalattr(m, :SMILES; kwargs...)` except that it returns `""` when SMILES is not available.
 """
-function chemicalsmiles(m::AbstractChemical; kwargs...) 
-    result = getchemicalattr(m, :SMILES; kwargs...)
+    chemicalsmiles(chemical::AbstractChemical; kwargs...)
+
+Get SMILES of `chemical`. It is equivalent to `getchemicalattr(chemical, :SMILES; kwargs...)` except that it returns `""` when SMILES is not available.
+"""
+function chemicalsmiles(cc::AbstractChemical; kwargs...) 
+    result = getchemicalattr(cc, :SMILES; kwargs...)
     isnothing(result) ? "" : result
 end
-"""
-    rt(m::AbstractChemical; kwargs...)
 
-Get retention time of `m`. It is equivalent to `getchemicalattr(m, :rt; kwargs...)` except that it returns `NaN` when rt is not available.
 """
-function rt(m::AbstractChemical; kwargs...) 
-    result = getchemicalattr(m, :rt; kwargs...)
+    rt(chemical::AbstractChemical; kwargs...)
+
+Get retention time of `chemical`. It is equivalent to `getchemicalattr(chemical, :rt; kwargs...)` except that it returns `NaN` when rt is not available.
+"""
+function rt(cc::AbstractChemical; kwargs...) 
+    result = getchemicalattr(cc, :rt; kwargs...)
     isnothing(result) ? NaN : result 
 end
-

@@ -1,11 +1,11 @@
 module MassSpecChemicals
 
-using Combinatorics, TypedTables, MLStyle, Statistics, StatsBase
+using Combinatorics, TypedTables, MLStyle, Statistics, StatsBase, Dictionaries
 using UnitfulMoles: parse_compound, ustrip, @u_str
 using SentinelArrays: ChainedVector
 import Base: show, length, +, -, *, /, isless, isequal, in, union, intersect, Broadcast.broadcastable
 
-export Ion, Chemical, Isobars,
+export AdductIon, Chemical, Isobars, Isotopomers, 
     AbstractPosAdduct, AbstractNegAdduct,
     PosAdduct, NegAdduct,
     LossElectron,
@@ -51,18 +51,16 @@ export Ion, Chemical, Isobars,
     Chloridation,
     Demethylation,
 
-    parse_chemical, parse_adduct, chemicalformula, chemicalname, chemicalabbr, chemicalsmiles, ioncore, ionadduct, kmer, charge, ncharge, rt,
-    getchemicalattr, isionequal, ischemicalequal, isadductequal, 
+    parse_chemical, parse_adduct, chemicalformula, chemicalelements, chemicalname, chemicalabbr, chemicalsmiles, ioncore, ionadduct, kmer, charge, ncharge, rt,
+    getchemicalattr, ischemicalequal, isadductequal, 
 
-    push_adduct_abbr!, push_adduct_name!, ADDUCT_ABBR, ADDUCT_NAME,
-
-    chemicalvariants, ionvariants,
+    set_adduct_abbr!, set_adduct_name!, ADDUCTS, ELEMENTS, set_elements!, 
 
     mw, mz, abundantchemical,
 
-    isotopicabundance, isotopetable, getisotopes,
+    isotopicabundance, isotopologues_table, isotopologues,
 
-    isobartable_rt, getisobars_rt,
+    isobars_rt, isobars_rt_table,
 
     acrit, rcrit, crit, @ri_str
 
@@ -73,29 +71,32 @@ Abstract type for chemicals.
     
 The following attributes are required for a concrete type of `AbstractChemical`
 * `name`: a unique chemical name (`String`).
+
+At least one of the following attributes are required. They are interchangable.
 * `formula`: chemical formula (`String`).
+* `elements`: chemical elements (`Vector{Pair{String, Int}}`).
 
-The following attributes are optional, but has been implemented for `AbstractChemical`
+The following attributes are optional, but the user interfaces are implemented 
 * `abbreviation`: common abbreviation (`String`); defaults to `:name`. 
-* `SMILES`: SMILES (`String`)
+* `SMILES`: SMILES (`String`); defaults to `""`.
 
-These attributes are not neccessary be type fields, but `getchemicalattr(chemical, Val(attr)` should return the correct value. See `getchemicalattr` for details.
+These attributes are not neccessary to be type fields, but `getchemicalattr(chemical, Val(attr))` should return the correct value. See `getchemicalattr` for details.
 """
 abstract type AbstractChemical end
 # mt, ccs 
 include(joinpath("type", "adduct.jl"))
 include(joinpath("type", "chemical.jl"))
-include(joinpath("type", "ion.jl"))
+include(joinpath("type", "adduction.jl"))
 include(joinpath("type", "utils.jl"))
 include(joinpath("interface", "adduct.jl"))
 include(joinpath("interface", "chemical.jl"))
-include(joinpath("interface", "ion.jl"))
+include(joinpath("interface", "adduction.jl"))
 include(joinpath("interface", "utils.jl"))
 include("attr.jl")
 include("elements.jl")
 include("formula.jl")
 include("mw.jl")
-include("isotopes.jl")
+include("isotopologues.jl")
 include("rt.jl")
 include("io.jl")
 include("utils.jl")

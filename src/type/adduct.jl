@@ -22,7 +22,7 @@ abstract type AbstractNegAdduct <: AbstractAdduct end
 
 Adduct with positive charges. 
 
-This general adduct cannot be applied to isotopic labeled chemicals which the ion formed with isotopes loss. Adducts with isotopic labeled have to be defined as different adduct.
+This general adduct cannot be applied to isotopic labeled chemicals which the adduct ion formed with isotopes loss. Adducts with isotopic labeled have to be defined as different adduct.
 
 It is recommended to define custumized adduct when this condition may occur for more generalized use.
 """
@@ -37,7 +37,7 @@ end
 
 Adduct with negative charges. 
 
-This general adduct cannot be applied to isotopic labeled chemicals which the ion formed with isotopes loss. Adducts with isotopic labeled have to be defined as different adduct.
+This general adduct cannot be applied to isotopic labeled chemicals which the adduct ion formed with isotopes loss. Adducts with isotopic labeled have to be defined as different adduct.
 
 It is recommended to define custumized adduct when this condition may occur for more generalized use.
 """

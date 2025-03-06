@@ -1,5 +1,5 @@
-function Base.show(io::IO, m::AbstractChemical)
-    print(io, isempty(chemicalname(m)) ? chemicalformula(m) : chemicalname(m))
+function Base.show(io::IO, cc::AbstractChemical)
+    print(io, isempty(chemicalname(cc)) ? chemicalformula(cc) : chemicalname(cc))
 end
 
 function Base.show(io::IO, adduct::T) where {T <: AbstractAdduct}
@@ -9,14 +9,17 @@ function Base.show(io::IO, adduct::T) where {T <: AbstractAdduct}
     print(io, k, radd, "]", ncharge(adduct) > 1 ? ncharge(adduct) : "", adduct isa AbstractPosAdduct ? "+" : "-")
 end
 
-function Base.show(io::IO, ion::AbstractIon)
-    print(io, chemicalname(ion))
+function Base.show(io::IO, adduct_ion::AbstractAdductIon)
+    print(io, chemicalname(adduct_ion))
 end
 
-function Base.show(io::IO, m::Isobars)
-    print(io, chemicalname(m))
+function Base.show(io::IO, isobars::Isobars)
+    print(io, chemicalname(isobars))
 end
 
+function Base.show(io::IO, isotopomers::Isotopomers)
+    print(io, chemicalname(isotopomers))
+end
 
 function Base.show(io::IO, ri::UnionInterval)
     print(io, ri.intervals[1])

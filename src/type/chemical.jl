@@ -25,10 +25,42 @@ Chemical(name::AbstractString, formula::AbstractString; kwargs...) = Chemical(na
 Chemicals with similar m/z.
 
 # Fields 
-* `chemicals`: a vector of ions.
-* `abundnace`: the abundance of each ions.
+* `chemicals`: a vector of chemicals.
+* `abundnace`: the abundance of each chemicals.
 """
 struct Isobars{T <: AbstractChemical} <: AbstractChemical
     chemicals::Vector{T}
     abundance::Vector{Float64}
+end
+
+"""
+    Isotopomers{T <: AbstractChemical} <: AbstractChemical
+
+Chemicals differed from isotopic replacement location.
+
+# Fields 
+* `parent`: shared chemical structure of isotopomers prior to isotopic replacement. 
+* `isotopes`: `Vector{Pair{String, Int}}`. Isotopes-number pairs of isotopic replacement.
+
+# Constructors
+* `Isotopomers(parent::AbstractChemical, fullformula::String)`
+* `Isotopomers(parent::AbstractChemical, fullelements::Dictionary)`
+"""
+struct Isotopomers{T <: AbstractChemical} <: AbstractChemical
+    parent::T 
+    isotopes::Vector{Pair{String, Int}}
+end
+
+function Isotopomers(parent::AbstractChemical, fullformula::String)
+    Isotopomers(parent, unique_elements(chemicalelements(fullformula)))
+end
+
+function Isotopomers(parent::AbstractChemical, fullelements::Dictionary)
+    dp = unique_elements(chemicalelements(parent))
+    dr = deepcopy(fullelements)
+    for k in keys(fullelements)
+        get(ELEMENTS[:PARENTS], k, k) == k && (delete!(dr, k); continue)
+        dr[k] -= get(dp, k, 0) 
+    end
+    Isotopomers(parent, [k => v for (k, v) in pairs(dr)])
 end

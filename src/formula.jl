@@ -1,14 +1,5 @@
 const ADDUCT_ABBR = Dict{Regex, String}()
 
-function push_adduct_abbr!(abbr::AbstractString, fm::AbstractString)
-    rabbr = Regex(string("(?<=[+-])", abbr, "(?=[+-\\]])"))
-    push!(ADDUCT_ABBR, rabbr => fm)
-end
-push_adduct_abbr!(abbr::Regex, fm::AbstractString) = push!(ADDUCT_ABBR, abbr => fm)
-for (abbr, fm) in [("FA-H", "HCOO"), ("FA", "HCOOH"), ("OFo", "HCOO"), ("FoO", "HCOO"), ("AcA-H", "CH3COO"), ("AcA", "CH3COOH"), ("OAc", "CH3COO"), ("AcO", "CH3COO"), ("Me", "CH3")]
-    push_adduct_abbr!(abbr, fm)
-end
-
 const ADDUCT_NAME = Dict{String, AbstractAdduct}(
     "[M]+"          => LossElectron(),
     "[M+H]+"        => Protonation(),
@@ -71,52 +62,112 @@ const ADDUCT_NAME = Dict{String, AbstractAdduct}(
 
 )
 
-"""
-    push_adduct_name!(nm::AbstractString, adduct::AbstractAdduct)
+const ADDUCTS = Dict(
+    :NAME => ADDUCT_NAME,
+    :ABBR => ADDUCT_ABBR
+)
 
-Push the pair `nm` and `adduct` into `ADDUCT_NAME` for parsing specific adduct string.
+"""
+    set_adduct_abbr!(abbr, fm)
+
+Set `abbr` to be an abbreviation of adduct formula `fm`. 
+"""
+function set_adduct_abbr!(abbr::AbstractString, fm::AbstractString)
+    rabbr = Regex(string("(?<=[+-])", abbr, "(?=[+-\\]])"))
+    ADDUCTS[:ABBR][rabbr] = fm
+end
+set_adduct_abbr!(abbr::Regex, fm::AbstractString) = push!(ADDUCTS[:ABBR], abbr => fm)
+
+for (abbr, fm) in [("FA-H", "HCOO"), ("FA", "HCOOH"), ("OFo", "HCOO"), ("FoO", "HCOO"), ("AcA-H", "CH3COO"), ("AcA", "CH3COOH"), ("OAc", "CH3COO"), ("AcO", "CH3COO"), ("Me", "CH3")]
+    set_adduct_abbr!(abbr, fm)
+end
+
+"""
+    set_adduct_name!(nm::AbstractString, adduct::AbstractAdduct)
+
+Set `nm` to be `adduct` for parsing specific adduct string by `ADDUCTS[:NAME]`.
 
 For custumized adduct type, this function is required to make `nm` parsed into `adduct` by `parse_adduct`. 
 """
-push_adduct_name!(nm::AbstractString, adduct::AbstractAdduct) = push!(ADDUCT_NAME, nm => adduct)
+set_adduct_name!(nm::AbstractString, adduct::AbstractAdduct) = push!(ADDUCTS[:NAME], nm => adduct)
 
-function chemicalformula(x::Union{Vector{<: Pair}, Dict}; delim = "")
-    join((begin
-        e = get(ELEMENTS, k, k)
-        k == e ? string(k, v > 1 ? v : "") : string("[", round(Int, ustrip(MW[k])), e, "]", v > 1 ? v : "")
-    end for (k, v) in x), delim)
+"""
+    chemicalformula(elements::Dictionary; delim = "")
+    chemicalformula(elements::Union{<: Vector{<: Pair}, <: Dictionaries.PairDictionary}; delim = "")
+
+Create chemical formula using given element-number pairs. 
+"""
+chemicalformula(elements::Dictionary; delim = "") = chemicalformula(pairs(elements); delim)
+function chemicalformula(elements::Union{<: Vector{<: Pair}, <: Dictionaries.PairDictionary}; delim = "")
+    el = filter(v -> last(v) > 0, elements)
+    join((v == 1 ? k : string(k, v) for (k, v) in el), delim)
 end
 
-function unique_elements(x::Vector{<: Pair{X, Y}}) where {X, Y}
-    d = Dict{String, Y}()
-    for (k, v) in x
+"""
+    unique_elements(elements::Vector{<: Pair})
+    unique_elements(elements::Dictionary)
+
+Create a `Dictionary` from element-number pairs. As elements can be duplicated in the original vector, the new dictionary is convenient for updating elements number.
+"""
+function unique_elements(elements::Vector{<: Pair{X, Y}}) where {X, Y}
+    d = Dictionary{String, Y}()
+    for (k, v) in elements
+        v == 0 && continue
         get!(d, k, 0)
         d[k] += v
     end
     d
 end
-unique_elements(x::Dict) = deepcopy(x)
-function add_elements!(d::Dict, y::Union{Vector{<: Pair}, Dict})
+unique_elements(elements::Dictionary) = deepcopy(elements)
+
+"""
+    add_elements(elements, y)
+
+Add elements in `y` to deepcopied `elements`.
+"""
+add_elements(elements, y) = add_elements!(deepcopy(elements), y)
+
+"""
+    add_elements!(elements, y)
+
+Add elements in `y` to `elements`.
+"""
+add_elements!(elements::Dictionary, y::Dictionary) = add_elements!(elements, pairs(y))
+function add_elements!(elements::Dictionary, y::Union{<: Vector{<: Pair}, <: Dictionaries.PairDictionary})
     for (k, v) in y
-        get!(d, k, 0)
-        d[k] += v
+        get!(elements, k, 0)
+        elements[k] += v
     end
-    d
-end
-function loss_elements!(d::Dict, y::Union{Vector{<: Pair}, Dict})
-    for (k, v) in y
-        get!(d, k, 0)
-        d[k] -= v
-    end
-    d
+    elements
 end
 
-function transform_isotope_repr(formula::AbstractString)
+"""
+    loss_elements(elements, y)
+
+Substract elements in `y` from deepcopied `elements`.
+"""
+loss_elements(elements, y) = loss_elements!(deepcopy(elements), y)
+
+"""
+    loss_elements!(elements, y)
+
+Substract elements in `y` from `elements`.
+"""
+loss_elements!(elements::Dictionary, y::Dictionary) = loss_elements!(elements, pairs(y))
+function loss_elements!(elements::Dictionary, y::Union{<: Vector{<: Pair}, <: Dictionaries.PairDictionary})
+    for (k, v) in y
+        get!(elements, k, 0)
+        elements[k] -= v
+    end
+    elements
+end
+
+function encode_isotopes(formula::AbstractString)
     f = string(formula)
     f2 = f
     for i in eachmatch(r"\[(\d*)([^\]]*)\]", f)
         m, e = i
-        delta = isempty(m) ? 0 : (parse(Int, m) - round(Int, ustrip(MW[e])))
+        delta = isempty(m) ? 0 : (parse(Int, m) - round(Int, ustrip(ELEMENTS[:MW][e])))
         e = delta > 0 ? string(e, "it") * "n" ^ delta :
             delta < 0 ? string(e, "it") * "p" ^ delta : e
         f2 = replace(f2, i.match => e)
@@ -125,13 +176,22 @@ function transform_isotope_repr(formula::AbstractString)
 end
 
 """
+    chemicalelements(formula::AbstractString)
+
+Create element-number pairs from chemical formula. 
+"""
+function chemicalelements(formula::AbstractString)
+    [ELEMENTS[:DECODES][k] => v for (k, v) in parse_compound(encode_isotopes(formula))]
+end
+
+"""
     parse_adduct(::AbstractString) -> AbstractAdduct 
 
-Parse string into `AbstractAdduct`. This function searches string in `ADDUCT_NAME` first, then destructs the input string and constructs a `PosAdduct` OR `NegAdduct`.
+Parse string into `AbstractAdduct`. This function searches string in `ELEMENTS[:NAME]` first, then destructs the input string and constructs a `PosAdduct` or `NegAdduct`.
 """
-parse_adduct(adduct::AbstractString) = get(ADDUCT_NAME, string(adduct), _parse_adduct(adduct))
+parse_adduct(adduct::AbstractString) = get(ADDUCTS[:NAME], string(adduct), _parse_adduct(adduct))
 function _parse_adduct(adduct::AbstractString)
-    adduct = replace(adduct, ADDUCT_ABBR...)
+    adduct = replace(adduct, ADDUCTS[:ABBR]...)
     ion, charge = split(adduct, "]")
     pos = endswith(charge, "+")
     charge = split(charge, "+", keepempty = false)

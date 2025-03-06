@@ -13,10 +13,10 @@ julia> peak_crit = Criteria(10, 0.2);
 
 julia> qualified_peak(x, basepeak, crit) = all(<=(x), crit(basepeak)); # filter out small peaks based on base peak. 
 
-julia> peak_crit(100) # create criteria a peak value 100
+julia> peak_crit(100) # create criteria for peak value 100
 (10, 20)
 
-julia> peak_crit(10) # create criteria a peak value 10
+julia> peak_crit(10) # create criteria for peak value 10
 (10, 2)
 
 julia> qualified_peak(10, 100, peak_crit)
