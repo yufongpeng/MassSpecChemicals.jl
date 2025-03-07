@@ -49,6 +49,48 @@ function chemicalsmiles(cc::AbstractChemical; kwargs...)
 end
 
 """
+    ioncore(adduct_ion::AbstractAdductIon; kwargs...)
+
+Core chemical of `adduct_ion`.
+"""
+ioncore(adduct_ion::AbstractAdductIon; kwargs...) = getchemicalattr(adduct_ion, :core; kwargs...)
+
+"""
+    ionadduct(adduct_ion::AbstractAdductIon; kwargs...)
+
+Adduct of `adduct_ion`.
+"""
+ionadduct(adduct_ion::AbstractAdductIon; kwargs...) = getchemicalattr(adduct_ion, :adduct; kwargs...)
+
+"""
+    kmer(adduct_ion::AbstractAdductIon; kwargs...)
+
+The number of core chemical. For instance, 2 for "[2M+H]+".
+"""
+kmer(adduct_ion::AbstractAdductIon; kwargs...) = getchemicalattr(adduct_ion, :kmer; kwargs...)
+
+"""
+    charge(chemical::AbstractChemical; kwargs...)
+
+The charge of `chemical` (positive or negative). For instance, -2 for dianion, +3 for trication. The default value for cstion and anion are 1 and -1.
+"""
+charge(cc::AbstractChemical; kwargs...) = getchemicalattr(cc, :charge; kwargs...)
+
+"""
+    ncharge(chemical::AbstractChemical; kwargs...)
+
+The number of charges of `chemical`. 
+"""
+ncharge(cc::AbstractChemical; kwargs...) = abs(charge(cc; kwargs...))
+
+"""
+    abundantchemical(chemical::AbstractChemical)
+
+The most abundant chemical from a chemical (itself) or isobars. 
+"""
+abundantchemical(cc::AbstractChemical) = getchemicalattr(cc, :charge; kwargs...)
+
+"""
     rt(chemical::AbstractChemical; kwargs...)
 
 Get retention time of `chemical`. It is equivalent to `getchemicalattr(chemical, :rt; kwargs...)` except that it returns `NaN` when rt is not available.

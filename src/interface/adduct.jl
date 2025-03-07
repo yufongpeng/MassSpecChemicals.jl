@@ -8,21 +8,21 @@ isadductequal(x::AbstractAdduct, y::AbstractAdduct) = isequal(x, y)
 """
     kmer(adduct)
 
-The number of core chemical. For instance, 2 for "[2M+H]+".
+The number of core chemical. For instance, 2 for [2M+H]+.
 """
 kmer(adduct::T) where {T <: AbstractAdduct} = hasfield(T, :kmer) ? adduct.kmer : 1
 
 """
     adductformula(adduct)
 
-The formula for adduct. For instance, "-H" for "[M-H]-", "+OAc" for "[M+OAc]-".
+The formula for adduct. For instance,  `"-H"` for [M-H]-, `"+OAc"` for [M+OAc]-.
 """
 adductformula(adduct::T) where {T <: AbstractAdduct} = hasfield(T, :formula) ? adduct.formula : nothing
 
 """
     charge(adduct)
 
-The charge of adduct (positive or negative). For instance, -1 for "[M-H]-", 2 for "[M+2H]2+". The default value for positive/negative adduct is 1/-1.
+The charge of adduct (positive or negative). For instance, -1 for [M-H]-, 2 for [M+2H]2+. The default value for positive and negative adduct are 1 and -1.
 """
 charge(adduct::T) where {T <: AbstractPosAdduct} = 1
 charge(adduct::T) where {T <: AbstractNegAdduct} = -1
@@ -32,7 +32,7 @@ charge(adduct::NegAdduct) = -1 * adduct.ncharge
 """
     ncharge(adduct)
 
-The number of charges of adduct. For instance, 1 for "[M-H]-", 2 for "[M+2H]2+".
+The number of charges of adduct. For instance, 1 for [M-H]-, 2 for [M+2H]2+.
 """
 ncharge(adduct::T) where {T <: AbstractAdduct} = abs(charge(adduct))
 ncharge(adduct::PosAdduct) = adduct.ncharge
@@ -41,7 +41,7 @@ ncharge(adduct::NegAdduct) = adduct.ncharge
 """
     adductelements(adduct)
 
-The elements changed with adduct. For generic adduct, it uses `adductformula` to calculate elements. If non-element strings are used in `adductformula`, defining custumized `adductelements` is required.
+The elements changed with adduct formation. For generic adduct, it uses `adductformula` to calculate elements. If non-element strings are used in `adductformula`, defining custumized `adductelements` is required. 
 """
 function adductelements(adduct::AbstractAdduct)
     el = Pair{String, Int}[]

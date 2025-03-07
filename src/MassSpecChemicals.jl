@@ -76,11 +76,14 @@ At least one of the following attributes are required. They are interchangable.
 * `formula`: chemical formula (`String`).
 * `elements`: chemical elements (`Vector{Pair{String, Int}}`).
 
-The following attributes are optional, but the user interfaces are implemented 
+The following attributes are optional, but user interfaces are implemented 
 * `abbreviation`: common abbreviation (`String`); defaults to `:name`. 
 * `SMILES`: SMILES (`String`); defaults to `""`.
+* `charge`: charge of `chemical` (positive or negative). 
+* `abundant_chemical`: the most abundant chemical from a chemical (itself) or isobars. 
+* `rt`: retention time. 
 
-These attributes are not neccessary to be type fields, but `getchemicalattr(chemical, Val(attr))` should return the correct value. See `getchemicalattr` for details.
+These attributes are not neccessary to be type fields, but `getchemicalattr(chemical, Val(attr); kwargs...)` should return the correct value. See `getchemicalattr` for details.
 """
 abstract type AbstractChemical end
 # mt, ccs 

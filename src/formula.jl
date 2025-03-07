@@ -62,6 +62,13 @@ const ADDUCT_NAME = Dict{String, AbstractAdduct}(
 
 )
 
+"""
+    const ADDUCTS
+
+Constants related to adducts. It is a dictionary with two keys
+* `:NAME`: adduct type for an adduct expression.
+* `ABBR`: conversion of abbreviation to valid chemical formula.
+"""
 const ADDUCTS = Dict(
     :NAME => ADDUCT_NAME,
     :ABBR => ADDUCT_ABBR

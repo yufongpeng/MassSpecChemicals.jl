@@ -36,31 +36,12 @@ ischemicalequal(x::Chemical, y::Chemical) =
     isequal(chemicalname(x), chemicalname(y)) && isequal(sort!(collect(unique_elements(chemicalelements(x)))), sort!(collect(unique_elements(chemicalelements(y)))))
 
 """
-    abundantchemical(chemical::AbstractChemical)
-    abundantchemical(isobars::Isobars)
-
-The most abundant chemical from a chemical (itself) or isobars. 
-"""
-abundantchemical(chemical::AbstractChemical) = chemical
-abundantchemical(isobars::Isobars) = first(isobars.chemicals)
-
-"""
-    charge(chemical::AbstractChemical)
-
-The charge of `chemical` (positive or negative). The default is 0.
-"""
-charge(cc::AbstractChemical) = 0
-
-"""
-    ncharge(chemical::AbstractChemical)
-
-The number of charges of `chemical`. The default is 0.
-"""
-ncharge(cc::AbstractChemical) = 0
-
-"""
     getchemicalattr(chemical::AbstractChemical, attr::Symbol; kwargs...)
-    getchemicalattr(chemical::AbstractChemical, val_attr::Val{T}; kwargs...)
+    getchemicalattr(chemical::AbstractChemical, ::Val{T}; kwargs...)
+    getchemicalattr(cc::AbstractChemical, ::Val{:formula}; shallow = false, kwargs...)
+    getchemicalattr(cc::AbstractChemical, ::Val{:elements}; shallow = false, kwargs...)
+    getchemicalattr(cc::AbstractChemical, ::Val{:charge}; kwargs...)
+    getchemicalattr(cc::AbstractChemical, ::Val{:abundant_chemical}; kwargs...)
 
 Get attribute (`attr`) from `chemical`. This function defaults to take `attr` as a property name, and return the property. If `attr` is not available, it returns `nothing`.
 
@@ -69,7 +50,7 @@ To define specific method for a concrete type `C <: AbstractChemical`, and an at
 `getchemicalattr(::C, ::Val{attr}; kwargs...)`
 """
 getchemicalattr(cc::AbstractChemical, attr::Symbol; kwargs...) = getchemicalattr(cc, Val(attr); kwargs...)
-getchemicalattr(cc::AbstractChemical, val_attr::Val{T}; kwargs...) where T = hasproperty(cc, T) ? getproperty(cc, T) : nothing 
+getchemicalattr(cc::AbstractChemical, ::Val{T}; kwargs...) where T = hasproperty(cc, T) ? getproperty(cc, T) : nothing 
 function getchemicalattr(cc::AbstractChemical, val_attr::Val{:formula}; shallow = false, kwargs...)
     if hasproperty(cc, :formula) 
         getproperty(cc, :formula)
@@ -79,7 +60,7 @@ function getchemicalattr(cc::AbstractChemical, val_attr::Val{:formula}; shallow 
         chemicalformula(getchemicalattr(cc, Val(:elements); shallow = true))
     end
 end
-function getchemicalattr(cc::AbstractChemical, val_attr::Val{:elements}; shallow = false, kwargs...)
+function getchemicalattr(cc::AbstractChemical, ::Val{:elements}; shallow = false, kwargs...)
     if hasproperty(cc, :elements) 
         getproperty(cc, :elements)
     elseif shallow
@@ -88,13 +69,18 @@ function getchemicalattr(cc::AbstractChemical, val_attr::Val{:elements}; shallow
         chemicalelements(getchemicalattr(cc, Val(:formula); shallow = true))
     end
 end
+getchemicalattr(cc::AbstractChemical, ::Val{:charge}; kwargs...) = 0
+getchemicalattr(cc::AbstractChemical, ::Val{:abundant_chemical}; kwargs...) = cc
 
 """
     getchemicalattr(chemical::Chemical, ::Val{T}; kwargs...)
     getchemicalattr(chemical::Chemical, ::Val{:name}; kwargs...)
     getchemicalattr(chemical::Chemical, ::Val{:formula}; kwargs...) 
+    getchemicalattr(chemical::Chemical, ::Val{:elements}; kwargs...)
+    getchemicalattr(cc::Chemical, ::Val{:charge}; kwargs...)
+    getchemicalattr(chemical::Chemical, ::Val{:abundant_chemical}; kwargs...)
 
-Get attribute (`attr`) from a `chemical`. For attributes other than `:name` and `:formula`, it iterates through `chemical.attr`. If no matched attribute name is found, it returns `nothing`.
+Get attribute (`attr`) from `chemical`. For attributes other than `:name` and `:formula`, it iterates through `chemical.attr`. If no matched attribute name is found, it returns `nothing`.
 """
 function getchemicalattr(cc::Chemical, ::Val{T}; kwargs...) where T
     hasproperty(cc, T) && return getproperty(cc, T)
@@ -105,39 +91,53 @@ function getchemicalattr(cc::Chemical, ::Val{T}; kwargs...) where T
 end
 getchemicalattr(cc::Chemical, ::Val{:name}; kwargs...) = cc.name
 getchemicalattr(cc::Chemical, ::Val{:formula}; kwargs...) = cc.formula
-getchemicalattr(cc::Chemical, ::Val{:elements}; kwargs...) = chemicalelements(cc.formula)
+getchemicalattr(cc::Chemical, ::Val{:elements}; kwargs...) = chemicalelements(cc.formula; kwargs...)
+getchemicalattr(cc::Chemical, ::Val{:charge}; kwargs...) = 0
+getchemicalattr(cc::Chemical, ::Val{:abundant_chemical}; kwargs...) = cc
 
 """
     getchemicalattr(isobars::Isobars, ::Val{:name}; kwargs...)
     getchemicalattr(isobars::Isobars, ::Val{:formula}; kwargs...) 
-    getchemicalattr(isobars::Isobars, ::Val{:rt}; kwargs...)
+    getchemicalattr(isobars::Isobars, ::Val{:elements}; kwargs...) 
     getchemicalattr(isobars::Isobars, ::Val{:chemicals}; kwargs...) 
     getchemicalattr(isobars::Isobars, ::Val{:abundance}; kwargs...) 
+    getchemicalattr(isobars::Isobars, ::Val{:rt}; kwargs...)
+    getchemicalattr(isobars::Isobars, ::Val{:abbreviation}; kwargs...) 
+    getchemicalattr(isobars::Isobars, ::Val{:SMILES}; kwargs...) 
+    getchemicalattr(isobars::Isobars, ::Val{:charge}; kwargs...) 
+    getchemicalattr(isobars::Isobars, ::Val{:abundant_chemical}; kwargs...) 
 
-Get attribute (`attr`) from a `m`. 
+
+Get attribute (`attr`) from `isobars`. 
 """
-getchemicalattr(isobars::Isobars, ::Val{:name}; verbose = true, kwargs...) = verbose ? string("Isobars[", join(chemicalname.(isobars.chemicals), ", "), "]") : string("Isobars[", chemicalname(first(isobars.chemicals)), ", …]")
-getchemicalattr(isobars::Isobars, ::Val{:formula}; kwargs...) = chemicalformula.(isobars.chemicals)
-getchemicalattr(isobars::Isobars, ::Val{:elements}; kwargs...) = chemicalelements.(isobars.chemicals)
+getchemicalattr(isobars::Isobars, ::Val{:name}; verbose = true, kwargs...) = verbose ? string("Isobars[", join(chemicalname.(isobars.chemicals; kwargs...), ", "), "]") : string("Isobars[", chemicalname(first(isobars.chemicals; kwargs...)), ", …]")
+getchemicalattr(isobars::Isobars, ::Val{:formula}; kwargs...) = chemicalformula.(isobars.chemicals; kwargs...)
+getchemicalattr(isobars::Isobars, ::Val{:elements}; kwargs...) = chemicalelements.(isobars.chemicals; kwargs...)
 getchemicalattr(isobars::Isobars, ::Val{:chemicals}; kwargs...) = isobars.chemicals
 getchemicalattr(isobars::Isobars, ::Val{:abundance}; kwargs...) = isobars.abundance
 getchemicalattr(isobars::Isobars, ::Val{:rt}; kwargs...) = mean(rt.(isobars.chemicals; kwargs...), weights(isobars.abundance))
-getchemicalattr(isobars::Isobars, ::Val{:abbreviation}; verbose = true, kwargs...) = verbose ? string("Isobars[", join(chemicalabbr.(isobars.chemicals), ", "), "]") : string("Isobars[", chemicalabbr(first(isobars.chemicals)), ", …]")
-getchemicalattr(isobars::Isobars, ::Val{:SMILES}; verbose = true, kwargs...) = verbose ? string("Isobars[", join(chemicalsmiles.(isobars.chemicals), ", "), "]") : string("Isobars[", chemicalsmiles(first(isobars.chemicals)), ", …]")
+getchemicalattr(isobars::Isobars, ::Val{:abbreviation}; verbose = true, kwargs...) = verbose ? string("Isobars[", join(chemicalabbr.(isobars.chemicals; kwargs...), ", "), "]") : string("Isobars[", chemicalabbr(first(isobars.chemicals; kwargs...)), ", …]")
+getchemicalattr(isobars::Isobars, ::Val{:SMILES}; verbose = true, kwargs...) = verbose ? string("Isobars[", join(chemicalsmiles.(isobars.chemicals; kwargs...), ", "), "]") : string("Isobars[", chemicalsmiles(first(isobars.chemicals; kwargs...)), ", …]")
+getchemicalattr(isobars::Isobars, ::Val{:charge}; kwargs...) = mean(charge.(isobars.chemicala; kwargs...), weights(isobars.abundance))
+getchemicalattr(isobars::Isobars, ::Val{:abundant_chemical}; kwargs...) = first(isobars.chemicals)
 
 """
     getchemicalattr(isotopomers::Isotopomers, ::Val{:name}; kwargs...)
     getchemicalattr(isotopomers::Isotopomers, ::Val{:formula}; kwargs...) 
     getchemicalattr(isotopomers::Isotopomers, ::Val{:elements}; kwargs...) 
+    getchemicalattr(isotopomers::Isotopomers, ::Val{:parent}; kwargs...) 
+    getchemicalattr(isotopomers::Isotopomers, ::Val{:isotopes}; kwargs...) 
     getchemicalattr(isotopomers::Isotopomers, ::Val{:rt}; kwargs...)
-    getchemicalattr(isotopomers::Isotopomers, ::Val{:chemicals}; kwargs...) 
-    getchemicalattr(isotopomers::Isotopomers, ::Val{:abundance}; kwargs...) 
+    getchemicalattr(isotopomers::Isotopomers, ::Val{:abbreviation}; kwargs...) 
+    getchemicalattr(isotopomers::Isotopomers, ::Val{:SMILES}; kwargs...) 
+    getchemicalattr(isotopomers::Isotopomers, ::Val{:charge}; kwargs...) 
+    getchemicalattr(isotopomers::Isotopomers, ::Val{:abundant_chemical}; kwargs...) 
 
-Get attribute (`attr`) from a `m`. 
+Get attribute (`attr`) from `isotopomers`. 
 """
-getchemicalattr(isotopomers::Isotopomers, ::Val{:name}; kwargs...) = string(chemicalname(isotopomers.parent), isempty(unique_elements(isotopomers.isotopes)) ? "" : string("[", replace(chemicalformula(isotopomers.isotopes; delim = ","), "[" => "", "]" => ""), "]"))
+getchemicalattr(isotopomers::Isotopomers, ::Val{:name}; kwargs...) = string(chemicalname(isotopomers.parent; kwargs...), isempty(unique_elements(isotopomers.isotopes)) ? "" : string("[", replace(chemicalformula(isotopomers.isotopes; delim = ","), "[" => "", "]" => ""), "]"))
 function getchemicalattr(isotopomers::Isotopomers, ::Val{:formula}; kwargs...) 
-    d = unique_elements(chemicalelements(isotopomers.parent))
+    d = unique_elements(chemicalelements(isotopomers.parent; kwargs...))
     for (k, v) in isotopomers.isotopes
         e = get(ELEMENTS[:PARENTS], k, k) 
         k == e && continue 
@@ -147,12 +147,14 @@ function getchemicalattr(isotopomers::Isotopomers, ::Val{:formula}; kwargs...)
     end
     chemicalformula(d)
 end
-getchemicalattr(isotopomers::Isotopomers, ::Val{:elements}; kwargs...) = chemicalelements.(isotopomers.chemicals)
+getchemicalattr(isotopomers::Isotopomers, ::Val{:elements}; kwargs...) = chemicalelements.(isotopomers.chemicals; kwargs...)
 getchemicalattr(isotopomers::Isotopomers, ::Val{:parent}; kwargs...) = isotopomers.parent
 getchemicalattr(isotopomers::Isotopomers, ::Val{:isotopes}; kwargs...) = isotopomers.isotopes
 getchemicalattr(isotopomers::Isotopomers, ::Val{:rt}; kwargs...) = rt(isotopomers.parent; kwargs...)
-getchemicalattr(isotopomers::Isotopomers, ::Val{:abbreviation}; kwargs...) = string(chemicalabbr(isotopomers.parent), "[", chemicalformula(isotopomers.isotopes; delim = ","), "]")
-getchemicalattr(isotopomers::Isotopomers, ::Val{:SMILES}; kwargs...) = chemicalsmiles(isotopomers.parent)
+getchemicalattr(isotopomers::Isotopomers, ::Val{:abbreviation}; kwargs...) = string(chemicalabbr(isotopomers.parent; kwargs...), "[", chemicalformula(isotopomers.isotopes; delim = ","), "]")
+getchemicalattr(isotopomers::Isotopomers, ::Val{:SMILES}; kwargs...) = chemicalsmiles(isotopomers.parent; kwargs...)
+getchemicalattr(isotopomers::Isotopomers, ::Val{:charge}; kwargs...) = charge(isotopomers.parent; kwargs...)
+getchemicalattr(isotopomers::Isotopomers, ::Val{:abundant_chemical}; kwargs...) = isotopomers
 
 in(cc::AbstractChemical, isobars::Isobars) = any(i -> ischemicalequal(i, cc), isobars)
 length(isobars::Isobars) = length(isobars.chemicals)

@@ -2,6 +2,11 @@
     AbstractAdductIon{S, T} <: AbstractChemical
 
 Abstract type for adduct ions with core chemical type `S` and adduct type `T`.
+
+# Special attributes
+* `kmer`: number of core chemical "M". 
+* `core`: core chemical. 
+* `adduct`: adduct. 
 """
 abstract type AbstractAdductIon{S, T} <: AbstractChemical end
 

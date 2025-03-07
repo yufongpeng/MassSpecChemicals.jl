@@ -6,41 +6,6 @@ Determine whether two adduct ions or isobars are chemically equivalent. The equa
 ischemicalequal(x::AbstractAdductIon, y::AbstractAdductIon) = isadductequal(ionadduct(x), ionadduct(y)) && ischemicalequal(ioncore(x), ioncore(y))
 
 """
-    ioncore(adduct_ion)
-
-Core chemical of `adduct_ion`.
-"""
-ioncore(adduct_ion::AdductIon) = adduct_ion.core
-
-"""
-    ionadduct(adduct_ion)
-
-Adduct of `adduct_ion`.
-"""
-ionadduct(adduct_ion::AdductIon) = adduct_ion.adduct
-
-"""
-    kmer(adduct_ion)
-
-The number of core chemical. For instance, 2 for "[2M+H]+".
-"""
-kmer(adduct_ion::AbstractAdductIon) = kmer(ionadduct(adduct_ion))
-
-"""
-    charge(adduct_ion)
-
-The charge of `adduct_ion` (positive or negative). For instance, -1 for "[M-H]-", 2 for "[M+2H]2+". The default value for positive/negative ion is 1/-1.
-"""
-charge(adduct_ion::AbstractAdductIon) = kmer(adduct_ion) * charge(ioncore(adduct_ion)) + charge(ionadduct(adduct_ion))
-
-"""
-    ncharge(adduct_ion)
-
-The number of charges of `adduct_ion`. For instance, 1 for "[M-H]-", 2 for "[M+2H]2+".
-"""
-ncharge(adduct_ion::AbstractAdductIon) = abs(charge(adduct_ion))
-
-"""
     adductelements(adduct_ion)
 
 The elements changed with adduct of `adduct_ion`. It contains the elements of adduct itself and isotopic labeling related to the adduct for the `adduct_ion` (`adductisotopes(adduct_ion)`). 
@@ -50,7 +15,7 @@ adductelements(adduct_ion::AbstractAdductIon) = vcat(adductelements(ionadduct(ad
 """
     adductisotopes(adduct_ion)
 
-The elements changed with adduct when the core chemical has isotopic labeling related to the adduct. 
+The elements changed when the core chemical has isotopic labeling that is lost in adduct formation. 
 
 For instance, [M-Me]- of D-labeled PC may turn out to be [M-CD3]- rather than [M-CH3]- if Ds are on the methyl group. In this case, `adductisotopes` of [M-Me]- of PC should be `["H" => 3, "D" => -3]`.
 """
@@ -59,14 +24,20 @@ adductisotopes(adduct_ion::AbstractAdductIon) = Pair{String, Int}[] # ex 1D: ["H
 """
     getchemicalattr(adduct_ion::AbstractAdductIon, attr::Symbol; kwargs...)
     getchemicalattr(adduct_ion::AbstractAdductIon, val_attr::Val{T}; kwargs...)
+    getchemicalattr(adduct_ion::AbstractAdductIon, ::Val{:elements}; kwargs...)
+    getchemicalattr(adduct_ion::AbstractAdductIon, ::Val{:name}; kwargs...)
+    getchemicalattr(adduct_ion::AbstractAdductIon, ::Val{:formula}; kwargs...)
+    getchemicalattr(adduct_ion::AbstractAdductIon, ::Val{:kmer}; kwargs...)
+    getchemicalattr(adduct_ion::AbstractAdductIon, ::Val{:charge}; kwargs...)
+    getchemicalattr(adduct_ion::AbstractAdductIon, ::Val{:abundant_chemical}; kwargs...)
 
-Get attribute (`attr`) from core chemical of `adduct_ion`. 
+Get attribute (`attr`) from `adduct_ion`. By default, it return attributes of core chemical without specialized methods.
 """
 getchemicalattr(adduct_ion::AbstractAdductIon, attr::Symbol; kwargs...) = getchemicalattr(adduct_ion, Val(attr); kwargs...)
-getchemicalattr(adduct_ion::AbstractAdductIon, attr::Val; kwargs...) = getchemicalattr(ioncore(adduct_ion), attr; kwargs...)
-getchemicalattr(adduct_ion::AbstractAdductIon, attr::Val{:elements}; kwargs...) = vcat(getchemicalattr(ioncore(adduct_ion), attr; kwargs...), adductelements(adduct_ion))
-function getchemicalattr(adduct_ion::AbstractAdductIon, ::Val{:name}) 
-    r = chemicalname(ioncore(adduct_ion))
+getchemicalattr(adduct_ion::AbstractAdductIon, val_attr::Val; kwargs...) = getchemicalattr(ioncore(adduct_ion), val_attr; kwargs...)
+getchemicalattr(adduct_ion::AbstractAdductIon, ::Val{:elements}; kwargs...) = vcat(chemicalelements(ioncore(adduct_ion); kwargs...), adductelements(adduct_ion))
+function getchemicalattr(adduct_ion::AbstractAdductIon, ::Val{:name}; kwargs...) 
+    r = chemicalname(ioncore(adduct_ion); kwargs...)
     if occursin(" ", r)
         r = string("(", r, ")")
     end
@@ -75,7 +46,7 @@ function getchemicalattr(adduct_ion::AbstractAdductIon, ::Val{:name})
     c == 0 ? s : string(s, abs(c) > 1 ? abs(c) : "", c > 0 ? "+" : "-") 
 end
 function getchemicalattr(adduct_ion::AbstractAdductIon, ::Val{:formula}; kwargs...)
-    el = chemicalelements(chemicalformula(ioncore(adduct_ion)))
+    el = chemicalelements(ioncore(adduct_ion); kwargs...)
     nm = kmer(adduct_ion)
     if nm > 1
         for id in eachindex(el)
@@ -84,3 +55,15 @@ function getchemicalattr(adduct_ion::AbstractAdductIon, ::Val{:formula}; kwargs.
     end
     chemicalformula(add_elements!(unique_elements(el), adductelements(adduct_ion)))
 end
+getchemicalattr(adduct_ion::AbstractAdductIon, ::Val{:kmer}; kwargs...) = kmer(ionadduct(adduct_ion)) 
+getchemicalattr(adduct_ion::AbstractAdductIon, ::Val{:charge}; kwargs...) = kmer(adduct_ion) * charge(ioncore(adduct_ion); kwargs...) + charge(ionadduct(adduct_ion))
+getchemicalattr(adduct_ion::AbstractAdductIon, ::Val{:abundant_chemical}; kwargs...) = adduct_ion
+
+"""
+    getchemicalattr(adduct_ion::AdductIon, ::Val{:core}; kwargs...)
+    getchemicalattr(adduct_ion::AdductIon, ::Val{:adduct}; kwargs...)
+
+Get attribute (`attr`) from `adduct_ion`. 
+"""
+getchemicalattr(adduct_ion::AdductIon, ::Val{:core}; kwargs...) = adduct_ion.core 
+getchemicalattr(adduct_ion::AdductIon, ::Val{:adduct}; kwargs...) = adduct_ion.adduct 
