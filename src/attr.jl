@@ -35,7 +35,7 @@ Get abbreviation of `chemical`. It is equivalent to `getchemicalattr(chemical, :
 """
 function chemicalabbr(cc::AbstractChemical; kwargs...) 
     result = getchemicalattr(cc, :abbreviation; kwargs...)
-    isnothing(result) ? chemicalname(m; kwargs...) : result
+    isnothing(result) ? chemicalname(cc; kwargs...) : result
 end
 
 """
@@ -88,7 +88,7 @@ ncharge(cc::AbstractChemical; kwargs...) = abs(charge(cc; kwargs...))
 
 The most abundant chemical from a chemical (itself) or isobars. 
 """
-abundantchemical(cc::AbstractChemical) = getchemicalattr(cc, :charge; kwargs...)
+abundantchemical(cc::AbstractChemical; kwargs...) = getchemicalattr(cc, :abundant_chemical; kwargs...)
 
 """
     rt(chemical::AbstractChemical; kwargs...)

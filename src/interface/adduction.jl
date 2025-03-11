@@ -35,7 +35,16 @@ Get attribute (`attr`) from `adduct_ion`. By default, it return attributes of co
 """
 getchemicalattr(adduct_ion::AbstractAdductIon, attr::Symbol; kwargs...) = getchemicalattr(adduct_ion, Val(attr); kwargs...)
 getchemicalattr(adduct_ion::AbstractAdductIon, val_attr::Val; kwargs...) = getchemicalattr(ioncore(adduct_ion), val_attr; kwargs...)
-getchemicalattr(adduct_ion::AbstractAdductIon, ::Val{:elements}; kwargs...) = vcat(chemicalelements(ioncore(adduct_ion); kwargs...), adductelements(adduct_ion))
+function getchemicalattr(adduct_ion::AbstractAdductIon, ::Val{:elements}; kwargs...) 
+    el = chemicalelements(ioncore(adduct_ion); kwargs...)
+    nm = kmer(adduct_ion)
+    if nm > 1
+        for id in eachindex(el)
+            el[id] = first(el[id]) => nm * last(el[id])
+        end
+    end
+    vcat(el, adductelements(adduct_ion))
+end
 function getchemicalattr(adduct_ion::AbstractAdductIon, ::Val{:name}; kwargs...) 
     r = chemicalname(ioncore(adduct_ion); kwargs...)
     if occursin(" ", r)
@@ -54,6 +63,15 @@ function getchemicalattr(adduct_ion::AbstractAdductIon, ::Val{:formula}; kwargs.
         end
     end
     chemicalformula(add_elements!(unique_elements(el), adductelements(adduct_ion)))
+end
+function getchemicalattr(adduct_ion::AbstractAdductIon, ::Val{:abbreviation}; kwargs...) 
+    r = chemicalabbr(ioncore(adduct_ion); kwargs...)
+    if occursin(" ", r)
+        r = string("(", r, ")")
+    end
+    s = replace(string(ionadduct(adduct_ion)), "M" => r, r"\d*[+-]$" => ""; count = 2)
+    c = charge(adduct_ion)
+    c == 0 ? s : string(s, abs(c) > 1 ? abs(c) : "", c > 0 ? "+" : "-") 
 end
 getchemicalattr(adduct_ion::AbstractAdductIon, ::Val{:kmer}; kwargs...) = kmer(ionadduct(adduct_ion)) 
 getchemicalattr(adduct_ion::AbstractAdductIon, ::Val{:charge}; kwargs...) = kmer(adduct_ion) * charge(ioncore(adduct_ion); kwargs...) + charge(ionadduct(adduct_ion))

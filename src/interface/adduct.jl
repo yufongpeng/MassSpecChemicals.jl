@@ -134,7 +134,7 @@ charge(::Lithiation) = 1
 charge(::LithiationProtonation) = 2
 charge(::DiLithiation) = 2
 charge(::Silveration) = 1
-charge(::AddElectron) = 1
+charge(::AddElectron) = -1
 charge(::Deprotonation) = -1
 charge(::DeprotonationNLH2O) = -1
 charge(::DiDeprotonation) = -2
@@ -175,7 +175,7 @@ adductelements(::Lithiation) = ["Li" => 1]
 adductelements(::LithiationProtonation) = ["Li" => 1, "H" => 1]
 adductelements(::DiLithiation) = ["Li" => 2]
 adductelements(::Silveration) = ["Ag" => 1]
-adductelements(::AddElectron) = []
+adductelements(::AddElectron) = Pair{String, Int64}[]
 adductelements(::Deprotonation) = ["H" => -1]
 adductelements(::DeprotonationNLH2O) = ["H" => -3, "O" => -1]
 adductelements(::DiDeprotonation) = ["H" => -2]

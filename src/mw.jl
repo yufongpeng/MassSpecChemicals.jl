@@ -45,13 +45,14 @@ mw(isotopomers::Isotopomers) = mw(chemicalformula(isotopomers), charge(isotopome
 
 Calculate m/z of `charged_chemical`, `adduct_ion` `isobars` or `chemical` with adduct `adduct`. It is equivalent to `mw(cc) / ncharge(cc)`.
 """
-mz(charged_cc::AbstractChemical) = charge(charged_cc) == 0 ? NaN : mw(charged_cc, charge(charged_cc)) / ncharge(charged_cc)
+mz(charged_cc::AbstractChemical) = charge(charged_cc) == 0 ? NaN : mw(charged_cc) / ncharge(charged_cc)
 mz(cc::AbstractChemical, adduct) = mz(AdductIon(cc, parse_adduct(adduct)))
 function mz(adduct_ion::AbstractAdductIon) 
     adduct = ionadduct(adduct_ion)
     (kmer(adduct) * mw(ioncore(adduct_ion)) + mw(adductelements(adduct_ion)) - charge(adduct_ion) * ustrip(ME)) / ncharge(adduct_ion)
 end
 mz(adduct_ion::AbstractAdductIon, adduct) = mz(AdductIon(ioncore(adduct_ion), parse_adduct(adduct)))
+mz(isotopomers::Isotopomers{<: AbstractAdductIon}, adduct) = mz(Isotopomers(AdductIon(ioncore(isotopomers.parent), parse_adduct(adduct)), isotopomers.isotopes))
 mz(isobars::Isobars{<: AbstractAdductIon}) = mean(mz.(isobars.chemicals), weights(isobars.abundance))
 mz(isobars::Isobars, adduct) = mean(mz.(isobars.chemicals, adduct), weights(isobars.abundance))
 

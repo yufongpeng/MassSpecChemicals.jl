@@ -123,7 +123,7 @@ function unique_elements(elements::Vector{<: Pair{X, Y}}) where {X, Y}
         get!(d, k, 0)
         d[k] += v
     end
-    d
+    filter!(!=(0), d)
 end
 unique_elements(elements::Dictionary) = deepcopy(elements)
 
