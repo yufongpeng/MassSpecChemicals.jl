@@ -32,6 +32,7 @@ function union(ris::Vararg{<: RealIntervals, N}) where N
     end
     unique!(vri)
     sort!(vri)
+    isempty(vri) && return EmptyInterval()
     nvri = RealInterval[]
     i = 1
     push!(nvri, vri[1])
@@ -50,9 +51,11 @@ function union(ris::Vararg{<: RealIntervals, N}) where N
     length(nvri) == 1 ? nvri[1] : UnionInterval(Tuple(nvri))
 end
 
-intersect(ris::Vararg{<: Union{RealInterval, UnionInterval}, N}) where N = reduce(intersect, ris)
-intersect(ri1::EmptyInterval, ri2::RealIntervals) = EmptyInterval()
-intersect(ri1::RealIntervals, ri2::EmptyInterval) = EmptyInterval()
+intersect(ris::Vararg{<: RealIntervals, N}) where N = reduce(intersect, ris)
+intersect(ri1::EmptyInterval, ri2::RealInterval) = EmptyInterval()
+intersect(ri1::EmptyInterval, ri2::UnionInterval) = EmptyInterval()
+intersect(ri1::RealInterval, ri2::EmptyInterval) = EmptyInterval()
+intersect(ri1::UnionInterval, ri2::EmptyInterval) = EmptyInterval()
 intersect(ri1::EmptyInterval, ri2::EmptyInterval) = EmptyInterval()
 
 function intersect(ri1::RealInterval, ri2::RealInterval)
@@ -76,3 +79,5 @@ end
 intersect(ri1::UnionInterval, ri2::RealInterval) = union((intersect(ri, ri2) for ri in ri1)...)
 intersect(ri1::RealInterval, ri2::UnionInterval) = union((intersect(ri1, ri) for ri in ri2)...)
 intersect(ri1::UnionInterval, ri2::UnionInterval) = union((intersect(ria, rib) for ria in ri1, rib in ri2)...)
+
+Base.iterate(ri1::UnionInterval, s = 1) = s > length(ri1.intervals) ? nothing : (ri1.intervals[s], s + 1)

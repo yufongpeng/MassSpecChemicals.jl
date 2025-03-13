@@ -3,7 +3,7 @@ module MassSpecChemicals
 using Combinatorics, TypedTables, MLStyle, Statistics, StatsBase, Dictionaries
 using UnitfulMoles: parse_compound, ustrip, @u_str
 using SentinelArrays: ChainedVector
-import Base: show, length, +, -, *, /, isless, isequal, in, union, intersect, Broadcast.broadcastable
+import Base: show, length, +, -, *, /, isless, isequal, in, union, intersect, iterate, Broadcast.broadcastable
 
 export AdductIon, Chemical, Isobars, Isotopomers, 
     AbstractPosAdduct, AbstractNegAdduct,
@@ -62,7 +62,7 @@ export AdductIon, Chemical, Isobars, Isotopomers,
 
     isobars_rt, isobars_rt_table,
 
-    acrit, rcrit, crit, @ri_str
+    acrit, rcrit, crit, @ri_str, real_interval
 
 """
     AbstractChemical

@@ -56,6 +56,7 @@ macro ri_str(expr)
     return _real_interval(expr)
 end
 function _real_interval(expr::AbstractString)
+    isempty(expr) && return EmptyInterval()
     lc, lv, rv, rc = match(r" *([\(\[]) *([+-]*[\d∞Inf]*\.*\d*) *, *([+-]*[\d∞Inf]*\.*\d*) *([\)\]]) *", expr)
     lop = @match lc begin
         "[" => <=

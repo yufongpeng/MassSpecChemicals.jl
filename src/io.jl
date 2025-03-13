@@ -31,7 +31,7 @@ function Base.show(io::IO, ri::UnionInterval)
 end
 
 function Base.show(io::IO, ::MIME"text/plain", ri::UnionInterval)
-    print(io, typeof(ri), ":\n ")
+    print(io, typeof(ri), ": ")
     print(io, ri)
 end
 
@@ -49,7 +49,7 @@ function Base.show(io::IO, ri::RealInterval)
 end
 
 function Base.show(io::IO, ::MIME"text/plain", ri::RealInterval)
-    print(io, typeof(ri), ":\n ")
+    print(io, typeof(ri), ": ")
     print(io, ri)
 end
 
@@ -57,4 +57,4 @@ Base.show(io::IO, ri::EmptyInterval) =
     print(io, "∅")
 
 Base.show(io::IO, ::MIME"text/plain", ri::EmptyInterval) = 
-    print(io, typeof(ri), "()")
+    print(io, typeof(ri), ": ()")

@@ -238,4 +238,24 @@ end
     @test ischemicalequal(abundantchemical(glc), glc)
     @test ischemicalequal(getchemicalattr(abundantchemical(it3.Isotopologues[1]), :parent), ipsi2[1])
     @test MSC.unique_elements(getchemicalattr(it3.Isotopologues[2], :isotopes)) ==  MSC.unique_elements(["[13C]" => 1])
+    @testset "Utils" begin 
+        ct1 = crit(10)
+        ct2 = rcrit(0.2)
+        peak_crit1 = real_interval(ct1)
+        peak_crit2 = real_interval(ct2)
+        qualified_peak(x, x̂, ct) = all(c -> in(x - x̂, c), ct(x̂))
+        @test qualified_peak(85, 100, peak_crit2)
+        @test !qualified_peak(85, 100, peak_crit1)
+        @test union(ri"[1,3)", ri"[2,4)") == ri"[1,4)"
+        @test 2 in ri"(-Inf, 5]"
+        @test !in(10, union(ri"(-10,10)", ri"(10,100)"))
+        @test intersect(union(ri"(-10,0)", ri"(0,10)"), ri"(10,100)") == ri""
+        @test intersect(union(ri"(1,2)", ri"(3,4]"), union(ri"[4,10)")) == ri"[4,4]"
+        @test intersect(ri"(1,2)", union(ri"(1,2]", ri"(2,4)")) == ri"(1,2)"
+        @test intersect(ri"(1,2)", ri"(-1,4]") == ri"(1,2)"
+        @test intersect(ri"[1,2)", ri"(-1,4]") == ri"[1,2)"
+        @test intersect(ri"[1,2)", ri"(-1,2]") == ri"[1,2)"
+        @test intersect(ri"[1,4)", ri"(-1,2]") == ri"[1,2]"
+        @test intersect(ri"[1,4)", ri"", ri"(-1,2]") == ri""
+    end
 end
