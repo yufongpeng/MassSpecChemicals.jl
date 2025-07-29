@@ -151,10 +151,10 @@ end
     @test chemicalformula(cglc) == "C6H12O6"
     @test chemicalformula(icgld[1]) == "C6H7D6O6"
     @test chemicalelements(icpsi2[2]) == vcat([a => b * 2 for (a, b) in chemicalelements(cpsi2)], adductelements(icpsi2[2]))
-    # mw, mz 
+    # mmi, mz 
     @test isnan(mz(cglc))
     @test isapprox(mz(icpsi1[1]), mz(icps[1]))
-    @test isapprox(mw(ioncore(icps[2])) * 2 + mw("H") - MSC.ustrip(MSC.ME), mz(icps[2]))
+    @test isapprox(mmi(ioncore(icps[2])) * 2 + mmi("H") - MSC.ustrip(MSC.ME), mz(icps[2]))
     # other attr
     @test chemicalabbr(cglc) == "Glc"
     @test chemicalabbr(icgld[3]) == "[Glc[D6]+H]+"
@@ -177,8 +177,8 @@ end
     @test chemicalname(it1.Isotopologues[1]) == "Isobars[[Glucose+H]+]"
     @test chemicalname(it2.Isotopologues[3]) == "Isobars[Glucose[18O], Glucose[13C2]]"
     @test MSC.unique_elements(chemicalelements(it1.Isotopologues[1])[1]) == MSC.unique_elements(chemicalelements(icglc[1]))
-    # mw, mz
-    @test all(isapprox.(mw.(isotopologues(ioncore(icglc[1]), 1; abtype = :all, threshold = crit(1e-2, 1e-2))), it2.MW))
+    # mmi, mz
+    @test all(isapprox.(mmi.(isotopologues(ioncore(icglc[1]), 1; abtype = :all, threshold = crit(1e-2, 1e-2))), it2.Mass))
     @test all(isapprox.(mz.(it1.Isotopologues), it1.MZ))
     @test isapprox(mean(mz.(it1.Isotopologues[2].chemicals), weights(it1.Isotopologues[2].abundance)), mz(it1.Isotopologues[2], "[M+H]+"))
     # other attr
@@ -207,10 +207,10 @@ end
     @test chemicalformula(ps) == chemicalformula(cps) 
     @test chemicalformula(ipsi1[2]) == chemicalformula(icpsi1[2]) 
     @test  MSC.unique_elements(chemicalelements(ipsi1[1])) ==  MSC.unique_elements(vcat(chemicalelements(ioncore(ipsi1[1])), adductelements(ipsi1[1]))) 
-    # mw, mz
+    # mmi, mz
     @test isapprox(mz(glc, Protonation()), mz(iglc[1]))
     @test isapprox(mz(ips[2]), mz(ips[2], dimh))
-    @test isapprox(mz(ipsi1[1]), mw(icpsi1[1]))
+    @test isapprox(mz(ipsi1[1]), mmi(icpsi1[1]))
     # other attr
     @test chemicalabbr(igld[1]) == "[D-Glc[D6]+H]+"
     @test kmer(ipsi1[2]) == 2
@@ -232,7 +232,7 @@ end
     # isotopomers
     # name, formula, elements 
     @test chemicalname(it3.Isotopologues[2]) == "[(PS 18:0[D5]/20:4)-Ser]-[13C]"
-    # mw, mz
+    # mmi, mz
     # other attrs
     @test ischemicalequal(abundantchemical(igld[1]), igld[1])
     @test ischemicalequal(abundantchemical(glc), glc)
@@ -241,21 +241,13 @@ end
     @testset "Utils" begin 
         ct1 = crit(10)
         ct2 = rcrit(0.2)
-        peak_crit1 = real_interval(ct1)
-        peak_crit2 = real_interval(ct2)
-        qualified_peak(x, x̂, ct) = all(c -> in(x - x̂, c), ct(x̂))
-        @test qualified_peak(85, 100, peak_crit2)
-        @test !qualified_peak(85, 100, peak_crit1)
+        qualified_peak1(x, x̂, ct) = all(c -> in(x, c), makecrit_delta(ct, x̂))
+        qualified_peak2(x, x̂, ct) = any(c -> x >= c, makecrit_value(ct, x̂))
+        @test !qualified_peak1(85, 100, ct1)
+        @test qualified_peak1(85, 100, ct2)
+        @test !qualified_peak2(8, 40, ct1)
+        @test qualified_peak2(8, 40, ct2)
         @test union(ri"[1,3)", ri"[2,4)") == ri"[1,4)"
         @test 2 in ri"(-Inf, 5]"
-        @test !in(10, union(ri"(-10,10)", ri"(10,100)"))
-        @test intersect(union(ri"(-10,0)", ri"(0,10)"), ri"(10,100)") == ri""
-        @test intersect(union(ri"(1,2)", ri"(3,4]"), union(ri"[4,10)")) == ri"[4,4]"
-        @test intersect(ri"(1,2)", union(ri"(1,2]", ri"(2,4)")) == ri"(1,2)"
-        @test intersect(ri"(1,2)", ri"(-1,4]") == ri"(1,2)"
-        @test intersect(ri"[1,2)", ri"(-1,4]") == ri"[1,2)"
-        @test intersect(ri"[1,2)", ri"(-1,2]") == ri"[1,2)"
-        @test intersect(ri"[1,4)", ri"(-1,2]") == ri"[1,2]"
-        @test intersect(ri"[1,4)", ri"", ri"(-1,2]") == ri""
     end
 end

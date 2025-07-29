@@ -1,22 +1,22 @@
 """
     Criteria{A, R}
 
-A type for creating criteria of numeric value.
+A type for creating criteria of numeric value. Criterion may be a cutoff value, allowed tolerance relative to an input value, or acceptable range (interval(s)).
 
 # Fields
-* `aval`: criteria for the absolute value (unnormalized).
-* `rval`: criteria for the relative value (normalized by a input)
+* `aval`: criterion for the absolute value (unnormalized).
+* `rval`: criterion for the relative value (normalized by an input)
 
 # Examples
 ```julia
 julia> peak_crit = Criteria(10, 0.2);
 
-julia> qualified_peak(x, basepeak, crit) = all(<=(x), crit(basepeak)); # filter out small peaks based on base peak. 
+julia> qualified_peak(x, basepeak, crit) = all(<=(x), makecrit_value(crit, basepeak)); # filter out small peaks based on base peak. 
 
-julia> peak_crit(100) # create criteria for peak value 100
+julia> makecrit_value(peak_crit, 100) # create criteria for peak value 100
 (10, 20)
 
-julia> peak_crit(10) # create criteria for peak value 10
+julia> makecrit_value(peak_crit, 10) # create criteria for peak value 10
 (10, 2)
 
 julia> qualified_peak(10, 100, peak_crit)
@@ -31,34 +31,16 @@ true
 julia> qualified_peak(2, 10, peak_crit)
 false
 
+julia> qc_peak(x, refpeak, crit) = all(in(x), makecrit_delta(crit, refpeak)); # filter out deviated peaks.
+
+julia> makecrit_delta(peak_crit, 100) # create criteria for reference peak value 100
+(Intervals.Interval{Float64, Intervals.Closed, Intervals.Closed}(90.0, 110.0), Intervals.Interval{Float64, Intervals.Closed, Intervals.Closed}(80.0, 120.0))
+
+julia> qc_peak(121, 100, peak_crit)
+false
+
 """
 struct Criteria{A, R}
     aval::A
     rval::R
-end
-
-(c::Criteria)(x) = (c.aval, c.rval * x)
-(c::Criteria{Missing})(x) = (c.rval * x, )
-(c::Criteria{A, Missing})(x) where A = (c.aval, )
-
-abstract type RealIntervals end
-struct EmptyInterval <: RealIntervals end
-"""
-    RealInterval <: RealIntervals
-
-A type representing a real interval. See `@ri_str` for creating a real interval.
-"""
-struct RealInterval <: RealIntervals
-    lowerbound
-    upperbound
-    leftoperator
-    rightoperator
-end
-"""
-    UnionInterval{N} <: RealIntervals
-
-A type representing an union of multiple disjoint real intervals.
-"""
-struct UnionInterval{N} <: RealIntervals
-    intervals::NTuple{N, RealInterval}
 end

@@ -133,6 +133,7 @@ unique_elements(elements::Dictionary) = deepcopy(elements)
 Add elements in `y` to deepcopied `elements`.
 """
 add_elements(elements, y) = add_elements!(deepcopy(elements), y)
+add_elements(elements::Vector, y) = add_elements!(unique_elements(elements), y)
 
 """
     add_elements!(elements, y)
@@ -154,6 +155,7 @@ end
 Substract elements in `y` from deepcopied `elements`.
 """
 loss_elements(elements, y) = loss_elements!(deepcopy(elements), y)
+loss_elements(elements::Vector, y) = loss_elements!(unique_elements(elements), y)
 
 """
     loss_elements!(elements, y)
@@ -174,9 +176,9 @@ function encode_isotopes(formula::AbstractString)
     f2 = f
     for i in eachmatch(r"\[(\d*)([^\]]*)\]", f)
         m, e = i
-        delta = isempty(m) ? 0 : (parse(Int, m) - round(Int, ustrip(ELEMENTS[:MW][e])))
+        delta = isempty(m) ? 0 : (parse(Int, m) - round(Int, ustrip(ELEMENTS[:MASS][e])))
         e = delta > 0 ? string(e, "it") * "n" ^ delta :
-            delta < 0 ? string(e, "it") * "p" ^ delta : e
+            delta < 0 ? string(e, "it") * "p" ^ delta : string(e, "itz")
         f2 = replace(f2, i.match => e)
     end
     f2

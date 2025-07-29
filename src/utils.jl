@@ -36,112 +36,100 @@ The lower bound is `first(range)`, `low`, or `value - tol`; the upper bound is `
 between(num::Number, range; lop = <=, rop = <=) = lop(first(range), num) && rop(num, last(range))
 between(num::Number; low, up, lop = <=, rop = <=) = lop(low, num) && rop(num, up)
 between(num::Number, value, tol; lop = <=, rop = <=) = lop(value - tol, num) && rop(num, value + tol)
-"""
-    @ri_str -> RealInterval
 
-Create a `RealInterval` by mathematical real interval notation.
+"""
+    @ri_str -> IntervalSet{Interval{Float64, L, R}}
+
+Create a `IntervalSet{Interval{Float64, L, R}}` by mathematical real interval notation.
 
 # Examples
 ```julia
-julia> interval = ri"[4, 7)";
+julia> r = ri"[4, 7)"
+1-interval IntervalSet{Interval{Float64, Closed, Open}}:
+[4.0 .. 7.0)
 
-julia> 4 in interval
+julia> 4 in r
 true
 
-julia> 7 in interval
+julia> 7 in r
 false
 ```
 """
 macro ri_str(expr)
-    return _real_interval(expr)
-end
-function _real_interval(expr::AbstractString)
-    isempty(expr) && return EmptyInterval()
-    lc, lv, rv, rc = match(r" *([\(\[]) *([+-]*[\d∞Inf]*\.*\d*) *, *([+-]*[\d∞Inf]*\.*\d*) *([\)\]]) *", expr)
-    lop = @match lc begin
-        "[" => <=
-        "(" => <
+    return @match expr begin 
+        "()"    => intersect(IntervalSet(1.0..1.0), IntervalSet(0.0..0.0))
+        "[]"    => intersect(IntervalSet(1.0..1.0), IntervalSet(0.0..0.0))
+        "[)"    => intersect(IntervalSet(1.0..1.0), IntervalSet(0.0..0.0))
+        "(]"    => intersect(IntervalSet(1.0..1.0), IntervalSet(0.0..0.0))
+        "{}"    => intersect(IntervalSet(1.0..1.0), IntervalSet(0.0..0.0))
+        "⊘"     => intersect(IntervalSet(1.0..1.0), IntervalSet(0.0..0.0))
+        _       => IntervalSet(parse(Interval{Float64}, replace(expr, "∞" => "Inf")))
     end
-    rop = @match rc begin
-        "]" => <=
-        ")" => <
-    end
-    lv = @match lv begin
-        "+∞"    => Inf
-        "+Inf"  => Inf
-        "∞"     => Inf
-        "Inf"   => Inf
-        "-∞"    => -Inf
-        "-Inf"  => -Inf
-        if occursin(".", lv) end   => parse(Float64, lv)
-        _       => parse(Int, lv)
-    end
-    rv = @match rv begin
-        "+∞"    => Inf
-        "+Inf"  => Inf
-        "∞"     => Inf
-        "Inf"   => Inf
-        "-∞"    => -Inf
-        "-Inf"  => -Inf
-        if occursin(".", rv) end   => parse(Float64, rv)
-        _       => parse(Int, rv)
-    end
-    _real_interval(lv, rv, lop, rop)
-end
-
-function _real_interval(lb, ub, lop = <=, rop = <=)
-    lop(lb, ub) || return EmptyInterval()
-    rop(lb, ub) || return EmptyInterval()
-    RealInterval(lb, ub, lop, rop)
 end
 
 """
-    real_interval(val, lop = <=, rop = <=)
-    real_interval(ct::Criteria, lop = <=, rop = <=)
-    real_interval(val::Missing, lop = <=, rop = <=) = missing
-    real_interval(val::RealIntervals, lop = <=, rop = <=) = val
+    zero_center_interval(val; LB = Closed, RB = Closed)
+    zero_center_interval(val::Missing; LB = Closed, RB = Closed) = missing
+    zero_center_interval(val::IntervalSet; LB = Closed, RB = Closed) = val
 
-Construct a `RealInterval`.
-
-When a value aside from `missing`, criteria, and real interval is given, it constructs a real interval from `-abs(val)` to `abs(val)`.
-
-When a criteira is given, it constructs a criteria whose criteria values become real intervals.
-
-# Examples
-```julia
-julia> ct = Criteria(10, 0.2);
-
-julia> peak_crit = real_interval(ct);
-
-julia> qualified_peak(x, x̂, ct) = all(c -> in(x - x̂, c), ct(x̂)); # The difference of x and x̂ should be within ±10 and ±20%
-
-julia> peak_crit(100) # create criteria with true value 100
-([-10, 10], [-20, 20])
-
-julia> peak_crit(10) # create criteria with true value 10
-([-10, 10], [-2, 2])
-
-julia> qualified_peak(85, 100, peak_crit)
-false
-
-julia> qualified_peak(9, 10, peak_crit)
-true 
-
-```
+Construct a real interval from `-abs(val)` to `abs(val)`.
 """
-function real_interval(val, lop = <=, rop = <=)
+function zero_center_interval(val; LB = Closed, RB = Closed)
     lb, ub = val > 0 ? (-val, val) : (val, -val)
-    lop(lb, ub) || return EmptyInterval()
-    rop(lb, ub) || return EmptyInterval()
-    RealInterval(lb, ub, lop, rop)
+    if isinf(val)
+        LB = Open 
+        RB = Open 
+    end
+    IntervalSet(Interval{Float64, LB, RB}(lb, ub))
 end
 
-real_interval(val::Missing, lop = <=, rop = <=) = missing
-real_interval(val::RealIntervals, lop = <=, rop = <=) = val
+zero_center_interval(val::Missing; LB = Closed, RB = Closed) = missing
+zero_center_interval(val::IntervalSet; LB = Closed, RB = Closed) = val
 
-function real_interval(ct::Criteria, lop = <=, rop = <=)
-    Criteria(real_interval(ct.aval, lop, rop), real_interval(ct.rval, lop, rop))
-end
+# real_interval(center, delta; LB = Closed, RB = Closed) = zero_center_interval(delta; LB, RB) + center
+
+"""
+    makecrit_value(crit, x)
+
+Create a tuple of criteria based on input value `x`. The relative criterion is multiplied by `x`. 
+
+# Example 
+julia> c = crit(10, 0.1) 
+Criteria{Int64, Float64}(10, 0.1)
+
+julia> makecrit_value(c, 50)
+(10, 5.0)
+
+julia> c = crit(ri"[50,100]", ri"[0.8,1.25]")
+Criteria{IntervalSet, IntervalSet}([50.0, 100.0], [0.8, 1.25])
+
+julia> makecrit_value(c, 50)
+([50.0, 100.0], [40.0, 62.5])
+
+"""
+makecrit_value(c::Criteria, x) = (c.aval, c.rval * x)
+makecrit_value(c::Criteria{Missing}, x) = (c.rval * x, )
+makecrit_value(c::Criteria{A, Missing}, x) where A = (c.aval, )
+
+"""
+    makecrit_delta(crit, x)
+
+Create a tuple of criteria based on input value `x`. The relative criterion is multiplied by `x`, and both criteria are offset by `x` as they represent difference.
+
+# Example 
+julia> c = crit(10, 0.1) 
+Criteria{Int64, Float64}(10, 0.1)
+
+julia> makecrit_delta(c, 50)
+([-40.0, 40.0], [-45.0, 45.0])
+
+julia> makecrit_delta(c, 100)
+([-90.0, 90.0], [-90.0, 90.0])
+
+"""
+makecrit_delta(c::Criteria, x) = (zero_center_interval(c.aval) + x, zero_center_interval(c.rval * x) + x)
+makecrit_delta(c::Criteria{Missing}, x) = (zero_center_interval(c.rval * x) + x, )
+makecrit_delta(c::Criteria{A, Missing}, x) where A = (zero_center_interval(c.aval) + x, )
 
 tuplize(x::Tuple) = x
 tuplize(x) = (x, )

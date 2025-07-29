@@ -21,40 +21,33 @@ function Base.show(io::IO, isotopomers::Isotopomers)
     print(io, chemicalname(isotopomers))
 end
 
-function Base.show(io::IO, ri::UnionInterval)
-    print(io, ri.intervals[1])
-    i = 1
-    while i < length(ri.intervals)
-        i += 1
-        print(io, " ∪ ", ri.intervals[i])
-    end
+repr_ri(ri::IntervalSet) = isempty(ri) ? "∅" : join([repr_ri(i) for i in ri.items], "∪")
+function repr_ri(ri::Interval{T, L, R}) where {T, L, R}
+    ff = L == Closed ? "[" : "("
+    ll = R == Closed ? "]" : ")"
+    f = L == Unbounded ? "-∞" : ri.first
+    l = R == Unbounded ? "∞" : ri.last
+    string(ff, f, ", ", l, ll)
 end
 
-function Base.show(io::IO, ::MIME"text/plain", ri::UnionInterval)
-    print(io, typeof(ri), ": ")
-    print(io, ri)
+function Base.show(io::IO, ri::IntervalSet)
+    print(io, repr_ri(ri))
 end
 
-function Base.show(io::IO, ri::RealInterval)
-    @match ri.leftoperator begin
-        (&<)    => print(io, "(", ri.lowerbound, ", ")
-        (&<=)   => print(io, "[", ri.lowerbound, ", ")
-        x       => print(io, ri.lowerbound, " ", x ," x ")
-    end
-    @match ri.rightoperator begin
-        (&<)    => print(io, ri.upperbound, ")")
-        (&<=)   => print(io, ri.upperbound, "]")
-        x       => print(io, x, " ", ri.upperbound)
-    end
+function Base.show(io::IO, c::Criteria{A, B}) where {A <: IntervalSet, B <: IntervalSet}
+    print(io, "Criteria{IntervalSet, IntervalSet}(")
+    print(io, repr_ri(c.aval), ", ")
+    print(io, repr_ri(c.rval), ")")
 end
 
-function Base.show(io::IO, ::MIME"text/plain", ri::RealInterval)
-    print(io, typeof(ri), ": ")
-    print(io, ri)
+function Base.show(io::IO, c::Criteria{A, B}) where {A <: Missing, B <: IntervalSet}
+    print(io, "Criteria{Missing, IntervalSet}(")
+    print(io, "missing, ")
+    print(io, repr_ri(c.rval), ")")
 end
 
-Base.show(io::IO, ri::EmptyInterval) = 
-    print(io, "∅")
-
-Base.show(io::IO, ::MIME"text/plain", ri::EmptyInterval) = 
-    print(io, typeof(ri), ": ()")
+function Base.show(io::IO, c::Criteria{A, B}) where {A <: IntervalSet, B <: Missing}
+    print(io, "Criteria{IntervalSet, Missing}(")
+    print(io, repr_ri(c.aval), ", ")
+    print(io, "missing)")
+end

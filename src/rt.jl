@@ -12,8 +12,8 @@ function isobars_rt(ion::AbstractChemical, lib::AbstractVector{T}; rt_tol = 0.3,
     isnan(rt(ion)) && return T[]
     rrt = rt(ion)
     rmz1 = mz(ion)
-    mz_tol = union(crit(real_interval(mz_tol))(rmz1)...)
-    rt_tol = union(crit(real_interval(rt_tol))(rrt)...)
+    mz_tol = union(makecrit_delta(crit(mz_tol), rmz1)...)
+    rt_tol = union(makecrit_delta(crit(rt_tol), rrt)...)
     c = T[]
     for i in lib
         ischemicalequal(ion, i) && continue
@@ -49,8 +49,8 @@ isobars_rt_table(ion::AbstractChemical, lib::AbstractVector{T}; rt_tol = 0.3, mz
     isobars_rt_table(ion, rt(ion), mz(ion), lib; rt_tol, mz_tol)
 function isobars_rt_table(ion::AbstractChemical, rrt, rmz1, lib::AbstractVector{T}; rt_tol = 0.3, mz_tol = crit(0.01, 20e-6)) where {T <: AbstractChemical}
     isnan(rrt) && return nothing
-    mz_tol = union(crit(real_interval(mz_tol))(rmz1)...)
-    rt_tol = union(crit(real_interval(rt_tol))(rrt)...)
+    mz_tol = union(makecrit_delta(crit(mz_tol), rmz1)...)
+    rt_tol = union(makecrit_delta(crit(rt_tol), rrt)...)
     c = T[]
     Δrt = Float64[]
     Δmz = Float64[]
@@ -58,14 +58,12 @@ function isobars_rt_table(ion::AbstractChemical, rrt, rmz1, lib::AbstractVector{
         ischemicalequal(ion, i) && continue
         irt = rt(i)
         isnan(irt) && continue
-        drt = irt - rrt
-        in(drt, rt_tol) || continue
+        in(irt, rt_tol) || continue
         imz1 = mz(i)
-        dmz = imz1 - rmz1
-        in(dmz, mz_tol) || continue
+        in(imz1, mz_tol) || continue
         push!(c, i)
-        push!(Δrt, drt)
-        push!(Δmz, dmz)
+        push!(Δrt, irt - rrt)
+        push!(Δmz, imz1 - rmz1)
     end
     id = sortperm(Δrt)
     c = c[id]
@@ -124,16 +122,16 @@ function isobars_rt(ion::AbstractChemical, lib::Table; libchemical = :AdductIon,
     getrt = isnothing(librt) ? (i -> rt(getproperty(i, libchemical))) : (i -> getproperty(i, librt))
     rrt = rt(ion)
     rmz1 = mz(ion)
-    mz_tol = union(crit(real_interval(mz_tol))(rmz1)...)
-    rt_tol = union(crit(real_interval(rt_tol))(rrt)...)
+    mz_tol = union(makecrit_delta(crit(mz_tol), rmz1)...)
+    rt_tol = union(makecrit_delta(crit(rt_tol), rrt)...)
     c = eltype(getproperty(lib, libchemical))[]
     for i in lib
         ischemicalequal(ion, getproperty(i, libchemical)) && continue
         irt = getrt(i)
         isnan(irt) && continue
-        in(irt - rrt, rt_tol) || continue
+        in(irt, rt_tol) || continue
         imz1 = getmz(i)
-        in(imz1 - rmz1, mz_tol) || continue
+        in(imz1, mz_tol) || continue
         push!(c, i)
     end
     c
@@ -144,8 +142,8 @@ function isobars_rt_table(ion::AbstractChemical, rrt, rmz1, lib::Table; libid = 
     isnan(rrt) && return nothing
     getmz = isnothing(libmz) ? (i -> mz(getproperty(i, libchemical))) : (i -> getproperty(i, libmz))
     getrt = isnothing(librt) ? (i -> rt(getproperty(i, libchemical))) : (i -> getproperty(i, librt))
-    mz_tol = union(crit(real_interval(mz_tol))(rmz1)...)
-    rt_tol = union(crit(real_interval(rt_tol))(rrt)...)
+    mz_tol = union(makecrit_delta(crit(mz_tol), rmz1)...)
+    rt_tol = union(makecrit_delta(crit(rt_tol), rrt)...)
     lid = Int[]
     Δrt = Float64[]
     Δmz = Float64[]
@@ -153,14 +151,12 @@ function isobars_rt_table(ion::AbstractChemical, rrt, rmz1, lib::Table; libid = 
         ischemicalequal(ion, getproperty(i, libchemical)) && continue
         irt = getrt(i)
         isnan(irt) && continue
-        drt = irt - rrt
-        in(drt, rt_tol) || continue
+        in(irt, rt_tol) || continue
         imz1 = getmz(i)
-        dmz = imz1 - rmz1
-        in(dmz, mz_tol) || continue
+        in(imz1, mz_tol) || continue
         push!(lid, j)
-        push!(Δrt, drt)
-        push!(Δmz, dmz)
+        push!(Δrt, irt - rrt)
+        push!(Δmz, imz1 - rmz1)
     end
     id = sortperm(Δrt)
     lid = lid[id]

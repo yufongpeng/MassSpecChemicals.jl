@@ -64,3 +64,12 @@ function Isotopomers(parent::AbstractChemical, fullelements::Dictionary)
     end
     Isotopomers(parent, [k => v for (k, v) in pairs(dr)])
 end
+
+struct LossChemical{T <: AbstractChemical} <: AbstractChemical
+    chemical::T 
+end
+
+struct ChemicalPair{T <: AbstractChemical, S <: AbstractChemical} <: AbstractChemical
+    precursor::T
+    product::S
+end

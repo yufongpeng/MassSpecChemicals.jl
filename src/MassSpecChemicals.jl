@@ -1,11 +1,11 @@
 module MassSpecChemicals
 
-using Combinatorics, TypedTables, MLStyle, Statistics, StatsBase, Dictionaries
+using Combinatorics, TypedTables, MLStyle, Statistics, StatsBase, Dictionaries, Intervals
 using UnitfulMoles: parse_compound, ustrip, @u_str
 using SentinelArrays: ChainedVector
 import Base: show, length, +, -, *, /, isless, isequal, in, union, intersect, iterate, Broadcast.broadcastable
 
-export AdductIon, Chemical, Isobars, Isotopomers, 
+export AdductIon, Chemical, Isobars, Isotopomers, LossChemical, ChemicalPair, 
     AbstractPosAdduct, AbstractNegAdduct,
     PosAdduct, NegAdduct,
     LossElectron,
@@ -56,13 +56,13 @@ export AdductIon, Chemical, Isobars, Isotopomers,
 
     set_adduct_abbr!, set_adduct_name!, ADDUCTS, ELEMENTS, set_elements!, 
 
-    mw, mz, abundantchemical,
+    mmi, molarmass, mz, abundantchemical,
 
-    isotopicabundance, isotopologues_table, isotopologues,
+    isotopicabundance, isotopologues_table, isotopologues, 
 
     isobars_rt, isobars_rt_table,
 
-    acrit, rcrit, crit, @ri_str, real_interval
+    acrit, rcrit, crit, @ri_str, makecrit_delta, makecrit_value
 
 """
     AbstractChemical
@@ -98,7 +98,7 @@ include(joinpath("interface", "utils.jl"))
 include("attr.jl")
 include("elements.jl")
 include("formula.jl")
-include("mw.jl")
+include("mass.jl")
 include("isotopologues.jl")
 include("rt.jl")
 include("io.jl")

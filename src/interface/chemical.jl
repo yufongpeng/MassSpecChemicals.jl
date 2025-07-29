@@ -6,7 +6,7 @@ Parse chemical name and construct a chemical object. The default type is `Chemic
 """
 parse_chemical(name; kwargs...) = parse_chemical(Chemical, name; kwargs...)
 function parse_chemical(::Type{Chemical}, name::AbstractString; kwargs...) 
-    ks = Dict(kwargs)
+    ks = Dict{Symbol, Any}(kwargs)
     f = get!(ks, :formula, "")
     delete!(ks, :formula)
     Chemical(name, f; ks...)
@@ -165,6 +165,31 @@ getchemicalattr(isotopomers::Isotopomers, ::Val{:abbreviation}; kwargs...) = str
 getchemicalattr(isotopomers::Isotopomers, ::Val{:SMILES}; kwargs...) = chemicalsmiles(isotopomers.parent; kwargs...)
 getchemicalattr(isotopomers::Isotopomers, ::Val{:charge}; kwargs...) = charge(isotopomers.parent; kwargs...)
 getchemicalattr(isotopomers::Isotopomers, ::Val{:abundant_chemical}; kwargs...) = isotopomers
+
+"""
+    getchemicalattr(chemicalpair::ChemicalPair, ::Val{:name}; kwargs...)
+    getchemicalattr(chemicalpair::ChemicalPair, ::Val{:formula}; kwargs...)
+    getchemicalattr(chemicalpair::ChemicalPair, ::Val{:elements}; kwargs...)
+    getchemicalattr(chemicalpair::ChemicalPair, ::Val{:precursor}; kwargs...)
+    getchemicalattr(chemicalpair::ChemicalPair, ::Val{:product}; kwargs...)
+    getchemicalattr(chemicalpair::ChemicalPair, ::Val{:rt}; kwargs...)
+    getchemicalattr(chemicalpair::ChemicalPair, ::Val{:abbreviation}; kwargs...)
+    getchemicalattr(chemicalpair::ChemicalPair, ::Val{:SMILES}; kwargs...)
+    getchemicalattr(chemicalpair::ChemicalPair, ::Val{:charge}; kwargs...)
+
+
+Get attribute (`attr`) from `chemicalpair`.
+"""
+getchemicalattr(cp::ChemicalPair, ::Val{:name}; kwargs...) = string(chemicalname(cp.precursor; kwargs...), " => ", chemicalname(cp.product; kwargs...))
+getchemicalattr(cp::ChemicalPair, ::Val{:formula}; kwargs...) = chemicalname(cp.precursor; kwargs...) => chemicalname(cp.product; kwargs...)
+getchemicalattr(cp::ChemicalPair, ::Val{:elements}; kwargs...) = chemicalelements(cp.precursor; kwargs...) => chemicalelements(cp.product; kwargs...)
+getchemicalattr(cp::ChemicalPair, ::Val{:precursor}; kwargs...) = cp.precursor
+getchemicalattr(cp::ChemicalPair, ::Val{:product}; kwargs...) = cp.product
+getchemicalattr(cp::ChemicalPair, ::Val{:rt}; kwargs...) = rt(cp.product; kwargs...)
+getchemicalattr(cp::ChemicalPair, ::Val{:abbreviation}; kwargs...) = string(chemicalabbr(cp.precursor; kwargs...), " => ", chemicalabbr(cp.product; kwargs...))
+getchemicalattr(cp::ChemicalPair, ::Val{:SMILES}; kwargs...) = chemicalsmiles(cp.precursor; kwargs...) => chemicalsmiles(cp.product; kwargs...)
+getchemicalattr(cp::ChemicalPair, ::Val{:charge}; kwargs...) = charge(cp.precursor; kwargs...) => charge(cp.product; kwargs...)
+
 
 in(cc::AbstractChemical, isobars::Isobars) = any(i -> ischemicalequal(i, cc), isobars)
 length(isobars::Isobars) = length(isobars.chemicals)

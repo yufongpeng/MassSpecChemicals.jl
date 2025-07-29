@@ -15,13 +15,45 @@ Charged chemicals with specific adduct or molecule loss that formed in MS (adduc
 4. `Isotopomers`: multiple chemicals differed from isotopic replacement location; `Isotopomers(parent::AbstractChemical, isotopes::Vector{Pair{String, Int}})`.
 
 # Formula
-## The Most Common Elements (Parent Elements)
-C, H, O, N, P, S, Li, Na, K, F, Cl, Ag 
+## Parent Elements and Major isotopes
+|Symbol|Major isotopes|Atomic number|Mass number|
+|--------|-------------|-----------|------------------|
+|C|[12C]|6|12|
+|H|[1H]|1|1|
+|O|[16H]|8|16|
+|N|[14N]|7|14|
+|P|[31P]|15|31|
+|S|[32S]|16|32|
+|Li|[7Li]|3|7|
+|Na|[23Na]|11|23|
+|K|[39K]|19|39|
+|F|[19F]|9|19|
+|Cl|[35Cl]|17|35|
+|Ag|[108Ag]|47|108|
 
 ## Minor Isotopes
-[13C], [2H] (D), [17O], [18O], [15N], [33S], [34S], [35S], [6Li], [40K], [41K], [37Cl], [109Ag]
+|Minor isotopes|Atomic number|Mass number|Alternative symbol|
+|--------|-------------|-----------|------------------|
+|[13C]|6|13||
+|D|1|2|[2H]|
+|[17O]|8|17||
+|[18O]|8|18||
+|[15N]|7|15||
+|[33S]|16|33||
+|[34S]|16|34||
+|[36S]|16|36||
+|[6Li]|3|6||
+|[40K]|19|40||
+|[41K]|19|41||
+|[37Cl]|17|37||
+|[109Ag]|47|109||
 
-By default, parent elements are considered possibly replaced by minor isotopes except that in `parent` chemical of `Isotopomers`, the number of replacement is restricted by field `isotopes`. On the other hand, minor elements are fixed.  
+
+By default, parent elements are considered as major isotopes possibly replaced by minor isotopes. For instance,
+* CO2 has a carbon-12 and two oxygen-16, but any minor isotopes replacements are possible.
+* [13C][16O]O has a carbon-13, an oxygen-16, and an oxygen-16 possibly replaced by other minor isotopes.
+
+One exception is that in `parent` chemical of `Isotopomers`, parent elements are major isotopes, and the number of replacement is restricted by field `isotopes`. 
 
 # Adduct
 All adducts are instances of abstract type `AbstractAdduct` and `AbstractPosAdduct` or `AbstractNegAdduct`.
@@ -87,8 +119,13 @@ The following function should be extended when isotopes are involved in addut io
 * `parent`: shared chemical structure of isotopomers prior to isotopic replacement.
 * `isotopes`: isotopes-number pairs of isotopic replacement.
 
+### Additional Atttributes of `ChemicalPair`
+* `precursor`: chemical prior to fragmentation.
+* `product`: fragments.
+
 ### Functions for Derived Attributes
-* `mw`: molecular weight.
+* `mmi`: monoisotopic mass.
+* `molarmass`: molar mass.
 * `mz`: m/z.
 * `ncharge`: number of charges. 
 
@@ -103,7 +140,7 @@ The following function should be extended when isotopes are involved in addut io
 * `ischemicalequal`: whether two chemicals equal.
 * `isadductequal`: whether two adducts equal.
 * `isotopicabundance`: isotopic abundance of a single chemical.
-* `isotopologues`: isotopologues of a single chemical or formula.
+* `isotopologues`: isotopologues of a single chemical or formula, and MS/MS transition.
 * `isotopologues_table`: a table with isotopologues, and more information. 
 * `isobars_rt`: isobars under specific m/z, mw, and rt tolerance.
 * `isobars_rt_table`: a table with isobars, and more information. 
