@@ -1,9 +1,27 @@
 """
     isadductequal(x::AbstractAdduct, y::AbstractAdduct)
 
-Determine whether two adducts are chemically equivalent. It defaults to `isequal`.
+Determine whether two adducts are chemically equivalent. By default, it transforms both chemicals by `isadductequaltransform` and compares them by `istransformedadductequal`.
 """
-isadductequal(x::AbstractAdduct, y::AbstractAdduct) = isequal(x, y)
+isadductequal(x::AbstractAdduct, y::AbstractAdduct) = istransformedadductequal(isadductequaltransform(x), isadductequaltransform(y))
+
+"""
+    isadductequaltransform(x::AbstractAdduct) 
+
+Return an object for comparison with other adducts by `istransformedadductequal`. 
+"""
+isadductequaltransform(x::AbstractAdduct) = x
+
+"""
+    istransformedadductequal(x::AbstractAdduct, y::AbstractAdduct)
+    istransformedadductequal(x::PosAdduct, y::PosAdduct)
+    istransformedadductequal(x::NegAdduct, y::NegAdduct)
+
+Determine whether two chemicals are chemically equivalent after applying `isadductequaltransform`. It defaults to `isequal`.
+"""
+istransformedadductequal(x::AbstractAdduct, y::AbstractAdduct) = isequal(x, y)
+istransformedadductequal(x::PosAdduct, y::PosAdduct) = kmer(x) == kmer(y) && ncharge(x) == ncharge(y) && Set(mapreduce(a -> split(a, "-"), vcat, split(adductformula(x), "+"))) == Set(mapreduce(a -> split(a, "-"), vcat, split(adductformula(y), "+")))
+istransformedadductequal(x::NegAdduct, y::NegAdduct) = kmer(x) == kmer(y) && ncharge(x) == ncharge(y) && Set(mapreduce(a -> split(a, "-"), vcat, split(adductformula(x), "+"))) == Set(mapreduce(a -> split(a, "-"), vcat, split(adductformula(y), "+")))
 
 """
     kmer(adduct)

@@ -138,6 +138,7 @@ end
 
 function _isotopologues(formula::Pair{<: AbstractString, <: AbstractString}, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), mm_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), net_charge = (1, 1), colision = 1, table = true)
     any(==(0), net_charge) && any(!=(0), net_charge) && throw(ArgumentError("Charges must be all non-zero or all zero."))
+    any(x -> !haskey(ELEMENTS[:ISOTOPES], first(x)) && last(x) > 0, chemicalelements(first(formula))) && throw(ArgumentError("Isotopologues table for MS/MS fragments of isotopic-labeled chemicals is not suppoeted"))
     e, m, a = _isotopologues(first(formula), abundance; abtype, threshold, isobaric, mz_tol = first(mz_tol), mm_tol = first(mm_tol), net_charge = first(net_charge), colision, table)
     ef = chemicalelements(last(formula))
     if !isobaric
@@ -207,6 +208,7 @@ end
 
 function _isotopologues(cc::ChemicalPair, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), mm_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), colision = 1, table = true)
     cs = (ncharge(cc.precursor), ncharge(cc.product))
+    any(x -> !haskey(ELEMENTS[:ISOTOPES], first(x)) && last(x) > 0, chemicalelements(cc.precursor)) && throw(ArgumentError("Isotopologues table for MS/MS fragments of isotopic-labeled chemicals is not suppoeted"))  
     any(==(0), cs) && any(!=(0), cs) && throw(ArgumentError("Charges must be all non-zero or all zero."))
     e, m, a = _isotopologues(cc.precursor, abundance; abtype, threshold, isobaric, mz_tol = first(mz_tol), mm_tol = first(mm_tol), colision, table)
     ef = chemicalelements(cc.product)
@@ -605,8 +607,7 @@ function isotopes_proportion(ep::Dictionary, ef::Dictionary, er::Dictionary, net
             get!(eld, e, 0)
             eld[e] += n
         else
-            get!(itd, e, 0)
-            itd[e] += n
+            throw(ArgumentError("MS2 fragment cannot contain isotopes."))
         end
     end
     red = Dictionary{String, Int}()
@@ -616,7 +617,7 @@ function isotopes_proportion(ep::Dictionary, ef::Dictionary, er::Dictionary, net
             get!(red, e, 0)
             red[e] += n
         else
-            throw(ArgumentError("MS2 gragment cannot contain isotopes."))
+            throw(ArgumentError("MS2 fragment cannot contain isotopes."))
         end
     end
     # give isotope to red/ird first, multiple way ex 2C => C, 1 13C, 1 14C, can be C+13C => 14C or C+14C => 13C

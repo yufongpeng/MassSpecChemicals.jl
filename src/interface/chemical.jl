@@ -15,24 +15,31 @@ end
 """
     ischemicalequal(x::AbstractChemical, y::AbstractChemical)
 
-Determine whether two chemicals are chemically equivalent. It defaults to `isequal`.
+Determine whether two chemicals are chemically equivalent. By default, it transforms both chemicals by `ischemicalequaltransform` and compares them by `istransformedchemicalequal`.
 """
-ischemicalequal(x::AbstractChemical, y::AbstractChemical) = isequal(x, y)
+ischemicalequal(x::AbstractChemical, y::AbstractChemical) = istransformedchemicalequal(ischemicalequaltransform(x), ischemicalequaltransform(y))
 ischemicalequal(x::Isobars, y::Isobars) = all(ischemicalequal(a, b) for (a, b) in zip(x.chemicals, y.chemicals)) && all(isapprox(a, b) for (a, b) in zip(x.abundance, y.abundance))
-ischemicalequal(x::Isobars, y::AbstractChemical) = length(x) == 1 && ischemicalequal(abundantchemical(x), y)
-ischemicalequal(x::AbstractChemical, y::Isobars) = length(y) == 1 && ischemicalequal(x, abundantchemical(y))
 ischemicalequal(x::Isotopomers, y::Isotopomers) = ischemicalequal(x.parent, y.parent) && isequal(sort!(collect(unique_elements(x.isotopes))), sort!(collect(unique_elements(y.isotopes))))
-ischemicalequal(x::Isotopomers, y::AbstractChemical) = isempty(unique_elements(x.isotopes)) && ischemicalequal(x.parent, y)
-ischemicalequal(x::AbstractChemical, y::Isotopomers) = isempty(unique_elements(y.isotopes)) && ischemicalequal(x, y.parent)
-ischemicalequal(x::Isobars, y::Isotopomers) = length(x) == 1 && isempty(unique_elements(y.isotopes)) && ischemicalequal(abundantchemical(x), y.parent)
-ischemicalequal(x::Isotopomers, y::Isobars) = length(y) == 1 && isempty(unique_elements(x.isotopes)) &&ischemicalequal(x.parent, abundantchemical(y))
+ischemicalequal(x::ChemicalPair, y::ChemicalPair) = ischemicalequal(x.precursor, y.precursor) && ischemicalequal(x.product, y.product)
 
 """
-    ischemicalequal(x::Chemical, y::Chemical)
+    ischemicalequaltransform(x::AbstractChemical) 
 
-Determine whether two chemicals are chemically equivalent. It first test if the names are equal than the elements composition.
+Return an object for comparison with other chemicals by `istransformedchemicalequal`. 
 """
-ischemicalequal(x::Chemical, y::Chemical) = 
+ischemicalequaltransform(x::AbstractChemical) = x 
+ischemicalequaltransform(x::Isobars) = length(x) == 1 ? abundantchemical(x) : x
+ischemicalequaltransform(x::Isotopomers) = isempty(unique_elements(x.isotopes)) ? x.parent : x 
+ischemicalequaltransform(x::ChemicalPair) = x 
+
+"""
+    istransformedchemicalequal(x::AbstractChemical, y::AbstractChemical)
+    istransformedchemicalequal(x::Chemical, y::Chemical)
+
+Determine whether two chemicals are chemically equivalent after applying `ischemicalequaltransform`. For `Chemical`, It first test if the names are equal than the elements composition. For others, it defaults to `isequal`.
+"""
+istransformedchemicalequal(x::AbstractChemical, y::AbstractChemical) = isequal(x, y)
+istransformedchemicalequal(x::Chemical, y::Chemical) = 
     isequal(chemicalname(x), chemicalname(y)) && isequal(sort!(collect(unique_elements(chemicalelements(x)))), sort!(collect(unique_elements(chemicalelements(y)))))
 
 """

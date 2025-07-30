@@ -50,7 +50,7 @@ function molarmass(elements::Union{<: Vector{<: Pair}, <: Dictionaries.PairDicti
     # Vector of el => #el
     weight = 0.0u"g"
     for (el, n) in elements
-        if haskey(ELEMETS[:ISOTOPES], string(el))
+        if haskey(ELEMENTS[:ISOTOPES], string(el))
             for i in ELEMENTS[:ISOTOPES][string(el)]
                 weight += ELEMENTS[:MASS][i] * n * ELEMENTS[:ABUNDANCE][i]
             end
