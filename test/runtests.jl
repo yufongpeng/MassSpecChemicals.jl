@@ -63,17 +63,36 @@ getchemicalattr(m::Hexose, ::Val{:abbreviation}; kwargs...) = string(first(chemi
 getchemicalattr(m::Glucose, ::Val{:abbreviation}; kwargs...) = string(first(chemicalname(m), 4), "c", repr_isotope(m))
 getchemicalattr(m::Hexose, ::Val{:SMILES}; kwargs...) = ""
 
+# Fatty acid 
+struct FattyAcid <: AbstractChemical
+    ncb::Int 
+    ndb::Int
+    nD::Int 
+    n13C::Int 
+end
+
+# PS     
 struct DiacylPS <: AbstractChemical
     headgroup::Tuple{Int, Int}
-    fa1::Tuple{Int, Int, Int, Int}
-    fa2::Tuple{Int, Int, Int, Int}
+    fa1::FattyAcid
+    fa2::FattyAcid
     rt::Float64
 end
 repr_headgroup(m::DiacylPS) = string("PS", repr_isotope(m.headgroup...))
-repr_fa(fa::Tuple) = string(fa[1], ":", fa[2], repr_isotope(fa[3], fa[4]))
+repr_fa(fa::FattyAcid) = string(fa.ncb, ":", fa.ndb, repr_isotope(fa.nD, fa.n13C))
+getchemicalattr(m::FattyAcid, ::Val{:name}; kwargs...) = string("FA", " ", repr_fa(m))
 getchemicalattr(m::DiacylPS, ::Val{:name}; kwargs...) = string(repr_headgroup(m), " ", repr_fa(m.fa1), "/", repr_fa(m.fa2))
+function getchemicalattr(m::FattyAcid, ::Val{:elements}; kwargs...)
+    filter(x -> last(x) > 0, [
+        "C"     => getchemicalattr(m, :ncb) - getchemicalattr(m, :n13C), 
+        "[13C]" => getchemicalattr(m, :n13C),
+        "H"     => getchemicalattr(m, :ncb) * 2 - getchemicalattr(m, :ndb) * 2 - getchemicalattr(m, :nD),
+        "D"     => getchemicalattr(m, :nD),
+        "O"     => 2
+    ])
+end
 function getchemicalattr(m::DiacylPS, ::Val{:elements}; kwargs...)
-    [
+    filter(x -> last(x) > 0, [
         "C"     => 6 + getchemicalattr(m, :ncb) - getchemicalattr(m, :n13C), 
         "[13C]" => getchemicalattr(m, :n13C),
         "H"     => 12 + getchemicalattr(m, :ncb) * 2 - getchemicalattr(m, :ndb) * 2 - getchemicalattr(m, :nD),
@@ -81,7 +100,7 @@ function getchemicalattr(m::DiacylPS, ::Val{:elements}; kwargs...)
         "N"     => 1, 
         "O"     => 10, 
         "P"     => 1
-    ]
+    ])
 end
 # getchemicalattr(m::DiacylPS, ::Val{:formula}) = 
 #     string("C", 6 + getchemicalattr(m, :ncb) - getchemicalattr(m, :n13C), 
@@ -90,11 +109,16 @@ end
 #         getchemicalattr(m, :nD) > 0 ? string("D", getchemicalattr(m, :nD)) : "",
 #         "N", "O", 10, "P"
 #     )
+getchemicalattr(m::FattyAcid, ::Val{:SMILES}; kwargs...) = ""
 getchemicalattr(m::DiacylPS, ::Val{:SMILES}; kwargs...) = ""
-getchemicalattr(m::DiacylPS, ::Val{:nD}; kwargs...) = +(m.headgroup[1], m.fa1[3], m.fa2[3])
-getchemicalattr(m::DiacylPS, ::Val{:n13C}; kwargs...) = +(m.headgroup[2], m.fa1[4], m.fa2[4])
-getchemicalattr(m::DiacylPS, ::Val{:ncb}; kwargs...) = +(m.fa1[1], m.fa2[1])
-getchemicalattr(m::DiacylPS, ::Val{:ndb}; kwargs...) = +(m.fa1[2], m.fa2[2])
+getchemicalattr(m::FattyAcid, ::Val{:nD}; kwargs...) = m.nD
+getchemicalattr(m::DiacylPS, ::Val{:nD}; kwargs...) = +(m.headgroup[1], getchemicalattr(m.fa1, :nD), getchemicalattr(m.fa2, :nD))
+getchemicalattr(m::FattyAcid, ::Val{:n13C}; kwargs...) = m.n13C
+getchemicalattr(m::DiacylPS, ::Val{:n13C}; kwargs...) = +(m.headgroup[2], getchemicalattr(m.fa1, :n13C), getchemicalattr(m.fa2, :n13C))
+getchemicalattr(m::FattyAcid, ::Val{:ncb}; kwargs...) = m.ncb
+getchemicalattr(m::DiacylPS, ::Val{:ncb}; kwargs...) = getchemicalattr(m.fa1, :ncb) + getchemicalattr(m.fa2, :ncb)
+getchemicalattr(m::FattyAcid, ::Val{:ndb}; kwargs...) = m.ndb
+getchemicalattr(m::DiacylPS, ::Val{:ndb}; kwargs...) = getchemicalattr(m.fa1, :ndb) + getchemicalattr(m.fa2, :ndb)
 
 # Interface AbstractAdduct
 struct DeSerine <: AbstractNegAdduct end
@@ -145,6 +169,7 @@ end
     icps = [AdductIon(cps, lossserine), AdductIon(cps, dimh)]
     icpsi1 = [AdductIon(cpsi1, lossserinei), AdductIon(cpsi1, dimh)]
     icpsi2 = [AdductIon(cpsi2, lossserine), AdductIon(cpsi2, dimh)]
+    cp1 = ChemicalPair(icps[1], AdductIon(Chemical("FA 20:4", "C20H32O2"; rt = 7.8), Deprotonation()))
     # name, formula, elements
     @test chemicalname(cglc) == "Glucose"
     @test chemicalname(icgld[1]) == "[Glucose-d6+H]+"
@@ -161,16 +186,27 @@ end
     @test chemicalsmiles(cgld) == ""
     @test ischemicalequal(ioncore(icpsi1[1]), cpsi1)
     @test ionadduct(icpsi2[1]) == lossserine
+    @test isadductequal(PosAdduct(2, "+Na+H-H2O", 1), PosAdduct(2, "-H2O+H+Na", 1))
+    @test isadductequal(NegAdduct(2, "-H-H2O", 1), NegAdduct(2, "-H2O-H", 1))
+    @test !isadductequal(PosAdduct(2, "+Na+H-H2O", 1), NegAdduct(2, "-H2O-H", 1))
     @test kmer(icgld[1]) == 1
     @test charge(icgld[1]) == 1
     @test ncharge(cglc) == 0
     @test ischemicalequal(abundantchemical(icgld[1]), abundantchemical(icgld[2]))
+    @test ischemicalequal(cp1, cp1)
     @test isapprox(rt(icpsi2[1]), 7.8) 
     # isotopologues
     it1 = isotopologues_table(icglc[1], 1e5; threshold = crit(1e1, 1e-2))
-    it2 = isotopologues_table(ioncore(icglc[1]), 1; abtype = :all, threshold = crit(1e-2, 1e-2))
+    it2 = isotopologues_table(ioncore(icglc[1]), 1e5; abtype = :all, threshold = crit(1e-2, 1e-2))
     @test all(>(1e2), mapreduce(x -> x.abundance, vcat, it1.Isotopologues))
     @test all(ischemicalequal.(isotopologues(icglc[1], 1e5; threshold = crit(1e1, 1e-2)), it1.Isotopologues))
+    # isotopologues MS/MS 
+    itit1 = isotopologues_table(cp1, 1e5; threshold = crit(1e1, 1e-2))
+    itit2 = isotopologues_table(chemicalformula(icps[1]) => chemicalformula(cp1.product), 1e5; threshold = crit(1e1, 1e-2))
+    itit4 = isotopologues_table(chemicalformula(icps[1]) => chemicalformula(cp1.product), 1e5; threshold = crit(1e1, 1e-2), isobaric = false)
+    @test all(>(1e1), mapreduce(x -> x.abundance, vcat, itit1.Isotopologues))
+    @test all(ischemicalequal.(isotopologues(cp1, 1e5; threshold = crit(1e1, 1e-2)), itit1.Isotopologues))
+    @test isapprox(itit1.Abundance[2], itit2.Abundance[2])
     # isobars
     # name, formula, elements
     @test all(chemicalformula(it1.Isotopologues[2]) .== ["C5H13O6[13C]", "C6H13O5[17O]", "C6H12O6D"])
@@ -181,6 +217,7 @@ end
     @test all(isapprox.(mmi.(isotopologues(ioncore(icglc[1]), 1; abtype = :all, threshold = crit(1e-2, 1e-2))), it2.Mass))
     @test all(isapprox.(mz.(it1.Isotopologues), it1.MZ))
     @test isapprox(mean(mz.(it1.Isotopologues[2].chemicals), weights(it1.Isotopologues[2].abundance)), mz(it1.Isotopologues[2], "[M+H]+"))
+    @test isapprox(molarmass(cglc), 6 * molarmass("C") + 12 * molarmass("H") + 6 * molarmass("O"))
     # other attr
     @test chemicalabbr(it2.Isotopologues[1]) == "Isobars[Glc]"
     @test chemicalsmiles(it2.Isotopologues[1]) == "Isobars[]"
@@ -192,9 +229,9 @@ end
     # User defined chemical, adduct
     glc = Glucose("D", 0, 0, 1.5)
     gld = Glucose("D", 6, 0, 1.5)
-    ps = DiacylPS((0, 0), (18, 0, 0, 0), (20, 4, 0, 0), 7.8)
-    psi1 = DiacylPS((3, 3), (18, 0, 0, 0), (20, 4, 0, 0), 7.8)
-    psi2 = DiacylPS((0, 0), (18, 0, 5, 0), (20, 4, 0, 0), 7.8)
+    ps = DiacylPS((0, 0), FattyAcid(18, 0, 0, 0), FattyAcid(20, 4, 0, 0), 7.8)
+    psi1 = DiacylPS((3, 3), FattyAcid(18, 0, 0, 0), FattyAcid(20, 4, 0, 0), 7.8)
+    psi2 = DiacylPS((0, 0), FattyAcid(18, 0, 5, 0), FattyAcid(20, 4, 0, 0), 7.8)
     iglc = [AdductIon(glc, Protonation())]
     igld = [AdductIon(gld, "[M+H]+")]
     ips = [AdductIon(ps, "[M-Ser]-"), AdductIon(ps, "[2M+H]+")]
@@ -229,6 +266,20 @@ end
         ELEMENTS[:ABUNDANCE]["P"] ^ d["P"] 
         )
     @test ischemicalequal(ipsi2[1], it3.Isotopologues[1])
+    # isotopologues MS/MS
+    itit3 = isotopologues_table(ChemicalPair(ips[1], AdductIon(ioncore(ips[1]).fa1, "[M-H]-")), 1; abtype = :all, threshold = crit(1e-8, 1e-8), isobaric = false)
+    d1 = MSC.unique_elements(chemicalelements(itit3.Isotopologues[14].precursor))
+    d2 = MSC.unique_elements(chemicalelements(itit3.Isotopologues[14].product))
+    @test isapprox(itit3.Abundance[1], isotopicabundance(ips[1]))
+    @test isapprox(itit3.Abundance[14], 
+        ELEMENTS[:ABUNDANCE]["C"] ^ (d1["C"]) * ELEMENTS[:ABUNDANCE]["[13C]"] ^ d1["[13C]"] * 
+        ELEMENTS[:ABUNDANCE]["H"] ^ d1["H"] * 
+        ELEMENTS[:ABUNDANCE]["N"] ^ get(d1, "N", 0) * 
+        ELEMENTS[:ABUNDANCE]["O"] ^ (d1["O"]) * ELEMENTS[:ABUNDANCE]["[17O]"] ^ d1["[17O]"] * 
+        ELEMENTS[:ABUNDANCE]["P"] ^ d1["P"] * 
+        factorial(d2["C"] + d2["[13C]"], d2["C"]) / factorial(d2["[13C]"]) * 
+        factorial(d1["O"] + d1["[17O]"] - d2["O"] - get(d2, "[17O]", 0), d1["O"] - d2["O"]) / factorial(d1["[17O]"] - get(d2, "[17O]", 0))
+    )
     # isotopomers
     # name, formula, elements 
     @test chemicalname(it3.Isotopologues[2]) == "[(PS 18:0[D5]/20:4)-Ser]-[13C]"
