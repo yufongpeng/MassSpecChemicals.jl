@@ -204,9 +204,21 @@ end
     itit1 = isotopologues_table(cp1, 1e5; threshold = crit(1e1, 1e-2))
     itit2 = isotopologues_table(chemicalformula(icps[1]) => chemicalformula(cp1.product), 1e5; threshold = crit(1e1, 1e-2))
     itit4 = isotopologues_table(chemicalformula(icps[1]) => chemicalformula(cp1.product), 1e5; threshold = crit(1e1, 1e-2), isobaric = false)
+    itit5 = isotopologues_table(chemicalformula(AdductIon(cps, "[M-H]-")) => "-C3H5NO2", 1e5; threshold = crit(1e1, 1e-2), isobaric = false, net_charge = (-1, 0))
+    itit7 = isotopologues_table("S8" => "S7"; abtype = :all, isobaric = false, net_charge = (2, 1))
+    itit8 = isotopologues_table("C2H5[13C]OO" => "C2H5"; abtype = :all, isobaric = false, net_charge = (-1, -1))
+    itit9 = isotopologues_table("C2H5[13C]OO" => "-[13C]O2"; abtype = :all, isobaric = false, net_charge = (-1, 0))
     @test all(>(1e1), mapreduce(x -> x.abundance, vcat, itit1.Isotopologues))
     @test all(ischemicalequal.(isotopologues(cp1, 1e5; threshold = crit(1e1, 1e-2)), itit1.Isotopologues))
     @test isapprox(itit1.Abundance[2], itit2.Abundance[2])
+    @test isapprox(itit7.Abundance[10],
+        ELEMENTS[:ABUNDANCE]["S"] ^ 6 * ELEMENTS[:ABUNDANCE]["[33S]"] * ELEMENTS[:ABUNDANCE]["[34S]"] * 
+        factorial(7, 5) 
+    )
+    @test isapprox(itit8.Abundance[2],
+        ELEMENTS[:ABUNDANCE]["[13C]"] ^ 1 * ELEMENTS[:ABUNDANCE]["C"] ^ 1 * ELEMENTS[:ABUNDANCE]["H"] ^ 5 * ELEMENTS[:ABUNDANCE]["O"] ^ 2 * 2
+    )
+    @test isapprox(itit8.Abundance[3], itit9.Abundance[3])
     # isobars
     # name, formula, elements
     @test all(chemicalformula(it1.Isotopologues[2]) .== ["C5H13O6[13C]", "C6H13O5[17O]", "C6H12O6D"])
@@ -268,6 +280,7 @@ end
     @test ischemicalequal(ipsi2[1], it3.Isotopologues[1])
     # isotopologues MS/MS
     itit3 = isotopologues_table(ChemicalPair(ips[1], AdductIon(ioncore(ips[1]).fa1, "[M-H]-")), 1; abtype = :all, threshold = crit(1e-8, 1e-8), isobaric = false)
+    itit6 = isotopologues_table(ChemicalPair(AdductIon(ps, "[M-H]-"), ChemicalLoss(Chemical("Serine", "C3H5NO2"))), 1; abtype = :all, threshold = crit(1e-8, 1e-8))
     d1 = MSC.unique_elements(chemicalelements(itit3.Isotopologues[14].precursor))
     d2 = MSC.unique_elements(chemicalelements(itit3.Isotopologues[14].product))
     @test isapprox(itit3.Abundance[1], isotopicabundance(ips[1]))
