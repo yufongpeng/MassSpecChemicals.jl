@@ -21,6 +21,13 @@ function Base.show(io::IO, isotopomers::Isotopomers)
     print(io, chemicalname(isotopomers))
 end
 
+function Base.show(io::IO, loss::ChemicalLoss)
+    print(io, chemicalname(loss))
+end
+function Base.show(io::IO, cp::ChemicalPair)
+    print(io, chemicalname(cp))
+end
+
 repr_ri(ri::IntervalSet) = isempty(ri) ? "∅" : join([repr_ri(i) for i in ri.items], "∪")
 function repr_ri(ri::Interval{T, L, R}) where {T, L, R}
     ff = L == Closed ? "[" : "("

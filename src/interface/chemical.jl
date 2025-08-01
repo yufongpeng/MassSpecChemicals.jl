@@ -20,6 +20,7 @@ Determine whether two chemicals are chemically equivalent. By default, it transf
 ischemicalequal(x::AbstractChemical, y::AbstractChemical) = istransformedchemicalequal(ischemicalequaltransform(x), ischemicalequaltransform(y))
 ischemicalequal(x::Isobars, y::Isobars) = all(ischemicalequal(a, b) for (a, b) in zip(x.chemicals, y.chemicals)) && all(isapprox(a, b) for (a, b) in zip(x.abundance, y.abundance))
 ischemicalequal(x::Isotopomers, y::Isotopomers) = ischemicalequal(x.parent, y.parent) && isequal(sort!(collect(unique_elements(x.isotopes))), sort!(collect(unique_elements(y.isotopes))))
+ischemicalequal(x::ChemicalLoss, y::ChemicalLoss) = ischemicalequal(x.chemical, y.chemical)
 ischemicalequal(x::ChemicalPair, y::ChemicalPair) = ischemicalequal(x.precursor, y.precursor) && ischemicalequal(x.product, y.product)
 
 """
@@ -30,6 +31,7 @@ Return an object for comparison with other chemicals by `istransformedchemicaleq
 ischemicalequaltransform(x::AbstractChemical) = x 
 ischemicalequaltransform(x::Isobars) = length(x) == 1 ? abundantchemical(x) : x
 ischemicalequaltransform(x::Isotopomers) = isempty(unique_elements(x.isotopes)) ? x.parent : x 
+ischemicalequaltransform(x::ChemicalLoss) = x 
 ischemicalequaltransform(x::ChemicalPair) = x 
 
 """
@@ -174,6 +176,28 @@ getchemicalattr(isotopomers::Isotopomers, ::Val{:charge}; kwargs...) = charge(is
 getchemicalattr(isotopomers::Isotopomers, ::Val{:abundant_chemical}; kwargs...) = isotopomers
 
 """
+    getchemicalattr(chemicalloss::ChemicalLoss, ::Val{:name}; kwargs...)
+    getchemicalattr(chemicalloss::ChemicalLoss, ::Val{:formula}; kwargs...)
+    getchemicalattr(chemicalloss::ChemicalLoss, ::Val{:elements}; kwargs...)
+    getchemicalattr(chemicalloss::ChemicalLoss, ::Val{:chemical}; kwargs...)
+    getchemicalattr(chemicalloss::ChemicalLoss, ::Val{:rt}; kwargs...)
+    getchemicalattr(chemicalloss::ChemicalLoss, ::Val{:abbreviation}; kwargs...)
+    getchemicalattr(chemicalloss::ChemicalLoss, ::Val{:SMILES}; kwargs...)
+    getchemicalattr(chemicalloss::ChemicalLoss, ::Val{:charge}; kwargs...)
+
+
+Get attribute (`attr`) from `chemicalpair`.
+"""
+getchemicalattr(loss::ChemicalLoss, ::Val{:name}; kwargs...) = string("Loss_", chemicalname(loss.chemical; kwargs...))
+getchemicalattr(loss::ChemicalLoss, ::Val{:formula}; kwargs...) = chemicalformula(loss.chemical; kwargs...)
+getchemicalattr(loss::ChemicalLoss, ::Val{:elements}; kwargs...) = chemicalelements(loss.chemical; kwargs...) 
+getchemicalattr(loss::ChemicalLoss, ::Val{:chemical}; kwargs...) = loss.chemical
+getchemicalattr(loss::ChemicalLoss, ::Val{:rt}; kwargs...) = rt(loss.chemical; kwargs...)
+getchemicalattr(loss::ChemicalLoss, ::Val{:abbreviation}; kwargs...) = string("Loss_", chemicalabbr(loss.chemical; kwargs...))
+getchemicalattr(loss::ChemicalLoss, ::Val{:SMILES}; kwargs...) = chemicalsmiles(loss.chemical; kwargs...) 
+getchemicalattr(loss::ChemicalLoss, ::Val{:charge}; kwargs...) = charge(loss.chemical; kwargs...) 
+
+"""
     getchemicalattr(chemicalpair::ChemicalPair, ::Val{:name}; kwargs...)
     getchemicalattr(chemicalpair::ChemicalPair, ::Val{:formula}; kwargs...)
     getchemicalattr(chemicalpair::ChemicalPair, ::Val{:elements}; kwargs...)
@@ -187,13 +211,13 @@ getchemicalattr(isotopomers::Isotopomers, ::Val{:abundant_chemical}; kwargs...) 
 
 Get attribute (`attr`) from `chemicalpair`.
 """
-getchemicalattr(cp::ChemicalPair, ::Val{:name}; kwargs...) = string(chemicalname(cp.precursor; kwargs...), " => ", chemicalname(cp.product; kwargs...))
-getchemicalattr(cp::ChemicalPair, ::Val{:formula}; kwargs...) = chemicalname(cp.precursor; kwargs...) => chemicalname(cp.product; kwargs...)
+getchemicalattr(cp::ChemicalPair, ::Val{:name}; kwargs...) = string(chemicalname(cp.precursor; kwargs...), " -> ", chemicalname(cp.product; kwargs...))
+getchemicalattr(cp::ChemicalPair, ::Val{:formula}; kwargs...) = chemicalformula(cp.precursor; kwargs...) => chemicalformula(cp.product; kwargs...)
 getchemicalattr(cp::ChemicalPair, ::Val{:elements}; kwargs...) = chemicalelements(cp.precursor; kwargs...) => chemicalelements(cp.product; kwargs...)
 getchemicalattr(cp::ChemicalPair, ::Val{:precursor}; kwargs...) = cp.precursor
 getchemicalattr(cp::ChemicalPair, ::Val{:product}; kwargs...) = cp.product
 getchemicalattr(cp::ChemicalPair, ::Val{:rt}; kwargs...) = rt(cp.product; kwargs...)
-getchemicalattr(cp::ChemicalPair, ::Val{:abbreviation}; kwargs...) = string(chemicalabbr(cp.precursor; kwargs...), " => ", chemicalabbr(cp.product; kwargs...))
+getchemicalattr(cp::ChemicalPair, ::Val{:abbreviation}; kwargs...) = string(chemicalabbr(cp.precursor; kwargs...), " -> ", chemicalabbr(cp.product; kwargs...))
 getchemicalattr(cp::ChemicalPair, ::Val{:SMILES}; kwargs...) = chemicalsmiles(cp.precursor; kwargs...) => chemicalsmiles(cp.product; kwargs...)
 getchemicalattr(cp::ChemicalPair, ::Val{:charge}; kwargs...) = charge(cp.precursor; kwargs...) => charge(cp.product; kwargs...)
 

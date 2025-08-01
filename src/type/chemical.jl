@@ -59,16 +59,26 @@ function Isotopomers(parent::AbstractChemical, fullelements::Dictionary)
     dp = unique_elements(chemicalelements(parent))
     dr = deepcopy(fullelements)
     for k in keys(fullelements)
-        get(ELEMENTS[:PARENTS], k, k) == k && (delete!(dr, k); continue)
+        haskey(ELEMENTS[:ISOTOPES], k) && (delete!(dr, k); continue)
         dr[k] -= get(dp, k, 0) 
     end
     Isotopomers(parent, [k => v for (k, v) in pairs(dr)])
 end
 
-struct LossChemical{T <: AbstractChemical} <: AbstractChemical
+"""
+    ChemicalLoss{T <: AbstractChemical} <: AbstractChemical
+
+Represent chemical loss from a precursor. This product is not detected in MS; the other part of precursor is detected instead.
+"""
+struct ChemicalLoss{T <: AbstractChemical} <: AbstractChemical
     chemical::T 
 end
 
+"""
+    ChemicalPair{T <: AbstractChemical, S <: AbstractChemical} <: AbstractChemical
+
+Represent a pair of precursor and product in MS/MS. Products can also be a `ChemicalLoss`.
+"""
 struct ChemicalPair{T <: AbstractChemical, S <: AbstractChemical} <: AbstractChemical
     precursor::T
     product::S

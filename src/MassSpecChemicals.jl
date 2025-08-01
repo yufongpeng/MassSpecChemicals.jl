@@ -5,7 +5,7 @@ using UnitfulMoles: parse_compound, ustrip, @u_str
 using SentinelArrays: ChainedVector
 import Base: show, length, +, -, *, /, isless, isequal, in, union, intersect, iterate, Broadcast.broadcastable
 
-export AdductIon, Chemical, Isobars, Isotopomers, LossChemical, ChemicalPair, 
+export AdductIon, Chemical, Isobars, Isotopomers, ChemicalLoss, ChemicalPair, 
     AbstractPosAdduct, AbstractNegAdduct,
     PosAdduct, NegAdduct,
     LossElectron,
