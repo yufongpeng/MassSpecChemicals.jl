@@ -3,19 +3,30 @@
     isotopologues(chemical::AbstractChemical, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = crit(0.01, 20e-6), mm_tol = crit(0.01, 20e-6))
     isotopologues(formula::AbstractString, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = crit(0.01, 20e-6), mm_tol = crit(0.01, 20e-6), net_charge = 0)
     isotopologues(chemicalpair::ChemicalPair, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), mm_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6))) 
-    isotopologues(formula::Pair{<: AbstractString, <: AbstractString}, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), mm_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), net_charge = (1, 1))
+    isotopologues(formulapair::Pair{<: AbstractString, <: AbstractString}, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), mm_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), net_charge = (1, 1))
 
-Isotopologues of a single `chemical` or `formula` (converted to `Chemical` by `parse_chemical`). 
+Isotopologues of a single `chemical`, `formula`, or MS/MS precursor-product pairs (`chemicalpair`, and `formulapair`). Only isotopic abundance of parent elements are considered, and isotopes are viewed as intentionally labeled elements. 
 
 * `abundance` sets the abundance of the isotope specified by `abtype`. 
-    * `:max`: the most abundant isotopologue
-    * `:input`: the input isotopologue
-    * other: the final abundances are repressented as proportion.
+* `abtype`
+    * `:max`: the most abundant isotopologue.
+    * `:input`: the input isotopologue.
+    * `:total`: sum of total isotopologues.
 * `threshold` can be a number or criteria, representing the lower limit of abundance. 
-* `isobaric` determines whether groups isobars and creates `Isobars` or not.
-* `mz_tol`: tolerance of m/z for isobars.
-* `mm_tol`: tolerance of molecular mass for isobars.
+* `isobaric` determines whether groups isobars based on given tolerance. If the input is a subtype of `AbstractChemical`, it creates an `Isobars`; otherwise, it groups formulas as a vector. 
+* `mz_tol` and `mm_tol` are tolerances of m/z and molecular mass for isobars.
+    * number: acceptable range of absolute value, i.e. 0.01 for ±0.01
+    * criteria: acceptable range of absolute and relative value, i.e. `crit(0.01, 20e-6)` for ±0.01 or 20 ppm error.
 * `net_charge`: charges (positive or negative) of `formula`.
+
+For MS/MS precursor-product pairs, `mz_tol`, `mm_tol`, and `net_charge` are pairs representing values for precursor and product, repectively. Product can also be neutral loss or chemical loss (`ChemicalLoss` or formula starting with `-`).
+
+!!! Special precaution for applying to MS/MS precursor-product pairs
+    Product must come from a single part or mutiple non-overlapping parts of precursor. Isobaric or isomeric products are not considered. For instance, 
+    * PC 18:0/18:0 and fatty acid 18:0 is valid because two fatty acids are independent and identical. 
+    * PC 18:0[D5]/18:0 and fatty acid 18:0[D5] is valid but the contribution of another fatty acid 18:0 is not considered and addional computation of this pair and summation with knowledge of fragmentation efficiency are required for the correct abundances. 
+    * PC 18:1/18:0 and fatty acid 18:0 is also valid but requires additional computation of isobaric contribution of another fatty acid 18:1. 
+
 """
 isotopologues(cc::AbstractChemical, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = crit(0.01, 20e-6), mm_tol = crit(0.01, 20e-6)) = 
     _isotopologues(cc, abundance; abtype, threshold, isobaric, mz_tol, mm_tol, table = false)
@@ -35,21 +46,32 @@ isotopologues(formula::Pair{<: AbstractString, AbstractString}, abundance = 1; a
     isotopologues_table(chemical::AbstractChemical, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = crit(0.01, 20e-6), mm_tol = crit(0.01, 20e-6))
     isotopologues_table(formula::AbstractString, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = crit(0.01, 20e-6), mm_tol = crit(0.01, 20e-6), net_charge = 0)
     isotopologues_table(chemicalpair::ChemicalPair, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), mm_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6))) 
-    isotopologues_table(formula::Pair{<: AbstractString, <: AbstractString}, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), mm_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), net_charge = (1, 1)) 
+    isotopologues_table(formulapair::Pair{<: AbstractString, <: AbstractString}, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), mm_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), net_charge = (1, 1)) 
     isotopologues_table(tbl::Table; colchemical = :Chemical, colabundance = :Abundance, abundance = 1, colpreserve = setdiff(propertynames(tbl), [colchemical, colabundance]), kwargs...)
     isotopologues_table(v::Vector, abundance = 1; kwargs...)
 
-A `Table` of isotopologues of single `chemical` or `formula` (converted to `Chemical` by `parse_chemical`), chemical pairs, or multiple chemicals in `v` or column `colchemical` of `tbl`. 
+A `Table` of isotopologues of a single `chemical`, `formula`, MS/MS precursor-product pairs (`chemicalpair`, and `formulapair`), or multiple chemicals in `v` or column `colchemical` of `tbl`. Only isotopic abundance of parent elements are considered, and isotopes are viewed as intentionally labeled elements. 
 
 * `abundance` sets the abundance of the isotope specified by `abtype`. 
-    * `:max`: the most abundant isotopologue
-    * `:input`: the input isotopologue
-    * other: the final abundances are repressented as proportion.
+* `abtype`
+    * `:max`: the most abundant isotopologue.
+    * `:input`: the input isotopologue.
+    * `:total`: sum of total isotopologues.
 * `threshold` can be a number or criteria, representing the lower limit of abundance. 
-* `isobaric` determines whether groups isobars and creates `Isobars` or not.
-* `mz_tol`: tolerance of m/z for isobars.
-* `mm_tol`: tolerance of molecular mass for isobars.
+* `isobaric` determines whether groups isobars based on given tolerance. If the input is a subtype of `AbstractChemical`, it creates an `Isobars`; otherwise, it groups formulas as a vector. 
+* `mz_tol` and `mm_tol` are tolerances of m/z and molecular mass for isobars.
+    * number: acceptable range of absolute value, i.e. 0.01 for ±0.01
+    * criteria: acceptable range of absolute and relative value, i.e. `crit(0.01, 20e-6)` for ±0.01 or 20 ppm error.
 * `net_charge`: charges (positive or negative) of `formula`.
+
+For MS/MS precursor-product pairs, `mz_tol`, `mm_tol`, and `net_charge` are pairs representing values for precursor and product, repectively. Product can also be neutral loss or chemical loss (`ChemicalLoss` or formula starting with `-`).
+
+!!! Special precaution for applying to MS/MS precursor-product pairs
+    Product must come from a single part or mutiple non-overlapping parts of precursor. Isobaric or isomeric products are not considered. For instance, 
+    * PC 18:0/18:0 and fatty acid 18:0 is valid because two fatty acids are independent and identical. 
+    * PC 18:0[D5]/18:0 and fatty acid 18:0[D5] is valid but the contribution of another fatty acid 18:0 is not considered and addional computation of this pair and summation with knowledge of fragmentation efficiency are required for the correct abundances. 
+    * PC 18:1/18:0 and fatty acid 18:0 is also valid but requires additional computation of isobaric contribution of another fatty acid 18:1. 
+
 """
 isotopologues_table(cc::AbstractChemical, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = crit(0.01, 20e-6), mm_tol = crit(0.01, 20e-6)) = 
     _isotopologues(cc, abundance; abtype, threshold, isobaric, mz_tol, mm_tol, table = true)
@@ -123,7 +145,10 @@ isotopologues_table(::Isotopomers, abundance = 1; kwargs...) = throw(ArgumentErr
     isotopicabundance(formula::AbstractString; ignore_isotopes = false)
     isotopicabundance(elements::Union{<: Vector, Dictionary}; ignore_isotopes = false)
 
-Compute isotopic abundance of `chemical`, `formula`, vector of element-number pairs or dictionary mapping element to number. Set `ignore_isotopes` true when isotopes are labelled intentionally, and not follow natural distribution.
+Compute isotopic abundance of `chemical`, `formula`, vector of element-number pairs or dictionary mapping element to number. 
+
+Parent elements are viewed as major isotopes, and isotopic abundances of all elements are considered in computation. 
+To compute isotopic abundance of chemicals with all isotopes labeled intentionally and not following natural distribution, set keyword argument `ignore_isotopes` true, and only parent elements are considered.  
 """
 isotopicabundance(cc::AbstractChemical; ignore_isotopes = false) = isotopicabundance(chemicalformula(cc); ignore_isotopes)
 isotopicabundance(formula::AbstractString; ignore_isotopes = false) = isotopicabundance(chemicalelements(formula); ignore_isotopes)

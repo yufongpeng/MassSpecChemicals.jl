@@ -169,7 +169,7 @@ end
     icps = [AdductIon(cps, lossserine), AdductIon(cps, dimh)]
     icpsi1 = [AdductIon(cpsi1, lossserinei), AdductIon(cpsi1, dimh)]
     icpsi2 = [AdductIon(cpsi2, lossserine), AdductIon(cpsi2, dimh)]
-    cp1 = ChemicalPair(icps[1], AdductIon(Chemical("FA 20:4", "C20H32O2"; rt = 7.8), Deprotonation()))
+    cp1 = ChemicalPair(icps[1], AdductIon(Chemical("FA 20:4", "C20H32O2"; rt = 7.78), Deprotonation()))
     # name, formula, elements
     @test chemicalname(cglc) == "Glucose"
     @test chemicalname(icgld[1]) == "[Glucose-d6+H]+"
@@ -197,7 +197,8 @@ end
     @test isapprox(rt(icpsi2[1]), 7.8) 
     # isotopologues
     it1 = isotopologues_table(icglc[1], 1e5; threshold = crit(1e1, 1e-2))
-    it2 = isotopologues_table(ioncore(icglc[1]), 1e5; abtype = :all, threshold = crit(1e-2, 1e-2))
+    it2 = isotopologues_table(ioncore(icglc[1]), 1e5; abtype = :total, threshold = crit(1e-2, 1e-2))
+    it4 = isotopologues_table("C6H12O6", 1e5; abtype = :total, threshold = crit(1e-2, 1e-2))
     @test all(>(1e2), mapreduce(x -> x.abundance, vcat, it1.Isotopologues))
     @test all(ischemicalequal.(isotopologues(icglc[1], 1e5; threshold = crit(1e1, 1e-2)), it1.Isotopologues))
     # isotopologues MS/MS 
@@ -205,9 +206,10 @@ end
     itit2 = isotopologues_table(chemicalformula(icps[1]) => chemicalformula(cp1.product), 1e5; threshold = crit(1e1, 1e-2))
     itit4 = isotopologues_table(chemicalformula(icps[1]) => chemicalformula(cp1.product), 1e5; threshold = crit(1e1, 1e-2), isobaric = false)
     itit5 = isotopologues_table(chemicalformula(AdductIon(cps, "[M-H]-")) => "-C3H5NO2", 1e5; threshold = crit(1e1, 1e-2), isobaric = false, net_charge = (-1, 0))
-    itit7 = isotopologues_table("S8" => "S7"; abtype = :all, isobaric = false, net_charge = (2, 1))
-    itit8 = isotopologues_table("C2H5[13C]OO" => "C2H5"; abtype = :all, isobaric = false, net_charge = (-1, -1))
-    itit9 = isotopologues_table("C2H5[13C]OO" => "-[13C]O2"; abtype = :all, isobaric = false, net_charge = (-1, 0))
+    itit7 = isotopologues_table("S8" => "S7"; abtype = :total, isobaric = false, net_charge = (2, 1))
+    itit8 = isotopologues_table("C2H5[13C]OO" => "C2H5"; abtype = :total, isobaric = false, net_charge = (-1, -1))
+    itit9 = isotopologues_table("C2H5[13C]OO" => "-[13C]O2"; abtype = :total, isobaric = false, net_charge = (-1, 0))
+    itit10 = isotopologues_table("C2H5[12C]OO" => "-[12C]O2"; abtype = :total, isobaric = false, net_charge = (-1, 0))
     @test all(>(1e1), mapreduce(x -> x.abundance, vcat, itit1.Isotopologues))
     @test all(ischemicalequal.(isotopologues(cp1, 1e5; threshold = crit(1e1, 1e-2)), itit1.Isotopologues))
     @test isapprox(itit1.Abundance[2], itit2.Abundance[2])
@@ -219,6 +221,7 @@ end
         ELEMENTS[:ABUNDANCE]["[13C]"] ^ 1 * ELEMENTS[:ABUNDANCE]["C"] ^ 1 * ELEMENTS[:ABUNDANCE]["H"] ^ 5 * ELEMENTS[:ABUNDANCE]["O"] ^ 2 * 2
     )
     @test isapprox(itit8.Abundance[3], itit9.Abundance[3])
+    @test isapprox(itit10.Abundance[4], itit9.Abundance[4])
     # isobars
     # name, formula, elements
     @test all(chemicalformula(it1.Isotopologues[2]) .== ["C5H13O6[13C]", "C6H13O5[17O]", "C6H12O6D"])
@@ -226,7 +229,7 @@ end
     @test chemicalname(it2.Isotopologues[3]) == "Isobars[Glucose[18O], Glucose[13C2]]"
     @test MSC.unique_elements(chemicalelements(it1.Isotopologues[1])[1]) == MSC.unique_elements(chemicalelements(icglc[1]))
     # mmi, mz
-    @test all(isapprox.(mmi.(isotopologues(ioncore(icglc[1]), 1; abtype = :all, threshold = crit(1e-2, 1e-2))), it2.Mass))
+    @test all(isapprox.(mmi.(isotopologues(ioncore(icglc[1]), 1; abtype = :total, threshold = crit(1e-2, 1e-2))), it2.Mass))
     @test all(isapprox.(mz.(it1.Isotopologues), it1.MZ))
     @test isapprox(mean(mz.(it1.Isotopologues[2].chemicals), weights(it1.Isotopologues[2].abundance)), mz(it1.Isotopologues[2], "[M+H]+"))
     @test isapprox(molarmass(cglc), 6 * molarmass("C") + 12 * molarmass("H") + 6 * molarmass("O"))
@@ -238,6 +241,12 @@ end
     @test getchemicalattr(it1.Isotopologues[2], :abundance) == it1.Isotopologues[2].abundance
     @test ischemicalequal(abundantchemical(it1.Isotopologues[2]), first(it1.Isotopologues[2].chemicals))
     @test isapprox(rt(it2.Isotopologues[1]), 1.5)
+    # chemicalpair
+    @test chemicalname(cp1) == string(chemicalname(getchemicalattr(cp1, :precursor)), " -> ", chemicalname(getchemicalattr(cp1, :product)))
+    @test chemicalabbr(cp1) == string(chemicalabbr(getchemicalattr(cp1, :precursor)), " -> ", chemicalabbr(getchemicalattr(cp1, :product)))
+    @test chemicalformula(cp1) == Pair(chemicalformula.([chemicalelements(cp1)...])...)
+    @test isapprox(rt(cp1), 7.78)
+    @test charge(cp1) == (-1 => -1)
     # User defined chemical, adduct
     glc = Glucose("D", 0, 0, 1.5)
     gld = Glucose("D", 6, 0, 1.5)
@@ -249,13 +258,14 @@ end
     ips = [AdductIon(ps, "[M-Ser]-"), AdductIon(ps, "[2M+H]+")]
     ipsi1 = [AdductIon(psi1, "[M-Ser]-"), AdductIon(psi1, "[2M+H]+")]
     ipsi2 = [AdductIon(psi2, "[M-Ser]-"), AdductIon(psi2, "[2M+H]+")]
+    clossserine = ChemicalLoss(Chemical("Serine", "C3H5NO2"))
     # name, formula, elements 
     @test chemicalname(ps) == "PS 18:0/20:4"
     @test chemicalname(igld[1]) == "[D-Glucose[D6]+H]+"
     @test chemicalname(ips[1]) == "[(PS 18:0/20:4)-Ser]-"
     @test chemicalformula(ps) == chemicalformula(cps) 
     @test chemicalformula(ipsi1[2]) == chemicalformula(icpsi1[2]) 
-    @test  MSC.unique_elements(chemicalelements(ipsi1[1])) ==  MSC.unique_elements(vcat(chemicalelements(ioncore(ipsi1[1])), adductelements(ipsi1[1]))) 
+    @test MSC.unique_elements(chemicalelements(ipsi1[1])) ==  MSC.unique_elements(vcat(chemicalelements(ioncore(ipsi1[1])), adductelements(ipsi1[1]))) 
     # mmi, mz
     @test isapprox(mz(glc, Protonation()), mz(iglc[1]))
     @test isapprox(mz(ips[2]), mz(ips[2], dimh))
@@ -267,7 +277,7 @@ end
     @test ischemicalequal(abundantchemical(ioncore(ipsi1[1])), abundantchemical(ioncore(ipsi1[2])))
     @test isapprox(rt(ips[1]), 7.8)
     # isotopologues
-    it3 = isotopologues_table(ipsi2[1], 1; abtype = :all, threshold = crit(1e-3, 1e-3), isobaric = false)
+    it3 = isotopologues_table(ipsi2[1], 1; abtype = :total, threshold = crit(1e-3, 1e-3), isobaric = false)
     d = MSC.unique_elements(chemicalelements(ipsi2[1]))
     @test isapprox(isotopicabundance(glc), isotopicabundance(MSC.unique_elements(chemicalelements(glc))))
     @test isapprox(it3.Abundance[6], 
@@ -279,8 +289,8 @@ end
         )
     @test ischemicalequal(ipsi2[1], it3.Isotopologues[1])
     # isotopologues MS/MS
-    itit3 = isotopologues_table(ChemicalPair(ips[1], AdductIon(ioncore(ips[1]).fa1, "[M-H]-")), 1; abtype = :all, threshold = crit(1e-8, 1e-8), isobaric = false)
-    itit6 = isotopologues_table(ChemicalPair(AdductIon(ps, "[M-H]-"), ChemicalLoss(Chemical("Serine", "C3H5NO2"))), 1; abtype = :all, threshold = crit(1e-8, 1e-8))
+    itit3 = isotopologues_table(ChemicalPair(ips[1], AdductIon(ioncore(ips[1]).fa1, "[M-H]-")), 1; abtype = :total, threshold = crit(1e-8, 1e-8), isobaric = false)
+    itit6 = isotopologues_table(ChemicalPair(AdductIon(ps, "[M-H]-"), clossserine), 1; abtype = :total, threshold = crit(1e-8, 1e-8))
     d1 = MSC.unique_elements(chemicalelements(itit3.Isotopologues[14].precursor))
     d2 = MSC.unique_elements(chemicalelements(itit3.Isotopologues[14].product))
     @test isapprox(itit3.Abundance[1], isotopicabundance(ips[1]))
@@ -302,6 +312,10 @@ end
     @test ischemicalequal(abundantchemical(glc), glc)
     @test ischemicalequal(getchemicalattr(abundantchemical(it3.Isotopologues[1]), :parent), ipsi2[1])
     @test MSC.unique_elements(getchemicalattr(it3.Isotopologues[2], :isotopes)) ==  MSC.unique_elements(["[13C]" => 1])
+    # chemicalloss
+    @test chemicalname(clossserine) == "Loss_Serine"
+    @test chemicalabbr(clossserine) == "Loss_Serine"
+    @test chemicalformula(clossserine) == chemicalformula(chemicalelements(clossserine))
     @testset "Utils" begin 
         ct1 = crit(10)
         ct2 = rcrit(0.2)
@@ -313,5 +327,9 @@ end
         @test qualified_peak2(8, 40, ct2)
         @test union(ri"[1,3)", ri"[2,4)") == ri"[1,4)"
         @test 2 in ri"(-Inf, 5]"
+        @test ri"(-5, 5]" * (-10) / 2 + 10 - 5 == ri"[-20, 30)"
+        @test ri"(-∞, ∞)" * (-10) / 2 + 10 - 5 == ri"(-∞, ∞)"
+        @test ri"(-5, 5]" * Inf64 == ri"(-5, 5]" / 0
+        @test ri"(-5, 5]" + Inf64 == ri"(-5, 5]" - Inf64
     end
 end

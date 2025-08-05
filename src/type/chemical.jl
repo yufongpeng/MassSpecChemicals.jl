@@ -68,7 +68,7 @@ end
 """
     ChemicalLoss{T <: AbstractChemical} <: AbstractChemical
 
-Represent chemical loss from a precursor. This product is not detected in MS; the other part of precursor is detected instead.
+Chemical loss from a precursor. This product is not detected in MS; the other part of precursor is detected instead.
 """
 struct ChemicalLoss{T <: AbstractChemical} <: AbstractChemical
     chemical::T 
@@ -77,7 +77,7 @@ end
 """
     ChemicalPair{T <: AbstractChemical, S <: AbstractChemical} <: AbstractChemical
 
-Represent a pair of precursor and product in MS/MS. Products can also be a `ChemicalLoss`.
+A pair of precursor and product in MS/MS. Products can also be a `ChemicalLoss`.
 """
 struct ChemicalPair{T <: AbstractChemical, S <: AbstractChemical} <: AbstractChemical
     precursor::T
