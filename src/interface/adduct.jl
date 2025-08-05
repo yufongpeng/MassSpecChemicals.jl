@@ -87,7 +87,7 @@ function adductelements(adduct::AbstractAdduct)
             end
         end
     end
-    el
+    filter!(x -> !isempty(first(x)), el)
 end
 
 adductformula(::LossElectron) = ""

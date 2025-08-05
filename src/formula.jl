@@ -104,10 +104,9 @@ set_adduct_name!(nm::AbstractString, adduct::AbstractAdduct) = push!(ADDUCTS[:NA
 
 Create chemical formula using given element-number pairs. 
 """
-chemicalformula(elements::Dictionary; delim = "") = chemicalformula(pairs(elements); delim)
-function chemicalformula(elements::Union{<: Vector{<: Pair}, <: Dictionaries.PairDictionary}; delim = "")
-    el = filter(v -> last(v) > 0, elements)
-    join((v == 1 ? k : string(k, v) for (k, v) in el), delim)
+chemicalformula(elements::Union{<: Vector{<: Pair}, <: Dictionaries.PairDictionary}; delim = "") = chemicalformula(unique_elements(elements); delim)
+function chemicalformula(elements::Dictionary; delim = "")
+    join((v == 1 ? k : string(k, v) for (k, v) in pairs(elements) if v != 0), delim)
 end
 
 """
