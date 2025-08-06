@@ -152,7 +152,7 @@ end
 
 @testset "MassSpecChemicals.jl" begin
     # Default chemical, adduction
-    cglc = Chemical("Glucose", "C6H12O6"; rt = 1.5, abbreviation = "Glc", SMILES = "")
+    global cglc = Chemical("Glucose", "C6H12O6"; rt = 1.5, abbreviation = "Glc", SMILES = "")
     cgld = parse_chemical("Glucose-d6"; formula = "C6H6D6O6", rt = 1.5, abbreviation = "Glc[D6]", SMILES = "")
     cps = Chemical("PS 18:0/20:4(5Z,8Z,11Z,14Z)", "C44H80NO10P"; rt = 7.8)
     cpsi1 = Chemical("PS[D3,13C3] 18:0/20:4(5Z,8Z,11Z,14Z)", "C41[13C]3H77D3NO10P"; rt = 7.8)
@@ -162,6 +162,7 @@ end
     dimh = PosAdduct(2, "+H", 1)
     # test all default adduct 
     global icglcall = [AdductIon(cglc, k) for k in keys(MSC.ADDUCT_NAME)]
+    @test @test_noerror test_show(cglc)
     @test @test_noerror [test_show(k) for k in icglcall]
     @test @test_noerror [chemicalformula(k) for k in icglcall]
     icglc = [AdductIon(cglc, Protonation())]
@@ -169,7 +170,7 @@ end
     icps = [AdductIon(cps, lossserine), AdductIon(cps, dimh)]
     icpsi1 = [AdductIon(cpsi1, lossserinei), AdductIon(cpsi1, dimh)]
     icpsi2 = [AdductIon(cpsi2, lossserine), AdductIon(cpsi2, dimh)]
-    cp1 = ChemicalPair(icps[1], AdductIon(Chemical("FA 20:4", "C20H32O2"; rt = 7.78), Deprotonation()))
+     global cp1 = ChemicalPair(icps[1], AdductIon(Chemical("FA 20:4", "C20H32O2"; rt = 7.78), Deprotonation()))
     # name, formula, elements
     @test chemicalname(cglc) == "Glucose"
     @test chemicalname(icgld[1]) == "[Glucose-d6+H]+"
@@ -196,7 +197,7 @@ end
     @test ischemicalequal(cp1, cp1)
     @test isapprox(rt(icpsi2[1]), 7.8) 
     # isotopologues
-    it1 = isotopologues_table(icglc[1], 1e5; threshold = crit(1e1, 1e-2))
+    global it1 = isotopologues_table(icglc[1], 1e5; threshold = crit(1e1, 1e-2))
     it2 = isotopologues_table(ioncore(icglc[1]), 1e5; abtype = :total, threshold = crit(1e-2, 1e-2))
     it4 = isotopologues_table("C6H12O6", 1e5; abtype = :total, threshold = crit(1e-2, 1e-2))
     @test all(>(1e2), mapreduce(x -> x.abundance, vcat, it1.Isotopologues))
@@ -224,6 +225,7 @@ end
     @test isapprox(itit10.Abundance[4], itit9.Abundance[4])
     # isobars
     # name, formula, elements
+    @test @test_noerror test_show(it1.Isotopologues[2])
     @test all(chemicalformula(it1.Isotopologues[2]) .== ["C5H13O6[13C]", "C6H13O5[17O]", "C6H12O6D"])
     @test chemicalname(it1.Isotopologues[1]) == "Isobars[[Glucose+H]+]"
     @test chemicalname(it2.Isotopologues[3]) == "Isobars[Glucose[18O], Glucose[13C2]]"
@@ -242,6 +244,7 @@ end
     @test ischemicalequal(abundantchemical(it1.Isotopologues[2]), first(it1.Isotopologues[2].chemicals))
     @test isapprox(rt(it2.Isotopologues[1]), 1.5)
     # chemicalpair
+    @test @test_noerror test_show(cp1)
     @test chemicalname(cp1) == string(chemicalname(getchemicalattr(cp1, :precursor)), " -> ", chemicalname(getchemicalattr(cp1, :product)))
     @test chemicalabbr(cp1) == string(chemicalabbr(getchemicalattr(cp1, :precursor)), " -> ", chemicalabbr(getchemicalattr(cp1, :product)))
     @test chemicalformula(cp1) == Pair(chemicalformula.([chemicalelements(cp1)...])...)
@@ -258,7 +261,7 @@ end
     ips = [AdductIon(ps, "[M-Ser]-"), AdductIon(ps, "[2M+H]+")]
     ipsi1 = [AdductIon(psi1, "[M-Ser]-"), AdductIon(psi1, "[2M+H]+")]
     ipsi2 = [AdductIon(psi2, "[M-Ser]-"), AdductIon(psi2, "[2M+H]+")]
-    clossserine = ChemicalLoss(Chemical("Serine", "C3H5NO2"))
+    global clossserine = ChemicalLoss(Chemical("Serine", "C3H5NO2"))
     # name, formula, elements 
     @test chemicalname(ps) == "PS 18:0/20:4"
     @test chemicalname(igld[1]) == "[D-Glucose[D6]+H]+"
@@ -277,7 +280,7 @@ end
     @test ischemicalequal(abundantchemical(ioncore(ipsi1[1])), abundantchemical(ioncore(ipsi1[2])))
     @test isapprox(rt(ips[1]), 7.8)
     # isotopologues
-    it3 = isotopologues_table(ipsi2[1], 1; abtype = :total, threshold = crit(1e-3, 1e-3), isobaric = false)
+    global it3 = isotopologues_table(ipsi2[1], 1; abtype = :total, threshold = crit(1e-3, 1e-3), isobaric = false)
     d = MSC.unique_elements(chemicalelements(ipsi2[1]))
     @test isapprox(isotopicabundance(glc), isotopicabundance(MSC.unique_elements(chemicalelements(glc))))
     @test isapprox(it3.Abundance[6], 
@@ -305,6 +308,7 @@ end
     )
     # isotopomers
     # name, formula, elements 
+    @test @test_noerror test_show(it3.Isotopologues[2])
     @test chemicalname(it3.Isotopologues[2]) == "[(PS 18:0[D5]/20:4)-Ser]-[13C]"
     # mmi, mz
     # other attrs
@@ -313,12 +317,17 @@ end
     @test ischemicalequal(getchemicalattr(abundantchemical(it3.Isotopologues[1]), :parent), ipsi2[1])
     @test MSC.unique_elements(getchemicalattr(it3.Isotopologues[2], :isotopes)) ==  MSC.unique_elements(["[13C]" => 1])
     # chemicalloss
+    @test @test_noerror test_show(clossserine)
     @test chemicalname(clossserine) == "Loss_Serine"
     @test chemicalabbr(clossserine) == "Loss_Serine"
     @test chemicalformula(clossserine) == chemicalformula(chemicalelements(clossserine))
     @testset "Utils" begin 
-        ct1 = crit(10)
-        ct2 = rcrit(0.2)
+        global ct1 = crit(10)
+        global ct2 = rcrit(0.2)
+        global ct3 = crit(10, 0.2)
+        @test @test_noerror test_show(ct1)
+        @test @test_noerror test_show(ct2)
+        @test @test_noerror test_show(ct3)
         qualified_peak1(x, x̂, ct) = all(c -> in(x, c), makecrit_delta(ct, x̂))
         qualified_peak2(x, x̂, ct) = any(c -> x >= c, makecrit_value(ct, x̂))
         @test !qualified_peak1(85, 100, ct1)
