@@ -36,7 +36,7 @@ Get attribute (`attr`) from `adduct_ion`. By default, it return attributes of co
 getchemicalattr(adduct_ion::AbstractAdductIon, attr::Symbol; kwargs...) = getchemicalattr(adduct_ion, Val(attr); kwargs...)
 getchemicalattr(adduct_ion::AbstractAdductIon, val_attr::Val; kwargs...) = getchemicalattr(ioncore(adduct_ion), val_attr; kwargs...)
 function getchemicalattr(adduct_ion::AbstractAdductIon, ::Val{:elements}; kwargs...) 
-    el = chemicalelements(ioncore(adduct_ion); kwargs...)
+    el = deepcopy(chemicalelements(ioncore(adduct_ion); kwargs...))
     nm = kmer(adduct_ion)
     if nm > 1
         for id in eachindex(el)
@@ -55,7 +55,7 @@ function getchemicalattr(adduct_ion::AbstractAdductIon, ::Val{:name}; kwargs...)
     c == 0 ? s : string(s, abs(c) > 1 ? abs(c) : "", c > 0 ? "+" : "-") 
 end
 function getchemicalattr(adduct_ion::AbstractAdductIon, ::Val{:formula}; kwargs...)
-    el = chemicalelements(ioncore(adduct_ion); kwargs...)
+    el = deepcopy(chemicalelements(ioncore(adduct_ion); kwargs...))
     nm = kmer(adduct_ion)
     if nm > 1
         for id in eachindex(el)

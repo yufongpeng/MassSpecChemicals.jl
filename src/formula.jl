@@ -99,19 +99,21 @@ For custumized adduct type, this function is required to make `nm` parsed into `
 set_adduct_name!(nm::AbstractString, adduct::AbstractAdduct) = push!(ADDUCTS[:NAME], nm => adduct)
 
 """
-    chemicalformula(elements::Dictionary; delim = "")
-    chemicalformula(elements::Union{<: Vector{<: Pair}, <: Dictionaries.PairDictionary}; delim = "")
+    chemicalformula(elements::Dictionary; delim = "", unique = true)
+    chemicalformula(elements::Union{<: Vector{<: Pair}, <: Dictionaries.PairDictionary}; delim = "", unique = true)
 
-Create chemical formula using given element-number pairs. 
+Create chemical formula using given element-number pairs. `delim` assigns the delimiter between each element, and `unique` determines whether combines the elements to become unique or not.
 """
-chemicalformula(elements::Union{<: Vector{<: Pair}, <: Dictionaries.PairDictionary}; delim = "") = chemicalformula(unique_elements(elements); delim)
-function chemicalformula(elements::Dictionary; delim = "")
+function chemicalformula(elements::Union{<: Vector{<: Pair}, <: Dictionaries.PairDictionary}; delim = "", unique = true)
+    unique ? chemicalformula(unique_elements(elements); delim) : join((v == 1 ? k : string(k, v) for (k, v) in elements if v != 0), delim)
+end
+function chemicalformula(elements::Dictionary; delim = "", unique = true)
     join((v == 1 ? k : string(k, v) for (k, v) in pairs(elements) if v != 0), delim)
 end
 
 """
-    unique_elements(elements::Vector{<: Pair})
-    unique_elements(elements::Dictionary)
+    unique_elements(elements::Vector{<: Pair}) -> Dictionary
+    unique_elements(elements::Dictionary) -> Dictionary
 
 Create a `Dictionary` from element-number pairs. As elements can be duplicated in the original vector, the new dictionary is convenient for updating elements number.
 """
@@ -127,7 +129,7 @@ end
 unique_elements(elements::Dictionary) = deepcopy(elements)
 
 """
-    add_elements(elements, y)
+    add_elements(elements, y) -> Dictionary
 
 Add elements in `y` to deepcopied `elements`.
 """
@@ -135,7 +137,7 @@ add_elements(elements, y) = add_elements!(deepcopy(elements), y)
 add_elements(elements::Vector, y) = add_elements!(unique_elements(elements), y)
 
 """
-    add_elements!(elements, y)
+    add_elements!(elements, y) -> Dictionary
 
 Add elements in `y` to `elements`.
 """
@@ -149,7 +151,7 @@ function add_elements!(elements::Dictionary, y::Union{<: Vector{<: Pair}, <: Dic
 end
 
 """
-    loss_elements(elements, y)
+    loss_elements(elements, y) -> Dictionary
 
 Substract elements in `y` from deepcopied `elements`.
 """
@@ -157,7 +159,7 @@ loss_elements(elements, y) = loss_elements!(deepcopy(elements), y)
 loss_elements(elements::Vector, y) = loss_elements!(unique_elements(elements), y)
 
 """
-    loss_elements!(elements, y)
+    loss_elements!(elements, y) -> Dictionary
 
 Substract elements in `y` from `elements`.
 """
@@ -184,7 +186,7 @@ function encode_isotopes(formula::AbstractString)
 end
 
 """
-    chemicalelements(formula::AbstractString)
+    chemicalelements(formula::AbstractString) -> Vector{Pair{String, Int}}
 
 Create element-number pairs from chemical formula. 
 """

@@ -1,14 +1,19 @@
 """
-    parse_chemical(name, formula; kwargs...)
-    parse_chemical(::Type{<: Chemical}, name::AbstractString, formula::AbstractString; kwargs...)
+    parse_chemical(name; kwargs...)
+    parse_chemical(::Type{<: Chemical}, name::AbstractString; kwargs...)
 
 Parse chemical name and construct a chemical object. The default type is `Chemical`. `kwargs` are attributes.
 """
 parse_chemical(name; kwargs...) = parse_chemical(Chemical, name; kwargs...)
 function parse_chemical(::Type{Chemical}, name::AbstractString; kwargs...) 
     ks = Dict{Symbol, Any}(kwargs)
-    f = get!(ks, :formula, "")
-    delete!(ks, :formula)
+    f = get!(ks, :eleements, [])
+    delete!(ks, :eleements)
+    if isempty(f) 
+        f = get!(ks, :formula, "")
+        delete!(ks, :formula)
+        f = chemicalelements(f)
+    end
     Chemical(name, f; ks...)
 end
 
@@ -84,7 +89,7 @@ getchemicalattr(cc::AbstractChemical, ::Val{:abundant_chemical}; kwargs...) = cc
 """
     getchemicalattr(chemical::Chemical, ::Val{T}; kwargs...)
     getchemicalattr(chemical::Chemical, ::Val{:name}; kwargs...)
-    getchemicalattr(chemical::Chemical, ::Val{:formula}; kwargs...) 
+    getchemicalattr(chemical::Chemical, ::Val{:formula}; unique = false, kwargs...) 
     getchemicalattr(chemical::Chemical, ::Val{:elements}; kwargs...)
     getchemicalattr(cc::Chemical, ::Val{:charge}; kwargs...)
     getchemicalattr(chemical::Chemical, ::Val{:abundant_chemical}; kwargs...)
@@ -99,8 +104,8 @@ function getchemicalattr(cc::Chemical, ::Val{T}; kwargs...) where T
     return nothing
 end
 getchemicalattr(cc::Chemical, ::Val{:name}; kwargs...) = cc.name
-getchemicalattr(cc::Chemical, ::Val{:formula}; kwargs...) = cc.formula
-getchemicalattr(cc::Chemical, ::Val{:elements}; kwargs...) = chemicalelements(cc.formula; kwargs...)
+getchemicalattr(cc::Chemical, ::Val{:elements}; kwargs...) = cc.elements
+getchemicalattr(cc::Chemical, ::Val{:formula}; unique = false, kwargs...) = chemicalformula(cc.elements; unique, kwargs...)
 getchemicalattr(cc::Chemical, ::Val{:charge}; kwargs...) = 0
 getchemicalattr(cc::Chemical, ::Val{:abundant_chemical}; kwargs...) = cc
 

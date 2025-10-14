@@ -152,7 +152,7 @@ end
 
 @testset "MassSpecChemicals.jl" begin
     # Default chemical, adduction
-    global cglc = Chemical("Glucose", "C6H12O6"; rt = 1.5, abbreviation = "Glc", SMILES = "")
+    global cglc = Chemical("Glucose", ["C" => 6, "H" => 12, "O" => 6]; rt = 1.5, abbreviation = "Glc", SMILES = "")
     cgld = parse_chemical("Glucose-d6"; formula = "C6H6D6O6", rt = 1.5, abbreviation = "Glc[D6]", SMILES = "")
     cps = Chemical("PS 18:0/20:4(5Z,8Z,11Z,14Z)", "C44H80NO10P"; rt = 7.8)
     cpsi1 = Chemical("PS[D3,13C3] 18:0/20:4(5Z,8Z,11Z,14Z)", "C41[13C]3H77D3NO10P"; rt = 7.8)
@@ -170,7 +170,7 @@ end
     icps = [AdductIon(cps, lossserine), AdductIon(cps, dimh)]
     icpsi1 = [AdductIon(cpsi1, lossserinei), AdductIon(cpsi1, dimh)]
     icpsi2 = [AdductIon(cpsi2, lossserine), AdductIon(cpsi2, dimh)]
-     global cp1 = ChemicalPair(icps[1], AdductIon(Chemical("FA 20:4", "C20H32O2"; rt = 7.78), Deprotonation()))
+    global cp1 = ChemicalPair(icps[1], AdductIon(Chemical("FA 20:4", "C20H32O2"; rt = 7.78), Deprotonation()))
     # name, formula, elements
     @test chemicalname(cglc) == "Glucose"
     @test chemicalname(icgld[1]) == "[Glucose-d6+H]+"

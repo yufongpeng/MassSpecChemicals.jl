@@ -5,19 +5,21 @@ Unstructured chemical type with its name, formula, and additional attributes.
 
 # Fields 
 * `name`: a unique chemical name (`String`).
-* `formula`: chemical formula (`String`).
+* `elements`: chemical eleemts (`Vector{Pair{String, Int}}`).
 * `attr`: additional attributes (`Vector{Pair{Symbol, Any}}`); the pairs repressent attribute names and values.
 
 # Constructors
+* `Chemical(name::AbstractString, elements::Vector{Pair{String, Int}}; kwargs_as_attr_pairs...)`
 * `Chemical(name::AbstractString, formula::AbstractString; kwargs_as_attr_pairs...)`
 """
 struct Chemical <: AbstractChemical
     name::String
-    formula::String
+    elements::Vector{Pair{String, Int}}
     attr::Vector{Pair{Symbol, Any}}
 end
 
-Chemical(name::AbstractString, formula::AbstractString; kwargs...) = Chemical(name, formula, collect(kwargs))
+Chemical(name::AbstractString, elements::Vector{Pair{String, Int}}; kwargs...) = Chemical(name, elements, collect(kwargs))
+Chemical(name::AbstractString, formula::AbstractString; kwargs...) = Chemical(name, chemicalelements(formula), collect(kwargs))
 
 """
     Isobars{T <: AbstractChemical} <: AbstractChemical
