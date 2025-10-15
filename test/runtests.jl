@@ -91,17 +91,31 @@ function getchemicalattr(m::FattyAcid, ::Val{:elements}; kwargs...)
         "O"     => 2
     ])
 end
+# function getchemicalattr(m::DiacylPS, ::Val{:elements}; kwargs...)
+#     filter(x -> last(x) > 0, [
+#         "C"     => 6 + getchemicalattr(m, :ncb) - getchemicalattr(m, :n13C), 
+#         "[13C]" => getchemicalattr(m, :n13C),
+#         "H"     => 12 + getchemicalattr(m, :ncb) * 2 - getchemicalattr(m, :ndb) * 2 - getchemicalattr(m, :nD),
+#         "D"     => getchemicalattr(m, :nD),
+#         "N"     => 1, 
+#         "O"     => 10, 
+#         "P"     => 1
+#     ])
+# end
 function getchemicalattr(m::DiacylPS, ::Val{:elements}; kwargs...)
-    filter(x -> last(x) > 0, [
-        "C"     => 6 + getchemicalattr(m, :ncb) - getchemicalattr(m, :n13C), 
-        "[13C]" => getchemicalattr(m, :n13C),
-        "H"     => 12 + getchemicalattr(m, :ncb) * 2 - getchemicalattr(m, :ndb) * 2 - getchemicalattr(m, :nD),
-        "D"     => getchemicalattr(m, :nD),
-        "N"     => 1, 
-        "O"     => 10, 
-        "P"     => 1
-    ])
+    fa1 = chemicalelements(m.fa1)
+    fa2 = chemicalelements(m.fa2)
+    i = findfirst(x -> ==(first(x), "H"), fa1)
+    fa1[i] = "H" => (last(fa1[i]) - 1)
+    i = findfirst(x -> ==(first(x), "H"), fa2)
+    fa2[i] = "H" => (last(fa2[i]) - 1)
+    i = findfirst(x -> ==(first(x), "O"), fa1)
+    fa1[i] = "O" => (last(fa1[i]) - 1)
+    i = findfirst(x -> ==(first(x), "O"), fa2)
+    fa2[i] = "O" => (last(fa2[i]) - 1)
+    filter(x -> last(x) > 0, vcat(["C" => (6 - m.headgroup[2]), "[13C]" => m.headgroup[2], "H" => (14 - m.headgroup[1]), "D" => m.headgroup[1], "N" => 1, "O" => 8, "P" => 1], fa1, fa2))
 end
+getchemicalattr(m::DiacylPS, ::Val{:formula}; unique = false, kwargs...) = chemicalformula(chemicalelements(m); unique, kwargs...)
 # getchemicalattr(m::DiacylPS, ::Val{:formula}) = 
 #     string("C", 6 + getchemicalattr(m, :ncb) - getchemicalattr(m, :n13C), 
 #         getchemicalattr(m, :n13C) > 0 ? string("[13C]", getchemicalattr(m, :n13C)) : "",
@@ -266,8 +280,8 @@ end
     @test chemicalname(ps) == "PS 18:0/20:4"
     @test chemicalname(igld[1]) == "[D-Glucose[D6]+H]+"
     @test chemicalname(ips[1]) == "[(PS 18:0/20:4)-Ser]-"
-    @test chemicalformula(ps) == chemicalformula(cps) 
-    @test chemicalformula(ipsi1[2]) == chemicalformula(icpsi1[2]) 
+    @test chemicalformula(ps) != chemicalformula(cps) 
+    @test chemicalformula(ipsi1[2]; unique = true) == chemicalformula(icpsi1[2]) 
     @test MSC.unique_elements(chemicalelements(ipsi1[1])) ==  MSC.unique_elements(vcat(chemicalelements(ioncore(ipsi1[1])), adductelements(ipsi1[1]))) 
     # mmi, mz
     @test isapprox(mz(glc, Protonation()), mz(iglc[1]))

@@ -9,7 +9,7 @@ All chemicals are instances of abstract type `AbstractChemical`.
 Charged chemicals with specific adduct or molecule loss that formed in MS (adduct ion) are instances of abstract type `AbstractAdductIon`.
 
 # Built-in chemical types
-1. `Chemical`: unstructured chemicals, storing name, formula, and other attributes; `Chemical(name::String, formula::String, attr::Vector{Pair{Symbol, Any}})`.
+1. `Chemical`: unstructured chemicals, storing name, elements, and other attributes; `Chemical(name::AbstractString, elements::Vector{Pair{String, Int}}; kwargs...)`, `Chemical(name::String, formula::String, attr::Vector{Pair{Symbol, Any}})`.
 2. `AdductIon`: charged chemicals with specific adduct or molecule loss; `AdductIon(core::AbstractChemical, adduct::AbstractAdduct)`.
 3. `Isobars`: multiple chemicals with similar m/z; `Isobars(chemical::Vector{<: AbstractChemical}, abundance::Vector{Float64})`.
 4. `Isotopomers`: multiple chemicals differed from isotopic replacement location; `Isotopomers(parent::AbstractChemical, isotopes::Vector{Pair{String, Int}})`.

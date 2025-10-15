@@ -71,7 +71,7 @@ function getchemicalattr(cc::AbstractChemical, val_attr::Val{:formula}; shallow 
     elseif shallow
         nothing
     else 
-        chemicalformula(getchemicalattr(cc, Val(:elements); shallow = true))
+        chemicalformula(getchemicalattr(cc, Val(:elements); shallow = true); kwargs...)
     end
 end
 function getchemicalattr(cc::AbstractChemical, ::Val{:elements}; shallow = false, kwargs...)
