@@ -23,9 +23,9 @@ For MS/MS precursor-product pairs, `mz_tol`, `mm_tol`, and `net_charge` are pair
 
 !!! Special precaution for applying to MS/MS precursor-product pairs
     Product must come from a single part or mutiple non-overlapping parts of precursor. Isobaric or isomeric products are not considered. For instance, 
-    * PC 18:0/18:0 and fatty acid 18:0 is valid because two fatty acids are independent and identical. 
-    * PC 18:0[D5]/18:0 and fatty acid 18:0[D5] is valid but the contribution of another fatty acid 18:0 is not considered and addional computation of this pair and summation with knowledge of fragmentation efficiency are required for the correct abundances. 
-    * PC 18:1/18:0 and fatty acid 18:0 is also valid but requires additional computation of isobaric contribution of another fatty acid 18:1. 
+    * PC 18:0/18:0 and fatty acyl 18:0 fragment is valid because two fatty acids are independent and identical. 
+    * PC 18:0[D5]/18:0 and fatty acyl 18:0[D5] fragment is valid but the contribution of another fatty acid 18:0 is not considered and addional computation of this pair and summation with knowledge of fragmentation efficiency are required for the correct abundances. 
+    * PC 18:1/18:0 and fatty acyl 18:0 fragment is also valid but requires additional computation of isobaric contribution of another fatty acid 18:1. 
 
 """
 isotopologues(cc::AbstractChemical, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = crit(0.01, 20e-6), mm_tol = crit(0.01, 20e-6)) = 
@@ -68,9 +68,9 @@ For MS/MS precursor-product pairs, `mz_tol`, `mm_tol`, and `net_charge` are pair
 
 !!! Special precaution for applying to MS/MS precursor-product pairs
     Product must come from a single part or mutiple non-overlapping parts of precursor. Isobaric or isomeric products are not considered. For instance, 
-    * PC 18:0/18:0 and fatty acid 18:0 is valid because two fatty acids are independent and identical. 
-    * PC 18:0[D5]/18:0 and fatty acid 18:0[D5] is valid but the contribution of another fatty acid 18:0 is not considered and addional computation of this pair and summation with knowledge of fragmentation efficiency are required for the correct abundances. 
-    * PC 18:1/18:0 and fatty acid 18:0 is also valid but requires additional computation of isobaric contribution of another fatty acid 18:1. 
+    * PC 18:0/18:0 and fatty acyl 18:0 fragment is valid because two fatty acids are independent and identical. 
+    * PC 18:0[D5]/18:0 and fatty acyl 18:0[D5] fragment is valid but the contribution of another fatty acid 18:0 is not considered and addional computation of this pair and summation with knowledge of fragmentation efficiency are required for the correct abundances. 
+    * PC 18:1/18:0 and fatty acyl 18:0 fragment is also valid but requires additional computation of isobaric contribution of another fatty acid 18:1. 
 
 """
 isotopologues_table(cc::AbstractChemical, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = crit(0.01, 20e-6), mm_tol = crit(0.01, 20e-6)) = 

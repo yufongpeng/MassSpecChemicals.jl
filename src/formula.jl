@@ -179,7 +179,7 @@ function encode_isotopes(formula::AbstractString)
         m, e = i
         delta = isempty(m) ? 0 : (parse(Int, m) - round(Int, ustrip(ELEMENTS[:MASS][e])))
         e = delta > 0 ? string(e, "it") * "n" ^ delta :
-            delta < 0 ? string(e, "it") * "p" ^ delta : string(e, "itz")
+            delta < 0 ? string(e, "it") * "p" ^ abs(delta) : string(e, "itz")
         f2 = replace(f2, i.match => e)
     end
     f2
@@ -210,7 +210,7 @@ function _parse_adduct(adduct::AbstractString)
         isempty(charge) ? 1 : parse(Int, only(charge))
     end
     ion = replace(ion, "[" => "")
-    nm, ion = split(ion, "M")
+    nm, ion = split(ion, "M"; limit = 2)
     nm = isempty(nm) ? 1 : parse(Int, nm)
     pos ? PosAdduct(nm, ion, charge) : NegAdduct(nm, ion, charge)
 end

@@ -17,7 +17,7 @@ adductelements(adduct_ion::AbstractAdductIon) = vcat(adductelements(ionadduct(ad
 
 The elements changed when the core chemical has isotopic labeling that is lost in adduct formation. 
 
-For instance, [M-Me]- of D-labeled PC may turn out to be [M-CD3]- rather than [M-CH3]- if Ds are on the methyl group. In this case, `adductisotopes` of [M-Me]- of PC should be `["H" => 3, "D" => -3]`.
+For instance, [M-Me]- of D-labeled PC may turn out to be [M-CD3]- rather than [M-CH3]- if Ds are on the methyl group. In this case, `adductisotopes` of [M-Me]- of the specific type of PC should be `["H" => 3, "D" => -3]`.
 """
 adductisotopes(adduct_ion::AbstractAdductIon) = Pair{String, Int}[] # ex 1D: ["H" => 1, "D" => -1]
 
@@ -50,7 +50,8 @@ function getchemicalattr(adduct_ion::AbstractAdductIon, ::Val{:name}; kwargs...)
     if occursin(" ", r)
         r = string("(", r, ")")
     end
-    s = replace(string(ionadduct(adduct_ion)), "M" => r, r"\d*[+-]$" => ""; count = 2)
+    s = replace(string(ionadduct(adduct_ion)), "M" => r; count = 1)
+    s = replace(s, r"\d*[+-]$" => ""; count = 1)
     c = charge(adduct_ion)
     c == 0 ? s : string(s, abs(c) > 1 ? abs(c) : "", c > 0 ? "+" : "-") 
 end

@@ -32,6 +32,7 @@ Charged chemicals with specific adduct or molecule loss that formed in MS (adduc
 |F|[19F]|9|19|
 |Cl|[35Cl]|17|35|
 |Ag|[108Ag]|47|108|
+|Se|[80Ag]|34|80|
 
 ## Minor Isotopes
 |Minor isotopes|Atomic number|Mass number|Alternative symbol|
@@ -49,6 +50,11 @@ Charged chemicals with specific adduct or molecule loss that formed in MS (adduc
 |[41K]|19|41||
 |[37Cl]|17|37||
 |[109Ag]|47|109||
+|[74Se]|34|74||
+|[76Se]|34|76||
+|[77Se]|34|77||
+|[78Se]|34|78||
+|[82Se]|34|82||
 
 
 By default, parent elements are considered as major isotopes possibly replaced by minor isotopes. For instance,
@@ -56,6 +62,9 @@ By default, parent elements are considered as major isotopes possibly replaced b
 * [13C][16O]O has a carbon-13, an oxygen-16, and an oxygen-16 possibly replaced by other minor isotopes.
 
 One exception is that in `parent` chemical of `Isotopomers`, parent elements are major isotopes, and the number of replacement is restricted by the field `isotopes`. 
+
+User can use `set_elements!(element, mass, abundance; minor_name = nothing)` to add new elements with mass and natural abundance of all isotopes.
+Custumized minor element names (`minor_name`) is optional.  
 
 # Adduct
 All adducts are instances of abstract type `AbstractAdduct` and `AbstractPosAdduct` or `AbstractNegAdduct`.
@@ -115,7 +124,7 @@ The following getter functions are user friendly interfaces for `getchemicalattr
 |`kmer`|`:kmer`|`Int`|number of core chemical|
 
 The following function should be extended when isotopes are involved in addut ion formation.
-* `adductisotopes`: element-number pairs; the elements changed when the core chemical has isotopic labeling that is lost during adduct formation. For instance, [M-Me]- of Deuterium-labeled PC may turn out to be [M-CD3]- rather than [M-CH3]- if Deuteriums are on the methyl group. In this case, `adductisotopes` of [M-Me]- of PC should be `["H" => 3, "D" => -3]`.
+* `adductisotopes`: element-number pairs; the elements changed when the core chemical has isotopic labeling that is lost during adduct formation. For instance, [M-Me]- of Deuterium-labeled PC may turn out to be [M-CD3]- rather than [M-CH3]- if Deuteriums are on the methyl group. In this case, `adductisotopes` of [M-Me]- of the specific type of PC should be `["H" => 3, "D" => -3]`.
 
 ### Additional Atttributes of `Isobars`
 |Function|Attr|Return type|Description|
@@ -138,7 +147,7 @@ The following function should be extended when isotopes are involved in addut io
 ### Additional Atttributes of `ChemicalLoss`
 |Function|Attr|Return type|Description|
 |--------|----|----|-----------|
-||`:chemical`|`AbstractChemical`|chemical prior to fragmentation|
+||`:chemical`|`AbstractChemical`|chemical loss from a precursor|
 
 
 ### Functions for Attributes derived from other attributes
@@ -151,8 +160,8 @@ The following function should be extended when isotopes are involved in addut io
 |`isotopicabundance`|`:elements` or `:formula`|`Float64`|isotopic abundance of a single monoisotopic chemical or formula|
 |`isotopologues`|`:elements` or `:formula`|`Vector{<:　ＡｂｓｔｒａｃｔＣｈｅｍｉｃａｌ}`|isotopologues of a single chemical or formula, and MS/MS transition|
 |`isotopologues_table`|`:elements` or `:formula`|`Table`|a table of isotopologues information|
-|`isobars_rt`|`:elements` or `:formula`, and `rt`|`Isobars`|isobars under specific m/z, mass, and rt tolerance|
-|`isobars_rt_table`|`:elements` or `:formula`, and `rt`|`Isobars`|a table of co-eluting isobars information|
+|`isobars_rt`|`:elements` or `:formula`, and `rt`|`Isobars`|isobars under specific m/z, mass, and fwhm|
+|`isobars_rt_table`|`:elements` or `:formula`, and `rt`|`Table`|a table of co-eluting isobars information|
 
 ## Functions for Attributes of `AbstractAdduct`
 |Function|Return type|Description|
@@ -176,6 +185,16 @@ There are three related functions
 * `isotopologues_table`
 
     It is similar to `isotopologues` but stores all information in a `Table`, including mass or m/z, and abundance. Multiple chemicals are supported.
+
+## Co-eluting isobars
+There are two related functions
+* `isobars_rt`
+
+    This function finds all potential isobars of a detected chemical from a library (`AbstractVector` or `Table`). It returns only isobars without any additional information.
+
+* `isotopologues_table`
+
+    This function is very similar, but stores information including difference of retention time, m/z, ID, etc, in a `Table`. Another difference is that the input chemical can be mulitple chemicals (`AbstractVector` or `Table`). 
 
 ## Other Utility Functions
 * `ischemicalequal`: whether two chemicals are chemically equivalent.
