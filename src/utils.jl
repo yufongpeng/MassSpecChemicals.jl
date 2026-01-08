@@ -131,9 +131,30 @@ makecrit_delta(c::Criteria, x) = (zero_center_interval(c.aval) + x, zero_center_
 makecrit_delta(c::Criteria{Missing}, x) = (zero_center_interval(c.rval * x) + x, )
 makecrit_delta(c::Criteria{A, Missing}, x) where A = (zero_center_interval(c.aval) + x, )
 
+function makerttol(fwhm_ion, fwhm_lib, rrt, lib)
+    fwhm = isnothing(fwhm_lib) ? vectorize(fwhm_ion) : [(fwhm_ion + x) / 2 for x in vectorize(fwhm_lib)]
+    if length(fwhm) == 1
+        [union(makecrit_delta(crit(first(fwhm)), rrt)...) for _ in eachindex(lib)]
+    elseif length(fwhm) != length(lib)
+        [union(makecrit_delta(crit(mean(fwhm)), rrt)...) for _ in eachindex(lib)]
+    else
+        [union(makecrit_delta(crit(x), rrt)...) for x in fwhm]
+    end
+end
+function collecfwhm(fwhm, exp)
+    v = vectorize(fwhm)
+    if length(v) == 1
+        repeat(v, length(exp))
+    elseif length(v) != length(exp)
+        repeat(mean(v), length(exp))
+    else
+        v
+    end
+end
+
 tuplize(x::Tuple) = x
 tuplize(x) = (x, )
 vectorize(x::AbstractVector) = x
-vectorize(x::AbstractVector, n::Int) = x[begin:begin + n]
+vectorize(x::AbstractVector, n::Int) = x[begin:begin + n - 1]
 vectorize(x) = [x]
 vectorize(x, n) = repeat([x], n)
