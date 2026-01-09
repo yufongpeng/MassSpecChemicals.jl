@@ -1,7 +1,7 @@
 name = "MassSpecChemicals"
 uuid = "a0caa3fb-cd40-4122-b5cb-396daad418a9"
 authors = ["Yu-Fong Peng <sciphypar@gmail.com>"]
-version = "0.3.3"
+version = "0.3.4"
 
 [deps]
 Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"

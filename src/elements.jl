@@ -263,7 +263,7 @@ Constants related to elements. It is a dictionary with five keys
 |F|[19F]|9|19|
 |Cl|[35Cl]|17|35|
 |Ag|[108Ag]|47|108|
-|Se|[80Ag]|34|80|
+|Se|[80Se]|34|80|
 
 # Minor Isotopes
 |Minor isotopes|Atomic number|Mass number|Alternative symbol|
