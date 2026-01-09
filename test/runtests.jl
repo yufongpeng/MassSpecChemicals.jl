@@ -173,7 +173,8 @@ end
         global cpsi1 = Chemical("PS[D3,13C3] 18:0/20:4(5Z,8Z,11Z,14Z)", "C41[13C]3H75D3NO10P"; rt = 7.8)
         global cpsi2 = Chemical("PS 18:0[D5]/20:4(5Z,8Z,11Z,14Z)", "C44H73D5NO10P"; rt = 7.8)
         global lossserine = NegAdduct(1, "-C3H6NO2", 1)
-        global lossserinei = NegAdduct(1, "-[13C]3H3D3NO2", 1)
+        # global lossserinei = NegAdduct(1, "-[13C]3H3D3NO2", 1)
+        push!(cpsi1.attr, :adductisotopes => [lossserine => ["C" => 3, "[13C]" => -3, "H" => 3, "D" => -3]])
         global dimh = PosAdduct(2, "+H", 1)
         # test all default adduct 
         global icglcall = [AdductIon(cglc, k) for k in keys(MSC.ADDUCT_NAME)]
@@ -183,7 +184,7 @@ end
         global icglc = [AdductIon(cglc, Protonation())]
         global icgld = [AdductIon("Glucose-d6", "[M+H]+"; formula = "C6H6D6O6", rt = 1.5), AdductIon("Glucose-d6", Protonation(); formula = "C6H6D6O6", rt = 1.5), AdductIon(cgld, Protonation())]
         global icps = [AdductIon(cps, lossserine), AdductIon(cps, dimh)]
-        global icpsi1 = [AdductIon(cpsi1, lossserinei), AdductIon(cpsi1, dimh)]
+        global icpsi1 = [AdductIon(cpsi1, lossserine), AdductIon(cpsi1, dimh)]
         global icpsi2 = [AdductIon(cpsi2, lossserine), AdductIon(cpsi2, dimh)]
         global cp1 = ChemicalPair(icps[1], AdductIon(Chemical("FA 20:4", "C20H32O2"; rt = 7.78), Deprotonation()))
         # name, formula, elements

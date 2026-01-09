@@ -14,12 +14,23 @@ adductelements(adduct_ion::AbstractAdductIon) = vcat(adductelements(ionadduct(ad
 
 """
     adductisotopes(adduct_ion)
+    adductisotopes(adduct_ion::AbstractAdductIon{Chemical})
 
-The elements changed when the core chemical has isotopic labeling that is lost in adduct formation. 
+The elements changed when the core chemical has isotopic labeling that is lost in adduct formation. The returned vector is element-number pairs.
 
-For instance, [M-Me]- of D-labeled PC may turn out to be [M-CD3]- rather than [M-CH3]- if Ds are on the methyl group. In this case, `adductisotopes` of [M-Me]- of the specific type of PC should be `["H" => 3, "D" => -3]`.
+For instance, [M-Me]- (`Demethyl`) of Deuterium-labeled phosphatidylcholine (PC) may turn out to be [M-CD3]- rather than [M-CH3]- if Deuteriums are labeled on the methyl group of choline (`DLMC_PC`). In this case, `adductisotopes(::AbstractAdductIon{Demethyl, DLMC_PC})` should return `["H" => 3, "D" => -3]`.
+
+For `adduct_ion::AbstractAdductIon{Chemical}`, user can define an attribute `:adductisotopes` for `ioncore(chemical)`. The attribute should be ionadduct-(elements-number pairs) pairs. 
+This function finds this attribute, and extracts the value of key `ionadduct(adduct_ion)`. If the attribute or the key does not exist, empty vector is returned. 
 """
 adductisotopes(adduct_ion::AbstractAdductIon) = Pair{String, Int}[] # ex 1D: ["H" => 1, "D" => -1]
+function adductisotopes(adduct_ion::AbstractAdductIon{Chemical})
+    a = ionadduct(adduct_ion)
+    v = getchemicalattr(ioncore(adduct_ion), :adductisotopes)
+    isnothing(v) && return Pair{String, Int}[]
+    i = findfirst(x -> first(x) == a, v)
+    isnothing(i) ? Pair{String, Int}[] : last(v[i])
+end
 
 """
     getchemicalattr(adduct_ion::AbstractAdductIon, attr::Symbol; kwargs...)
