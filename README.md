@@ -183,7 +183,7 @@ When isotopes are involved in addut ion formation for an object `adduct_ion` whi
         adductisotopes(adduct_ion::AbstractAdductIon{Affected_Adduct, T})
     ```
     
-    `adductisotopes` returns element-number pairs which are the elements changed when the core chemical has isotopic labeling that is lost during adduct formation. For instance, [M-Me]- (`Demethyl`) of Deuterium-labeled phosphatidylcholine (`DL_PC`) may turn out to be [M-CD3]- rather than [M-CH3]- if Deuteriums are labeled on the methyl group of choline. In this case, extend `adductisotopes(::AbstractAdductIon{Demethyl, DL_PC})` such that
+    `adductisotopes` returns element-number pairs which are the elements changed when the core chemical has isotopic labeling that is lost during adduct formation. For instance, [M-Me]- (`Demethylation`) of Deuterium-labeled phosphatidylcholine (`DL_PC`) may turn out to be [M-CD3]- rather than [M-CH3]- if Deuteriums are labeled on the methyl group of choline. In this case, extend `adductisotopes(::AbstractAdductIon{Demethylation, DL_PC})` such that
     ```julia 
         # dlmcpc: [M-Me]- of Deuterium-labeled phosphatidylcholine on the methyl group of choline
         # dlpc: [M-Me]- of Deuterium-labeled phosphatidylcholine on other part
@@ -193,7 +193,7 @@ When isotopes are involved in addut ion formation for an object `adduct_ion` whi
 2. If `ChemicalType` is `Chemical`, define an attribute `:adductisotopes` for the `chemical`. The attribute should be ionadduct-(element-number pairs) pairs. `adductisotopes` finds this attribute, and extracts the value of key `adduct`. If the attribute or the key does not exist, empty vector is returned. 
     ```julia
         chemical = Chemical("18:0 PC-d9", "	C44H79NO8PD9")
-        push!(chemical.attr, :adductisotopes => [Demethyl() => ["H" => 3, "D" => -3]])
+        push!(chemical.attr, :adductisotopes => [Demethylation() => ["H" => 3, "D" => -3]])
         adductisotopes(Adduction(chemical, "[M+H]+")) == []
         adductisotopes(Adduction(chemical, "[M-Me]-")) == ["H" => 3, "D" => -3]
     ```

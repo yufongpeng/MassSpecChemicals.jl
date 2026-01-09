@@ -18,7 +18,7 @@ adductelements(adduct_ion::AbstractAdductIon) = vcat(adductelements(ionadduct(ad
 
 The elements changed when the core chemical has isotopic labeling that is lost in adduct formation. The returned vector is element-number pairs.
 
-For instance, [M-Me]- (`Demethyl`) of Deuterium-labeled phosphatidylcholine (PC) may turn out to be [M-CD3]- rather than [M-CH3]- if Deuteriums are labeled on the methyl group of choline (`DLMC_PC`). In this case, `adductisotopes(::AbstractAdductIon{Demethyl, DLMC_PC})` should return `["H" => 3, "D" => -3]`.
+For instance, [M-Me]- (`Demethylation`) of Deuterium-labeled phosphatidylcholine (PC) may turn out to be [M-CD3]- rather than [M-CH3]- if Deuteriums are labeled on the methyl group of choline (`DLMC_PC`). In this case, `adductisotopes(::AbstractAdductIon{Demethylation, DLMC_PC})` should return `["H" => 3, "D" => -3]`.
 
 For `adduct_ion::AbstractAdductIon{Chemical}`, user can define an attribute `:adductisotopes` for `ioncore(chemical)`. The attribute should be ionadduct-(elements-number pairs) pairs. 
 This function finds this attribute, and extracts the value of key `ionadduct(adduct_ion)`. If the attribute or the key does not exist, empty vector is returned. 
@@ -29,7 +29,7 @@ function adductisotopes(adduct_ion::AbstractAdductIon{Chemical})
     v = getchemicalattr(ioncore(adduct_ion), :adductisotopes)
     isnothing(v) && return Pair{String, Int}[]
     i = findfirst(x -> first(x) == a, v)
-    isnothing(i) ? Pair{String, Int}[] : last(v[i])
+    isnothing(i) ? Pair{String, Int}[] : convert(Vector{Pair{String, Int}}, last(v[i])) # Force convert to pair as attr does not restrict input type
 end
 
 """
