@@ -10,8 +10,7 @@ export
     # Types
     AbstractChemical, Chemical, FormulaChemical, ChemicalSeries, Isobars, Isotopomers, ChemicalLoss, ChemicalPair,
     AbstractAdductIon, AdductIon,
-    AbstractPosAdduct, AbstractNegAdduct,
-    PosAdduct, NegAdduct,
+    AbstractAdduct, Adduct, ComposedAdduct, 
     LossElectron,
     Protonation,
     ProtonationNLH2O,
@@ -20,7 +19,7 @@ export
     DiProtonation,
     TriProtonation,
     AddNH4,
-    AddHNH4,
+    AddNH4Protonation,
     Add2NH4,
     Sodization,
     SodizationProtonation,
@@ -56,7 +55,7 @@ export
     Demethylation,
 
     # Setter 
-    set_adduct_abbr!, set_adduct_name!, ADDUCTS, ELEMENTS, set_elements!, 
+    set_adduct!, set_addabbr!, set_element!, 
 
     # Parser
     parse_chemical, parse_adduct, 

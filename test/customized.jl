@@ -131,15 +131,15 @@ chemicalncb(m::DiacylPS; kwargs...) = chemicalncb(m.fa1; kwargs...) + chemicalnc
 chemicalndb(m::DiacylPS; kwargs...) = chemicalndb(m.fa1; kwargs...) + chemicalndb(m.fa2; kwargs...)
 
 # Interface AbstractAdduct
-struct DeSerine <: AbstractNegAdduct end
-set_adduct_name!("[M-Ser]-", DeSerine())
+struct DeSerine <: AbstractAdduct end
+set_adduct!("[M-Ser]-", DeSerine())
 adductelements(::DeSerine) = ["C" => -3, "H" => -6, "N" => -1, "O" => -2]
 adductformula(::DeSerine) = "-Ser"
 kmer(::DeSerine) = 1
 charge(::DeSerine) = -1
 
-struct Halfprotonation <: AbstractPosAdduct end
-set_adduct_name!("[2M+H]+", Halfprotonation())
+struct Halfprotonation <: AbstractAdduct end
+set_adduct!("[2M+H]+", Halfprotonation())
 adductelements(::Halfprotonation) = ["H" => 1]
 adductformula(::Halfprotonation) = "+H"
 kmer(::Halfprotonation) = 2

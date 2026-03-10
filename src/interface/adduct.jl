@@ -14,14 +14,12 @@ isadductequaltransform(x::AbstractAdduct) = x
 
 """
     istransformedadductequal(x::AbstractAdduct, y::AbstractAdduct)
-    istransformedadductequal(x::PosAdduct, y::PosAdduct)
-    istransformedadductequal(x::NegAdduct, y::NegAdduct)
+    istransformedadductequal(x::Adduct, y::Adduct)
 
 Determine whether two chemicals are chemically equivalent after applying `isadductequaltransform`. It defaults to `isequal`.
 """
 istransformedadductequal(x::AbstractAdduct, y::AbstractAdduct) = isequal(x, y)
-istransformedadductequal(x::PosAdduct, y::PosAdduct) = kmer(x) == kmer(y) && ncharge(x) == ncharge(y) && Set(mapreduce(a -> split(a, "-"), vcat, split(adductformula(x), "+"))) == Set(mapreduce(a -> split(a, "-"), vcat, split(adductformula(y), "+")))
-istransformedadductequal(x::NegAdduct, y::NegAdduct) = kmer(x) == kmer(y) && ncharge(x) == ncharge(y) && Set(mapreduce(a -> split(a, "-"), vcat, split(adductformula(x), "+"))) == Set(mapreduce(a -> split(a, "-"), vcat, split(adductformula(y), "+")))
+istransformedadductequal(x::Adduct, y::Adduct) = kmer(x) == kmer(y) && charge(x) == charge(y) && Set(mapreduce(a -> split(a, "-"), vcat, split(adductformula(x), "+"))) == Set(mapreduce(a -> split(a, "-"), vcat, split(adductformula(y), "+")))
 
 """
     kmer(adduct::AbstractAdduct)
@@ -29,6 +27,7 @@ istransformedadductequal(x::NegAdduct, y::NegAdduct) = kmer(x) == kmer(y) && nch
 The number of core chemical. For instance, 2 for [2M+H]+.
 """
 kmer(adduct::T) where {T <: AbstractAdduct} = hasfield(T, :kmer) ? adduct.kmer : 1
+kmer(adduct::ComposedAdduct) = kmer(first(adduct.adducts))
 
 """
     adductformula(adduct::AbstractAdduct)
@@ -36,25 +35,24 @@ kmer(adduct::T) where {T <: AbstractAdduct} = hasfield(T, :kmer) ? adduct.kmer :
 The formula for adduct. For instance,  `"-H"` for [M-H]-, `"+OAc"` for [M+OAc]-.
 """
 adductformula(adduct::T) where {T <: AbstractAdduct} = hasfield(T, :formula) ? adduct.formula : nothing
+adductformula(adduct::ComposedAdduct) = mapreduce(adductformula, *, adduct.adducts)
 
 """
     charge(adduct::AbstractAdduct)
 
-The charge state of adduct; positve for cation, negative for anioni. For instance, -1 for [M-H]-, 2 for [M+2H]2+. The default value for positive and negative adduct are 1 and -1.
+The charge state of adduct; positve for cation, negative for anioni. For instance, -1 for [M-H]-, 2 for [M+2H]2+. The default value is 1.
 """
-charge(adduct::T) where {T <: AbstractPosAdduct} = 1
-charge(adduct::T) where {T <: AbstractNegAdduct} = -1
-charge(adduct::PosAdduct) = adduct.ncharge
-charge(adduct::NegAdduct) = -1 * adduct.ncharge
+charge(adduct::AbstractAdduct) = 1
+charge(adduct::Adduct) = adduct.charge
+charge(adduct::ComposedAdduct) = sum(charge, adduct.adducts)
 
 """
     ncharge(adduct::AbstractAdduct)
 
 The number of charges of adduct. For instance, 1 for [M-H]-, 2 for [M+2H]2+.
 """
-ncharge(adduct::T) where {T <: AbstractAdduct} = abs(charge(adduct))
-ncharge(adduct::PosAdduct) = adduct.ncharge
-ncharge(adduct::NegAdduct) = adduct.ncharge
+ncharge(adduct::AbstractAdduct) = abs(charge(adduct))
+ncharge(adduct::Adduct) = abs(adduct.charge)
 
 """
     adductelements(adduct::AbstractAdduct)
@@ -90,6 +88,8 @@ function adductelements(adduct::AbstractAdduct)
     filter!(x -> !isempty(first(x)), el)
 end
 
+adductelements(adduct::ComposedAdduct) = mapreduce(adductelements, vcat, adduct.adducts)
+
 adductformula(::LossElectron) = ""
 adductformula(::Protonation) = "+H"
 adductformula(::ProtonationNLH2O) = "+H-H2O"
@@ -98,7 +98,7 @@ adductformula(::ProtonationNL3H2O) = "+H-3H2O"
 adductformula(::DiProtonation) = "+2H"
 adductformula(::TriProtonation) = "+3H"
 adductformula(::AddNH4) = "+NH4"
-adductformula(::AddHNH4) = "+H+NH4"
+adductformula(::AddNH4Protonation) = "+H+NH4"
 adductformula(::Add2NH4) = "+2NH4"
 adductformula(::Sodization) = "+Na"
 adductformula(::SodizationProtonation) = "+Na+H"
@@ -139,7 +139,7 @@ charge(::ProtonationNL3H2O) = 1
 charge(::DiProtonation) = 2
 charge(::TriProtonation) = 3
 charge(::AddNH4) = 1
-charge(::AddHNH4) = 2
+charge(::AddNH4Protonation) = 2
 charge(::Add2NH4) = 2
 charge(::Sodization) = 1
 charge(::SodizationProtonation) = 2
@@ -180,7 +180,7 @@ adductelements(::ProtonationNL3H2O) = ["H" => -5, "O" => -3]
 adductelements(::DiProtonation) = ["H" => 2]
 adductelements(::TriProtonation) = ["H" => 3]
 adductelements(::AddNH4) = ["N" => 1, "H" => 4]
-adductelements(::AddHNH4) = ["N" => 1, "H" => 5]
+adductelements(::AddNH4Protonation) = ["N" => 1, "H" => 5]
 adductelements(::Add2NH4) = ["N" => 2, "H" => 8]
 adductelements(::Sodization) = ["Na" => 1]
 adductelements(::SodizationProtonation) = ["Na" => 1, "H" => 1]

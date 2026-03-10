@@ -3,14 +3,14 @@ cgld = parse_chemical("Glucose-d6"; formula = "C6H6D6O6", retentiontime = 1.5, a
 cps = Chemical("PS 18:0/20:4(5Z,8Z,11Z,14Z)", "C44H78NO10P"; retentiontime = 7.8)
 cpsi1 = Chemical("PS[D3,13C3] 18:0/20:4(5Z,8Z,11Z,14Z)", "C41[13C]3H75D3NO10P"; retentiontime = 7.8)
 cpsi2 = Chemical("PS 18:0[D5]/20:4(5Z,8Z,11Z,14Z)", "C44H73D5NO10P"; retentiontime = 7.8)
-lossserine = NegAdduct(1, "-C3H6NO2", 1)
+lossserine = Adduct(1, "-C3H6NO2", -1)
 cserine = Chemical("Serine", "C3H5NO2")
 cserinei = Chemical("Serine[D3,13C3]", "[13C]3H2D3NO2")
 clossserine = ChemicalLoss(cserine)
 
 # lossserinei = NegAdduct(1, "-[13C]3H3D3NO2", 1)
 push!(cpsi1.property, :adductisotopes => [lossserine => ["C" => 3, "[13C]" => -3, "H" => 3, "D" => -3]])
-dimh = PosAdduct(2, "+H", 1)
+dimh = Adduct(2, "+H", 1)
 # test all default adduct 
 icglcall = [AdductIon(cglc, k) for k in keys(MSC.ADDUCT_NAME)]
 

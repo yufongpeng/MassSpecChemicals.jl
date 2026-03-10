@@ -10,7 +10,7 @@ pt = Table(;
     Chemical = [
         AdductIon(GQ1, "[M+2H]2+"), 
         AdductIon(GQ1, "[M+H+Na]2+"), 
-        AdductIon(GQ1, "[M+2H-2H2O]2+"), 
+        AdductIon(GQ1, "[M+2H-H2O]2+"), 
         AdductIon(GD3, "[M+H]+"), 
         AdductIon(f948, "[M+H-H2O]+"), 
         AdductIon(f657, "[M+H-H2O]+"), 
@@ -24,7 +24,7 @@ pt = Table(;
             AdductIon(f657, "[M+H-H2O]+"), 
             AdductIon(f366, "[M+H-H2O]+"), 
             AdductIon(galnac, "[M+H-H2O]+"), 
-            AdductIon(nana, "[M+H-H2O]+"),
+            AdductIon(nana, "[M+H-H2O]+"), 
             AdductIon(nana, "[M+H-2H2O]+"),
             AdductIon(GQ1, "[M+2H]2+"), 
             AdductIon(GQ1, "[M+2H-H2O]2+"), 

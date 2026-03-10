@@ -4,233 +4,223 @@
 Abstract type for all kinds of adducts.
 """
 abstract type AbstractAdduct end
-"""
-    AbstractPosAdduct <: AbstractAdduct
-
-Abstract type for adducts with positive charges.
-"""
-abstract type AbstractPosAdduct <: AbstractAdduct end
-"""
-    AbstractNegAdduct <: AbstractAdduct
-
-Abstract type for adducts with negative charges.
-"""
-abstract type AbstractNegAdduct <: AbstractAdduct end
 
 """
-    PosAdduct <: AbstractPosAdduct
+    ComposedAdduct{T} <: AbstractAdduct
 
-Adduct with positive charges. 
+Adducts composed of multiple adducts and chemical gain or loss.
 
-This general adduct cannot be applied to isotopic labeled chemicals which the adduct ion formed with isotopes loss. Adducts with isotopic labeled have to be defined as different adduct.
+# Fields
+* `adducts::Vector{T}`
+
+Attribute `kmer` is determined by the first adduct, and `charge` is determined by the sum of charges of all adducts.
+"""
+struct ComposedAdduct{T} <: AbstractAdduct
+    adducts::Vector{T}
+end 
+
+"""
+    Adduct <: AbstractAdduct
+
+Gemeric adduct. 
+
+# Fields
+* `kmer::Int`
+* `formula::String`
+* `charge::Int`
 
 It is recommended to define custumized adduct when this condition may occur for more custumized use.
 """
-struct PosAdduct <: AbstractPosAdduct
+struct Adduct <: AbstractAdduct
     kmer::Int
     formula::String
-    ncharge::Int
+    charge::Int
 end
 
 """
-    NegAdduct <: AbstractNegAdduct
-
-Adduct with negative charges. 
-
-This general adduct cannot be applied to isotopic labeled chemicals which the adduct ion formed with isotopes loss. Adducts with isotopic labeled have to be defined as different adduct.
-
-It is recommended to define custumized adduct when this condition may occur for more custumized use.
-"""
-struct NegAdduct <: AbstractNegAdduct
-    kmer::Int
-    formula::String
-    ncharge::Int
-end
-
-"""
-    LossElectron <: AbstractPosAdduct
+    LossElectron <: AbstractAdduct
 
 [M]+
 """
-struct LossElectron <: AbstractPosAdduct end
+struct LossElectron <: AbstractAdduct end
 """
-    Protonation <: AbstractPosAdduct
+    Protonation <: AbstractAdduct
 
 [M+H]+
 """
-struct Protonation <: AbstractPosAdduct end
+struct Protonation <: AbstractAdduct end
 """
-    ProtonationNLH2O <: AbstractPosAdduct
+    ProtonationNLH2O <: AbstractAdduct
 
 [M+H-H2O]+
 """
-struct ProtonationNLH2O <: AbstractPosAdduct end
+struct ProtonationNLH2O <: AbstractAdduct end
 """
-    ProtonationNL2H2O <: AbstractPosAdduct
+    ProtonationNL2H2O <: AbstractAdduct
 
 [M+H-2H2O]+
 """
-struct ProtonationNL2H2O <: AbstractPosAdduct end
+struct ProtonationNL2H2O <: AbstractAdduct end
 """
-    ProtonationNL3H2O <: AbstractPosAdduct
+    ProtonationNL3H2O <: AbstractAdduct
 
 [M+H-3H2O]+
 """
-struct ProtonationNL3H2O <: AbstractPosAdduct end
+struct ProtonationNL3H2O <: AbstractAdduct end
 """
-    DiProtonation <: AbstractPosAdduct
+    DiProtonation <: AbstractAdduct
 
 [M+2H+]2+
 """
-struct DiProtonation <: AbstractPosAdduct end
+struct DiProtonation <: AbstractAdduct end
 """
-    TriProtonation <: AbstractPosAdduct
+    TriProtonation <: AbstractAdduct
 
 [M+3H]3+
 """
-struct TriProtonation <: AbstractPosAdduct end
+struct TriProtonation <: AbstractAdduct end
 """
-    AddNH4 <: AbstractPosAdduct
+    AddNH4 <: AbstractAdduct
 
 [M+NH4]+
 """
-struct AddNH4 <: AbstractPosAdduct end
+struct AddNH4 <: AbstractAdduct end
 """
-    AddHNH4 <: AbstractPosAdduct
+    AddNH4Protonation <: AbstractAdduct
 
 [M+H+NH4]2+
 """
-struct AddHNH4 <: AbstractPosAdduct end
+struct AddNH4Protonation <: AbstractAdduct end
 """
-    Add2NH4 <: AbstractPosAdduct
+    Add2NH4 <: AbstractAdduct
 
 [M+2NH4]2+
 """
-struct Add2NH4 <: AbstractPosAdduct end
+struct Add2NH4 <: AbstractAdduct end
 """
-    Sodization <: AbstractPosAdduct
+    Sodization <: AbstractAdduct
 
 [M+Na]+
 """
-struct Sodization <: AbstractPosAdduct end
+struct Sodization <: AbstractAdduct end
 """
-    SodizationProtonation <: AbstractPosAdduct
+    SodizationProtonation <: AbstractAdduct
 
 [M+Na+H]2+
 """
-struct SodizationProtonation <: AbstractPosAdduct end
+struct SodizationProtonation <: AbstractAdduct end
 """
-    DiSodization <: AbstractPosAdduct
+    DiSodization <: AbstractAdduct
 
 [M+2Na]2+
 """
-struct DiSodization <: AbstractPosAdduct end
+struct DiSodization <: AbstractAdduct end
 """
-    SodizationAddNH4 <: AbstractPosAdduct
+    SodizationAddNH4 <: AbstractAdduct
 
 [M+Na+NH4]2+
 """
-struct SodizationAddNH4 <: AbstractPosAdduct end
+struct SodizationAddNH4 <: AbstractAdduct end
 """
-    Potassiation <: AbstractPosAdduct
+    Potassiation <: AbstractAdduct
 
 [M+K]+
 """
-struct Potassiation <: AbstractPosAdduct end
+struct Potassiation <: AbstractAdduct end
 """
-    PotassiationProtonation <: AbstractPosAdduct
+    PotassiationProtonation <: AbstractAdduct
 
 [M+K+H]2+
 """
-struct PotassiationProtonation <: AbstractPosAdduct end
+struct PotassiationProtonation <: AbstractAdduct end
 """
-    DiPotassiation <: AbstractPosAdduct
+    DiPotassiation <: AbstractAdduct
 
 [M+2K]2+
 """
-struct DiPotassiation <: AbstractPosAdduct end
+struct DiPotassiation <: AbstractAdduct end
 """
-    Lithiation <: AbstractPosAdduct
+    Lithiation <: AbstractAdduct
 
 [M+Li]+
 """
-struct Lithiation <: AbstractPosAdduct end
+struct Lithiation <: AbstractAdduct end
 """
-    LithiationProtonation <: AbstractPosAdduct
+    LithiationProtonation <: AbstractAdduct
 
 [M+Li+H]2+
 """
-struct LithiationProtonation <: AbstractPosAdduct end
+struct LithiationProtonation <: AbstractAdduct end
 """
-    DiLithiation <: AbstractPosAdduct
+    DiLithiation <: AbstractAdduct
 
 [M+2Li]2+
 """
-struct DiLithiation <: AbstractPosAdduct end
+struct DiLithiation <: AbstractAdduct end
 """
-    Silveration <: AbstractPosAdduct
+    Silveration <: AbstractAdduct
 
 [M+Ag]+
 """
-struct Silveration <: AbstractPosAdduct end
+struct Silveration <: AbstractAdduct end
 
 """
-    AddElectron <: AbstractNegAdduct
+    AddElectron <: AbstractAdduct
 
 [M]-
 """
-struct AddElectron <: AbstractNegAdduct end
+struct AddElectron <: AbstractAdduct end
 """
-    Deprotonation <: AbstractNegAdduct
+    Deprotonation <: AbstractAdduct
 
 [M-H]-
 """
-struct Deprotonation <: AbstractNegAdduct end
+struct Deprotonation <: AbstractAdduct end
 """
-    DeprotonationNLH2O <: AbstractNegAdduct
+    DeprotonationNLH2O <: AbstractAdduct
 
 [M-H-H2O]-
 """
-struct DeprotonationNLH2O <: AbstractNegAdduct end
+struct DeprotonationNLH2O <: AbstractAdduct end
 """
-    DiDeprotonation <: AbstractNegAdduct
+    DiDeprotonation <: AbstractAdduct
 
 [M-2H]2-
 """
-struct DiDeprotonation <: AbstractNegAdduct end
+struct DiDeprotonation <: AbstractAdduct end
 """
-    TriDeprotonation <: AbstractNegAdduct
+    TriDeprotonation <: AbstractAdduct
 
 [M-3H]3-
 """
-struct TriDeprotonation <: AbstractNegAdduct end
+struct TriDeprotonation <: AbstractAdduct end
 """
-    AddOAc <: AbstractNegAdduct
+    AddOAc <: AbstractAdduct
 
 [M+OAc]-
 """
-struct AddOAc <: AbstractNegAdduct end
+struct AddOAc <: AbstractAdduct end
 """
-    AddOFo <: AbstractNegAdduct
+    AddOFo <: AbstractAdduct
 
 [M+OFo]-
 """
-struct AddOFo <: AbstractNegAdduct end
+struct AddOFo <: AbstractAdduct end
 """
-    Fluoridation <: AbstractNegAdduct
+    Fluoridation <: AbstractAdduct
 
 [M+F]-
 """
-struct Fluoridation <: AbstractNegAdduct end
+struct Fluoridation <: AbstractAdduct end
 """
-    Chloridation <: AbstractNegAdduct
+    Chloridation <: AbstractAdduct
 
 [M+Cl]-
 """
-struct Chloridation <: AbstractNegAdduct end
+struct Chloridation <: AbstractAdduct end
 """
-    Demethylation <: AbstractNegAdduct
+    Demethylation <: AbstractAdduct
 
 [M-Me]-
 """
-struct Demethylation <: AbstractNegAdduct end
+struct Demethylation <: AbstractAdduct end

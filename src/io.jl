@@ -6,7 +6,7 @@ function Base.show(io::IO, adduct::T) where {T <: AbstractAdduct}
     radd = adductformula(adduct)
     isnothing(radd) && return print(io, T)
     k = kmer(adduct) > 1 ? string("[", kmer(adduct), "M") : "[M"
-    print(io, k, radd, "]", ncharge(adduct) > 1 ? ncharge(adduct) : "", adduct isa AbstractPosAdduct ? "+" : "-")
+    print(io, k, radd, "]", ncharge(adduct) > 1 ? ncharge(adduct) : "", charge(adduct) > 0 ? "+" : "-")
 end
 
 function Base.show(io::IO, adduct_ion::AbstractAdductIon)

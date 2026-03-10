@@ -12,8 +12,8 @@ const ADDUCT_NAME = Dict{String, AbstractAdduct}(
     "[M+2H]2+"      => DiProtonation(),
     "[M+3H]3+"      => TriProtonation(),
     "[M+NH4]+"      => AddNH4(),
-    "[M+H+NH4]2+"   => AddHNH4(),
-    "[M+NH4+H]2+"   => AddHNH4(),
+    "[M+H+NH4]2+"   => AddNH4Protonation(),
+    "[M+NH4+H]2+"   => AddNH4Protonation(),
     "[M+2NH4]2+"    => Add2NH4(),
     "[M+Na]+"       => Sodization(),
     "[M+Na+H]2+"    => SodizationProtonation(),
@@ -62,41 +62,43 @@ const ADDUCT_NAME = Dict{String, AbstractAdduct}(
 
 )
 
-"""
-    const ADDUCTS
+adducts_doc = """
+    adducts_name()
+    adducts_abbr()
 
-Constants related to adducts. It is a dictionary with two keys
-* `:NAME`: adduct type for an adduct expression.
-* `ABBR`: conversion of abbreviation to valid chemical formula.
+Access constants related to adducts. 
+* `adducts_name`: adduct type for an adduct expression.
+* `adducts_abbr`: conversion of abbreviation to valid chemical formula.
 """
-const ADDUCTS = Dict(
-    :NAME => ADDUCT_NAME,
-    :ABBR => ADDUCT_ABBR
-)
+@doc adducts_doc
+adducts_name() = ADDUCT_NAME
+
+@doc adducts_doc
+adducts_abbr() = ADDUCT_ABBR
 
 """
-    set_adduct_abbr!(abbr::AbstractString, fm::AbstractString)
+    set_addabbr!(abbr::AbstractString, fm::AbstractString)
 
 Set `abbr` to be an abbreviation of adduct formula `fm`. 
 """
-function set_adduct_abbr!(abbr::AbstractString, fm::AbstractString)
+function set_addabbr!(abbr::AbstractString, fm::AbstractString)
     rabbr = Regex(string("(?<=[+-])", abbr, "(?=[+-\\]])"))
-    ADDUCTS[:ABBR][rabbr] = fm
+    adducts_abbr()[rabbr] = fm
 end
-set_adduct_abbr!(abbr::Regex, fm::AbstractString) = push!(ADDUCTS[:ABBR], abbr => fm)
+set_addabbr!(abbr::Regex, fm::AbstractString) = push!(adducts_abbr(), abbr => fm)
 
 for (abbr, fm) in [("FA-H", "HCOO"), ("FA", "HCOOH"), ("OFo", "HCOO"), ("FoO", "HCOO"), ("AcA-H", "CH3COO"), ("AcA", "CH3COOH"), ("OAc", "CH3COO"), ("AcO", "CH3COO"), ("Me", "CH3")]
-    set_adduct_abbr!(abbr, fm)
+    set_addabbr!(abbr, fm)
 end
 
 """
-    set_adduct_name!(nm::AbstractString, adduct::AbstractAdduct)
+    set_adduct!(nm::AbstractString, adduct::AbstractAdduct)
 
-Set `nm` to be `adduct` for parsing specific adduct string by `ADDUCTS[:NAME]`.
+Set `nm` to be `adduct` for parsing adduct.
 
 For custumized adduct type, this function is required to make `nm` parsed into `adduct` by `parse_adduct`. 
 """
-set_adduct_name!(nm::AbstractString, adduct::AbstractAdduct) = push!(ADDUCTS[:NAME], nm => adduct)
+set_adduct!(nm::AbstractString, adduct::AbstractAdduct) = push!(adducts_name(), nm => adduct)
 
 """
     chemicalformula(elements::Dictionary; delim = "", unique = true) -> String
@@ -203,19 +205,20 @@ end
 
 Parse string into `AbstractAdduct`. This function searches string in `ELEMENTS[:NAME]` first, then destructs the input string and constructs a `PosAdduct` or `NegAdduct`.
 """
-parse_adduct(adduct::AbstractString) = get(ADDUCTS[:NAME], string(adduct), _parse_adduct(adduct))
+parse_adduct(adduct::AbstractString) = get(adducts_name(), string(adduct), _parse_adduct(adduct))
 function _parse_adduct(adduct::AbstractString)
-    adduct = replace(adduct, ADDUCTS[:ABBR]...)
+    adduct = replace(adduct, adducts_abbr()...)
     ion, charge = split(adduct, "]")
-    pos = endswith(charge, "+")
+    pos = endswith(charge, "+") ? 1 : -1
     charge = split(charge, "+", keepempty = false)
     charge = isempty(charge) ? 1 : begin
         charge = split(only(charge), "-", keepempty = false)
         isempty(charge) ? 1 : parse(Int, only(charge))
     end
+    charge *= pos
     ion = replace(ion, "[" => "")
     nm, ion = split(ion, "M"; limit = 2)
     nm = isempty(nm) ? 1 : parse(Int, nm)
-    pos ? PosAdduct(nm, ion, charge) : NegAdduct(nm, ion, charge)
+    Adduct(nm, ion, charge) 
 end
 parse_adduct(adduct::AbstractAdduct) = adduct

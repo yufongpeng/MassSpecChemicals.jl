@@ -43,9 +43,13 @@ end
         @test chemicalsmiles(cgld) == ""
         @test ischemicalequal(ioncore(icpsi1[1]), cpsi1)
         @test ionadduct(icpsi2[1]) == lossserine
-        @test isadductequal(PosAdduct(2, "+Na+H-H2O", 1), PosAdduct(2, "-H2O+H+Na", 1))
-        @test isadductequal(NegAdduct(2, "-H-H2O", 1), NegAdduct(2, "-H2O-H", 1))
-        @test !isadductequal(PosAdduct(2, "+Na+H-H2O", 1), NegAdduct(2, "-H2O-H", 1))
+        @test isadductequal(Adduct(2, "+Na+H-H2O", 1), Adduct(2, "-H2O+H+Na", 1))
+        @test isadductequal(Adduct(2, "-H-H2O", -1), Adduct(2, "-H2O-H", -1))
+        @test !isadductequal(Adduct(2, "+Na+H-H2O", 1), Adduct(2, "-H2O-H", -1))
+        @test kmer(ComposedAdduct([Protonation(), AddNH4()])) == 1
+        @test charge(ComposedAdduct([Protonation(), AddNH4()])) == 2
+        @test adductformula(ComposedAdduct([Protonation(), AddNH4()])) == "+H+NH4"
+        @test adductelements(ComposedAdduct([Protonation(), AddNH4()])) == ["H" => 1, "N" => 1, "H" => 4]
         @test kmer(icgld[1]) == 1
         @test charge(icgld[1]) == 1
         @test ncharge(cglc) == 0
@@ -262,7 +266,7 @@ end
     @testset "New elements" begin 
         m = [23.98504168, 24.985836966, 25.982592972]
         a = [0.78965, 0.1001, 0.11025]
-        set_elements!("Mg", m , a)
+        set_element!("Mg", m , a)
         @test isapprox(mmi("Mg"), m[1])
         @test isapprox(molarmass("Mg"), m'a)
     end
