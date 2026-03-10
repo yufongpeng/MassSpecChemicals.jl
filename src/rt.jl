@@ -11,15 +11,15 @@ Keyword arguments `libchemical`, `libmz`, `librt`, and `libfwhm` specify the col
 Tolerance can be a number or criteria, representing maximum allowed difference. For criteria with multiple allowed intervals, lying in any of them is considered to fulfill the criteria. 
 """
 function isobars_rt(ion::AbstractChemical, lib::AbstractVector{T}; fwhm_exp = 0.2, fwhm_lib = nothing, mz_tol = crit(0.01, 20e-6)) where {T <: AbstractChemical}
-    isnan(rt(ion)) && return T[]
-    rrt = rt(ion)
+    isnan(retentiontime(ion)) && return T[]
+    rrt = retentiontime(ion)
     rmz1 = mz(ion)
     mz_tol = union(makecrit_delta(crit(mz_tol), rmz1)...)
     rt_tol = makerttol(fwhm_exp, fwhm_lib, rrt, lib)
     c = T[]
     for (i, rt_tol_) in zip(lib, rt_tol)
         ischemicalequal(ion, i) && continue
-        irt = rt(i)
+        irt = retentiontime(i)
         isnan(irt) && continue
         in(irt, rt_tol_) || continue
         imz1 = mz(i)
@@ -50,7 +50,7 @@ Keyword arguments `expchemical`, `expmz`, `exprt`, and `expfwhm` specify the col
 Keyword arguments `libid` and `expid` determine whether creates columns to store row id of `lib` or `exp`.
 """
 isobars_rt_table(ion::AbstractChemical, lib::AbstractVector{T}; fwhm_exp = 0.2, fwhm_lib = nothing, mz_tol = crit(0.01, 20e-6)) where {T <: AbstractChemical} = 
-    isobars_rt_table(ion, rt(ion), mz(ion), lib; fwhm_exp, fwhm_lib, mz_tol)
+    isobars_rt_table(ion, retentiontime(ion), mz(ion), lib; fwhm_exp, fwhm_lib, mz_tol)
 function isobars_rt_table(ion::AbstractChemical, rrt, rmz1, lib::AbstractVector{T}; fwhm_exp = 0.2, fwhm_lib = nothing, mz_tol = crit(0.01, 20e-6)) where {T <: AbstractChemical}
     isnan(rrt) && return nothing
     mz_tol = union(makecrit_delta(crit(mz_tol), rmz1)...)
@@ -62,7 +62,7 @@ function isobars_rt_table(ion::AbstractChemical, rrt, rmz1, lib::AbstractVector{
     Δmzp = Float64[]
     for (i, rt_tol_) in zip(lib, rt_tol)
         ischemicalequal(ion, i) && continue
-        irt = rt(i)
+        irt = retentiontime(i)
         isnan(irt) && continue
         in(irt, rt_tol_) || continue
         imz1 = mz(i)
@@ -106,7 +106,7 @@ function isobars_rt_table(exp::Table, lib::AbstractVector{T}; fwhm_lib = nothing
     expmz = isnothing(expmz) ? nothing : Symbol(expmz)
     exprt = isnothing(exprt) ? nothing : Symbol(exprt)
     expfwhm = isnothing(expfwhm) ? nothing : Symbol(expfwhm)
-    rrt = isnothing(exprt) ? rt.(getproperty(exp, expchemical)) : getproperty(exp, exprt)
+    rrt = isnothing(exprt) ? retentiontime.( getproperty(exp, expchemical)) : getproperty(exp, exprt)
     rmz1 = isnothing(expmz) ? mz.(getproperty(exp, expchemical)) : getproperty(exp, expmz)
     fwhm_exp = isnothing(expfwhm) ? [0.2 for _ in eachindex(exp)] : getproperty(exp, expfwhm)
     if length(exp) < Threads.nthreads()
@@ -131,11 +131,11 @@ function isobars_rt(ion::AbstractChemical, lib::Table; fwhm_exp = 0.2, libchemic
     libmz = isnothing(libmz) ? nothing : Symbol(libmz)
     librt = isnothing(librt) ? nothing : Symbol(librt)
     libfwhm = isnothing(libfwhm) ? nothing : Symbol(libfwhm)
-    isnan(rt(ion)) && return eltype(getproperty(lib, libchemical))[]
+    isnan(retentiontime(ion)) && return eltype(getproperty(lib, libchemical))[]
     getmz = isnothing(libmz) ? (i -> mz(getproperty(i, libchemical))) : (i -> getproperty(i, libmz))
-    getrt = isnothing(librt) ? (i -> rt(getproperty(i, libchemical))) : (i -> getproperty(i, librt))
+    getrt = isnothing(librt) ? (i -> retentiontime(getproperty(i, libchemical))) : (i -> getproperty(i, librt))
     fwhm = isnothing(libfwhm) ? [fwhm_exp for _ in eachindex(lib)] : (getproperty(lib, libfwhm) .+ fwhm_exp) ./ 2
-    rrt = rt(ion)
+    rrt = retentiontime(ion)
     rmz1 = mz(ion)
     mz_tol = union(makecrit_delta(crit(mz_tol), rmz1)...)
     rt_tol = [union(makecrit_delta(crit(x), rrt)...) for x in fwhm]
@@ -152,11 +152,11 @@ function isobars_rt(ion::AbstractChemical, lib::Table; fwhm_exp = 0.2, libchemic
     c
 end
 isobars_rt_table(ion::AbstractChemical, lib::Table; fwhm_exp = 0.2, libid = true, libchemical = :AdductIon, libmz = :MZ, librt = :RT, libfwhm = :FWHM, mz_tol = crit(0.01, 20e-6)) = 
-    isobars_rt_table(ion, rt(ion), mz(ion), lib; fwhm_exp, libid, libchemical = Symbol(libchemical), libmz = isnothing(libmz) ? nothing : Symbol(libmz), librt = isnothing(librt) ? nothing : Symbol(librt), libfwhm = isnothing(libfwhm) ? nothing : Symbol(libfwhm), mz_tol)
+    isobars_rt_table(ion, retentiontime(ion), mz(ion), lib; fwhm_exp, libid, libchemical = Symbol(libchemical), libmz = isnothing(libmz) ? nothing : Symbol(libmz), librt = isnothing(librt) ? nothing : Symbol(librt), libfwhm = isnothing(libfwhm) ? nothing : Symbol(libfwhm), mz_tol)
 function isobars_rt_table(ion::AbstractChemical, rrt, rmz1, lib::Table; fwhm_exp = 0.2, libid = true, libchemical = :AdductIon, libmz = :MZ, librt = :RT, libfwhm = :FWHM, mz_tol = crit(0.01, 20e-6))
     isnan(rrt) && return nothing
     getmz = isnothing(libmz) ? (i -> mz(getproperty(i, libchemical))) : (i -> getproperty(i, libmz))
-    getrt = isnothing(librt) ? (i -> rt(getproperty(i, libchemical))) : (i -> getproperty(i, librt))
+    getrt = isnothing(librt) ? (i -> retentiontime(getproperty(i, libchemical))) : (i -> getproperty(i, librt))
     fwhm = isnothing(libfwhm) ? [fwhm_exp for _ in eachindex(lib)] : (getproperty(lib, libfwhm) .+ fwhm_exp) ./ 2
     mz_tol = union(makecrit_delta(crit(mz_tol), rmz1)...)
     rt_tol = [union(makecrit_delta(crit(x), rrt)...) for x in fwhm]
@@ -220,7 +220,7 @@ function isobars_rt_table(exp::Table, lib::Table; expid = true, expchemical = :A
     expmz = isnothing(expmz) ? nothing : Symbol(expmz)
     exprt = isnothing(exprt) ? nothing : Symbol(exprt)
     expfwhm = isnothing(expfwhm) ? nothing : Symbol(expfwhm)
-    rrt = isnothing(exprt) ? rt.(getproperty(exp, expchemical)) : getproperty(exp, exprt)
+    rrt = isnothing(exprt) ? retentiontime.( getproperty(exp, expchemical)) : getproperty(exp, exprt)
     rmz1 = isnothing(expmz) ? mz.(getproperty(exp, expchemical)) : getproperty(exp, expmz)
     fwhm_exp = isnothing(expfwhm) ? [0.2 for _ in eachindex(exp)] : getproperty(exp, expfwhm)
     if length(exp) < Threads.nthreads()

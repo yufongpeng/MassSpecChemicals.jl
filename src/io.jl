@@ -58,3 +58,7 @@ function Base.show(io::IO, c::Criteria{A, B}) where {A <: IntervalSet, B <: Miss
     print(io, repr_ri(c.aval), ", ")
     print(io, "missing)")
 end
+
+function Base.show(io::IO, spec::Spectrum)
+    print(io, "Spectrum of ", round(spec.initial_mass, digits = 4), " ~ ", round(spec.initial_mass + (length(spec.spectrum) - 1) * spec.binsize, digits = 4))
+end

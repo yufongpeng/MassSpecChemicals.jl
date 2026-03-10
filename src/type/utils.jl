@@ -44,3 +44,8 @@ struct Criteria{A, R}
     aval::A
     rval::R
 end
+
+value_error(x, y) = x - y
+relative_error(x, y) = 2 * (x - y) / (x + y) 
+percentage_error(x, y) = 2 * (x - y) / (x + y) * 100
+ppm_error(x, y) = 2 * (x - y) / (x + y) * 10e6

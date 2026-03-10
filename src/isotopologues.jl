@@ -1,25 +1,33 @@
-# Use Isotopes wrapper?
 """
-    isotopologues(chemical::AbstractChemical, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = crit(0.01, 20e-6), mm_tol = crit(0.01, 20e-6))
-    isotopologues(formula::AbstractString, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = crit(0.01, 20e-6), mm_tol = crit(0.01, 20e-6), net_charge = 0)
-    isotopologues(chemicalpair::ChemicalPair, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), mm_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6))) 
-    isotopologues(formulapair::Pair{<: AbstractString, <: AbstractString}, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), mm_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), net_charge = (1, 1))
+    Isotopologues(chemical; abundance = 1, abtype = :max, threshold = rcrit(1e-4))
+    Isotopologues(formula; charge = 1, abundance = 1, abtype = :max, threshold = rcrit(1e-4))
+    Isotopologues(chemicalpair; abundance = 1, abtype = :max, threshold = rcrit(1e-4), proportion = 1) 
+    Isotopologues(formulapair; charge = 1, loss = 0, abundance = 1, abtype = :max, threshold = rcrit(1e-4), proportion = 1) 
+    Isotopologues(tbl; threshold = rcrit(1e-4), kwargs...)
+    Isotopologues(chemicals; kwargs...)
 
-Isotopologues of a single `chemical`, `formula`, or MS/MS precursor-product pairs (`chemicalpair`, and `formulapair`). Only isotopic abundance of parent elements are considered, and isotopes are viewed as intentionally labeled elements. 
+A `Table` of isotopologues of 
+* `chemical::AbstractChemical`: a single chemical entity.
+* `formula::AbstractString`: a chemical formula.
+* `chemicalpair::ChemicalPair`: MS/MS precursor-product pair.
+* `formulapair::Pair`: MS/MS precursor-product pair of `formula`s, 
+* `tbl::Table`: multiple chemicals in column `Chemical` with abundance in column `Abundance` (optional). 
+* `chemicals::Vector`: multiple chemicals.
+
+Only isotopic abundance of parent elements are considered, and isotopes are viewed as intentionally labeled elements. 
 
 * `abundance` sets the abundance of the isotope specified by `abtype`. 
 * `abtype`
     * `:max`: the most abundant isotopologue.
     * `:input`: the input isotopologue.
+    * `:list`: sum of listed isotopologues.
     * `:total`: sum of total isotopologues.
-* `threshold` can be a number or criteria, representing the lower limit of abundance. 
-* `isobaric` determines whether groups isobars based on given tolerance. If the input is a subtype of `AbstractChemical`, it creates an `Isobars`; otherwise, it groups formulas as a vector. 
-* `mz_tol` and `mm_tol` are tolerances of m/z and molecular mass for isobars.
-    * number: acceptable range of absolute value, i.e. 0.01 for ±0.01
-    * criteria: acceptable range of absolute and relative value, i.e. `crit(0.01, 20e-6)` for ±0.01 or 20 ppm error.
-* `net_charge`: charges (positive or negative) of `formula`.
+* `threshold` can be a number or criteria, representing the lower limit of abundance (absolute and/or relative to maximal value of each spectrum). 
+* `proportion`: proportion of fragmentation relative to precursor . 
+* `charge` specifys charge for chemicals without intrinsic charge (pure formula). 
+* `loss` specifys charge for chemical losses without intrinsic charge (pure formula). 
 
-For MS/MS precursor-product pairs, `mz_tol`, `mm_tol`, and `net_charge` are pairs representing values for precursor and product, repectively. Product can also be neutral loss or chemical loss (`ChemicalLoss` or formula starting with `-`).
+For MS/MS precursor-product pairs, product can be neutral loss or ion loss (`ChemicalLoss` or formula starting with `-`).
 
 !!! Special precaution for applying to MS/MS precursor-product pairs
     Product must come from a single part or mutiple non-overlapping parts of precursor. Isobaric or isomeric products are not considered. For instance, 
@@ -28,43 +36,244 @@ For MS/MS precursor-product pairs, `mz_tol`, `mm_tol`, and `net_charge` are pair
     * PC 18:1/18:0 and fatty acyl 18:0 fragment is also valid but requires additional computation of isobaric contribution of another fatty acid 18:1. 
 
 """
-isotopologues(cc::AbstractChemical, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = crit(0.01, 20e-6), mm_tol = crit(0.01, 20e-6)) = 
-    _isotopologues(cc, abundance; abtype, threshold, isobaric, mz_tol, mm_tol, table = false)
+function Isotopologues(input_chemical::AbstractChemical; 
+        id = (1, ), 
+        abundance = 1, 
+        abtype = :max, 
+        threshold = rcrit(1e-4), 
+        proportion = [1]
+    ) 
+    net_charge = charge(input_chemical)
+    it = _isotopologues_elements(chemicalelements(input_chemical), abundance, abtype, threshold, net_charge)
+    mass = it.Mass ./ max(1, abs(net_charge))
+    chemical = Isotopomers.(input_chemical, it.Element)
+    if net_charge == 0 
+        Table(; ID = [id for _ in eachindex(chemical)], Chemical = chemical, Mass1 = mass, Abundance1 = it.Abundance) 
+    else
+        Table(; ID = [id for _ in eachindex(chemical)], Chemical = chemical, MZ1 = mass, Abundance1 = it.Abundance) 
+    end
+end
 
-isotopologues(::Isobars, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = crit(0.01, 20e-6), mm_tol = crit(0.01, 20e-6)) = throw(ArgumentError("`Isobars` is not supported by `isotopologues`"))
-isotopologues(::Isotopomers, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = crit(0.01, 20e-6), mm_tol = crit(0.01, 20e-6)) = throw(ArgumentError("`Isotopomers` is not supported by `isotopologues`"))
-isotopologues(formula::AbstractString, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = crit(0.01, 20e-6), mm_tol = crit(0.01, 20e-6), net_charge = 0) = 
-    _isotopologues(formula, abundance; abtype, threshold, isobaric, mz_tol, mm_tol, net_charge, table = false)
+Isotopologues(input_chemical::AbstractString; 
+        id = (1, ), 
+        charge = 1, 
+        abundance = 1, 
+        abtype = :max, 
+        threshold = rcrit(1e-4),
+        proportion = [1]) = 
+    Isotopologues(ChemicalSeries(input_chemical; charge); id, abundance, abtype, threshold, proportion)
 
-isotopologues(cc::ChemicalPair, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), mm_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6))) = 
-    _isotopologues(cc, abundance; abtype, threshold, isobaric, mz_tol, mm_tol, table = false)
+# Isotopologues(formula::Tuple{<: AbstractString, Int}; 
+#         id = (1, ), 
+#         abundance = 1, 
+#         abtype = :max, 
+#         threshold = rcrit(1e-4),
+#         proportion = 1) = 
+#     Isotopologues(ChemicalSeries(formula); id, abundance, abtype, threshold, proportion)
 
-isotopologues(formula::Pair{<: AbstractString, AbstractString}, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), mm_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), net_charge = (1, 1)) = 
-    _isotopologues(formula, abundance; abtype, threshold, isobaric, mz_tol, mm_tol, net_charge, table = false)
-# isotopolgues_msn
+function Isotopologues(cp::ChemicalPair; 
+        precursor_table = nothing, 
+        id = ntuple(i -> 1, msstage(cp)), 
+        precursor = nothing, 
+        elements_precursor = nothing, 
+        element_precursor = nothing, 
+        isotope_precursor = nothing, 
+        abundance = 1, 
+        abtype = :max, 
+        threshold = rcrit(1e-4),
+        proportion = [1 for i in 1:msstage(cp)]
+    ) 
+    if isnothing(precursor)
+        precursor = analyzedprecursor(cp)
+    end
+    if isnothing(elements_precursor)
+        elements_precursor = chemicalelements(precursor)
+    end
+    if isnothing(element_precursor) || isnothing(isotope_precursor)
+        element_precursor = filter(x -> haskey(elements_isotopes(), first(x)) && last(x) != 0, elements_precursor)
+        isotope_precursor = filter(x -> !haskey(elements_isotopes(), first(x)) && last(x) != 0, elements_precursor)
+    end
+    product = detectedchemical(cp; precursor)
+    elements_product = chemicalelements(product)
+    net_charge = charge(product)
+    element_product = unique_elements(filter(x -> haskey(elements_isotopes(), first(x)) && last(x) != 0, elements_product))
+    isotope_product = unique_elements(filter(x -> !haskey(elements_isotopes(), first(x)) && last(x) != 0, elements_product))
+    element_residual = loss_elements(element_precursor, element_product)
+    proportion = vectorize(proportion)
+    prop = isempty(proportion) ? 1 : pop!(proportion)
+    if isnothing(precursor_table)
+        precursor_table = Isotopologues(cp.precursor; id = id[begin:end - 1], abundance = abundance / prop, abtype, threshold, proportion)
+    end
+    nms = length(id)
+    colab = Symbol(string("Abundance", nms - 1))
+    itp = Table(; Element = [detectedisotopes(x) for x in precursor_table.Chemical], Abundance = getproperty(precursor_table, colab) .* prop)
+    it = _isotopologues_elements_ms2(itp, isotope_precursor, element_product, isotope_product, element_residual, abundance, abtype, threshold, net_charge)
+    mass = it.Mass ./ max(1, abs(net_charge))
+    raw_product = inputchemical(cp.product)
+    if raw_product isa ChemicalLoss
+        precursors_element = detectedelements.(precursor_table.Chemical)
+        chemical = [ChemicalPair(precursor_table.Chemical[r.ID], ChemicalLoss(Isotopomers(raw_product.chemical, loss_elements(precursors_element[r.ID], r.Element)))) for r in it]
+    else
+        chemical = [ChemicalPair(precursor_table.Chemical[r.ID], Isotopomers(raw_product, r.Element)) for r in it]
+    end
+    abpre = map(1:nms - 1) do i 
+        s = Symbol(string("Abundance", i))
+        s => [getproperty(precursor_table, s)[r.ID] for r in it]
+    end
+    if net_charge == 0 
+        mspre = map(1:nms - 1) do i 
+            s = Symbol(string("Mass", i))
+            s => [getproperty(precursor_table, s)[r.ID] for r in it]
+        end
+        Table(; ID = [id for _ in eachindex(chemical)], Chemical = chemical, mspre..., [Symbol(string("Mass", nms)) => mass]..., abpre..., [Symbol(string("Abundance", nms)) => it.Abundance]...) 
+    else
+        mspre = map(1:nms - 1) do i 
+            s = Symbol(string("MZ", i))
+            s => [getproperty(precursor_table, s)[r.ID] for r in it]
+        end
+        Table(; ID = [id for _ in eachindex(chemical)], Chemical = chemical, mspre..., [Symbol(string("MZ", nms)) => mass]..., abpre..., [Symbol(string("Abundance", nms)) => it.Abundance]...) 
+    end
+end
+
+function Isotopologues(input_chemical::Pair; 
+        precursor_table = nothing, 
+        id = nothing, 
+        charge = 1, 
+        loss = 0, 
+        precursor = nothing, 
+        elements_precursor = nothing, 
+        element_precursor = nothing, 
+        isotope_precursor = nothing, 
+        abundance = 1, 
+        abtype = :max, 
+        threshold = rcrit(1e-4),
+        proportion = nothing
+    ) 
+    cp = ChemicalSeries(input_chemical; charge, loss)
+    Isotopologues(cp; precursor_table, id = isnothing(id) ? ntuple(i -> 1, msstage(cp)) : id, precursor, elements_precursor, element_precursor, isotope_precursor, abundance, abtype, threshold, proportion = isnothing(proportion) ? [1 for i in 1:msstage(cp)] : proportion)
+end
+
+function Isotopologues(mztable::Table; threshold = rcrit(1e-4), kwargs...)
+    :Chemical in propertynames(mztable) || throw(ArgumentError("No column `Chemical` in input table."))
+    mztable = Table(mztable; Chemical = ChemicalSeries.(mztable.Chemical; kwargs...))
+    allequal(msstage, mztable.Chemical) || throw(ArgumentError("Chemicals have to be in the same MS stage."))
+    kwargs = Dict(kwargs...)
+    vec_key = Symbol[]
+    if :charge in keys(kwargs)
+        delete!(kwargs, :charge)
+    end
+    if :loss in keys(kwargs)
+        delete!(kwargs, :loss)
+    end
+    ab_icol = findlast(x -> startswith(x, "Abundance"), string.(propertynames(mztable)))
+    if !isnothing(ab_icol)
+        mztable = Table(mztable; abundance = getproperty(mztable, propertynames(mztable)[ab_icol]))
+        push!(vec_key, :abundance)
+        delete!(kwargs, :abundance)
+    elseif !isnothing(get(kwargs, :abundance, nothing))
+        mztable = Table(mztable; abundance = vectorize(get(kwargs, :abundance, nothing), length(mztable)))
+        push!(vec_key, :abundance)
+        delete!(kwargs, :abundance)
+    end
+    if !in(:ID, propertynames(mztable))
+        msn = msstage(first(mztable.Chemical)) - 1
+        mztable = Table(mztable; ID = [(i, ntuple(j -> 1, msn)...) for i in eachindex(mztable)])
+    end
+    # if haskey(kwargs, :threshold)
+    #     kwargs[:threshold] = acrit(minimum(makecrit_value(crit(kwargs[:threshold]), maximum(mztable.Abundance))))
+    # end
+
+    # if colcharge in propertynames(mztable)
+    #     mztable = Table(mztable; net_charge = getproperty(mztable, colcharge))
+    #     push!(vec_key, :net_charge)
+    #     delete!(kwargs, :net_charge)
+    # elseif !isnothing(get(kwargs, :net_charge, nothing))
+    #     mztable = Table(mztable; net_charge => vectorize(get(kwargs, :net_charge, nothing), length(mztable)))
+    #     push!(vec_key, :net_charge)
+    #     delete!(kwargs, :net_charge)
+    # end
+    # del = Int[]
+    # for (i, p) in enumerate(colpreserve)
+    #     if !in(p, propertynames(mztable))
+    #         @warn "Column `$p` does not exist. Ignore this column."
+    #         push!(del, i)
+    #     elseif p == :Chemical || p == :MZ || p == :Abundance
+    #         @warn "Column `$p` is preserved. Ignore this column."
+    #         push!(del, i)
+    #     end
+    # end
+    # colpreserve = deleteat!(collect(colpreserve), del)
+    if length(mztable) < Threads.nthreads()
+        tbl = Table(vcat((Isotopologues(r.Chemical; id = r.ID, [k => getproperty(r, k) for k in vec_key]..., threshold, kwargs...) for r in mztable)...))
+        # mapreduce(vcat, mztable) do r
+        #     x = Isotopologues(getproperty(r, colchemical); id = getproperty(r, colid), [k => getproperty(r, k) for k in vec_key]..., kwargs...)
+        #     Table(x; (map(colpreserve) do p
+        #         p => vectorize(getproperty(r, p), length(x))
+        #     end)...)
+        # end |> Table
+    else
+        t = Vector{Table}(undef, length(mztable))
+        Threads.@threads for i in eachindex(t)
+            t[i] = Isotopologues(mztable.Chemical[i]; id = mztable.ID[i], [k => getproperty(mztable, k)[i] for k in vec_key]..., threshold, kwargs...)
+            # x = Isotopologues(getproperty(mztable, colchemical)[i]; [k => getproperty(mztable, k)[i] for k in vec_key]..., kwargs...)
+            # t[i] = Table(x; (map(colpreserve) do p
+            #     p => vectorize(getproperty(mztable, p)[i], length(x))
+            # end)...)
+        end
+        tbl = Table(; (map(propertynames(t[1])) do p
+            p => ChainedVector(getproperty.(t, p))
+        end)...)
+    end
+    # spectrum specific threshold ?
+    colab = propertynames(tbl)[findlast(x -> startswith(x, "Abundance"), string.(propertynames(tbl)))]
+    ab = getproperty(tbl, colab)
+    abundance_cutoff = minimum(makecrit_value(crit(threshold), maximum(ab)))
+    id = findall(>=(abundance_cutoff), ab)
+    tbl[id]
+end
+
+Isotopologues(v::Vector; kwargs...) = Isotopologues(Table(; Chemical = v); kwargs...) 
+
+# function Isotopologues(v::Vector{<: AbstractString}; charge = nothing, kwargs...) 
+#     isnothing(charge) ? Isotopologues(Table(; Chemical = v); kwargs...) : 
+#         Isotopologues(Table(; Chemical = tuple.(v, charge)); kwargs...)
+# end
+
+Isotopologues(::Isobars; kwargs...) = throw(ArgumentError("`Isobars` is not supported by `Isotopologues.`"))
+Isotopologues(::Isotopomers; kwargs...) = throw(ArgumentError("`Isotopomers` is not supported by `Isotopologues.`"))
+Isotopologues(::ChemicalLoss; kwargs...) = throw(ArgumentError("`ChemicalLoss` is not supported by `Isotopologues.`"))
+
 """
-    isotopologues_table(chemical::AbstractChemical, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = crit(0.01, 20e-6), mm_tol = crit(0.01, 20e-6))
-    isotopologues_table(formula::AbstractString, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = crit(0.01, 20e-6), mm_tol = crit(0.01, 20e-6), net_charge = 0)
-    isotopologues_table(chemicalpair::ChemicalPair, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), mm_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6))) 
-    isotopologues_table(formulapair::Pair{<: AbstractString, <: AbstractString}, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), mm_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), net_charge = (1, 1)) 
-    isotopologues_table(tbl::Table; colchemical = :Chemical, colabundance = :Abundance, abundance = 1, colpreserve = setdiff(propertynames(tbl), [colchemical, colabundance]), kwargs...)
-    isotopologues_table(v::Vector, abundance = 1; kwargs...)
+    TandemIsotopologues(chemical; product = nothing, proportion = nothing, abundance = 1, abtype = :max, threshold = rcrit(1e-4))
+    TandemIsotopologues(formula; charge = 1, product = nothing, proportion = nothing, abundance = 1, abtype = :max, threshold = rcrit(1e-4))
+    TandemIsotopologues(chemicalpair; product = nothing, proportion = nothing, abundance = 1, abtype = :max, threshold = rcrit(1e-4)) 
+    TandemIsotopologues(formulapair; charge = 1, loss = 0, product = nothing, proportion = nothing, abundance = 1, abtype = :max, threshold = rcrit(1e-4)) 
+    TandemIsotopologues(tbl; threshold = rcrit(1e-4), kwargs...)
+    TandemIsotopologues(chemicals; kwargs...)
 
-A `Table` of isotopologues of a single `chemical`, `formula`, MS/MS precursor-product pairs (`chemicalpair`, and `formulapair`), or multiple chemicals in `v` or column `colchemical` of `tbl`. Only isotopic abundance of parent elements are considered, and isotopes are viewed as intentionally labeled elements. 
+A `Table` of isotopologues of the following chemicals and their products. 
+* `chemical::AbstractChemical`: a single chemical entity.
+* `formula::AbstractString`: a chemical formula.
+* `chemicalpair::ChemicalPair`: MS/MS precursor-product pair.
+* `formulapair::Pair`: MS/MS precursor-product pair of `formula`s, 
+* `tbl::Table`: multiple chemicals in column `Chemical` with abundance in column `Abundance` (optional). 
+* `chemicals::Vector`: multiple chemicals.
 
-* `abundance` sets the abundance of the isotope specified by `abtype`. 
+Only isotopic abundance of parent elements are considered, and isotopes are viewed as intentionally labeled elements. 
+
+* `abundance` sets the abundance of the isotope of the product with the largest proportion of fragmentation. The exact isotope is specified by `abtype`. 
 * `abtype`
     * `:max`: the most abundant isotopologue.
     * `:input`: the input isotopologue.
+    * `:list`: sum of listed isotopologues.
     * `:total`: sum of total isotopologues.
-* `threshold` can be a number or criteria, representing the lower limit of abundance. 
-* `isobaric` determines whether groups isobars based on given tolerance. If the input is a subtype of `AbstractChemical`, it creates an `Isobars`; otherwise, it groups formulas as a vector. 
-* `mz_tol` and `mm_tol` are tolerances of m/z and molecular mass for isobars.
-    * number: acceptable range of absolute value, i.e. 0.01 for ±0.01
-    * criteria: acceptable range of absolute and relative value, i.e. `crit(0.01, 20e-6)` for ±0.01 or 20 ppm error.
-* `net_charge`: charges (positive or negative) of `formula`.
+* `threshold` can be a number or criteria, representing the lower limit of abundance (absolute and/or relative to maximal value of each spectrum). 
+* `product::Vector`: product chemicals. It can also be column `Product` in `tbl`.
+* `proportion::Vector`: proportion of fragmentation relative to precursor. It can also be column `Proportion` in `tbl`.
+* `charge` specifys charge for chemicals without intrinsic charge (pure formula). 
+* `loss` specifys charge for chemical losses without intrinsic charge (pure formula). 
 
-For MS/MS precursor-product pairs, `mz_tol`, `mm_tol`, and `net_charge` are pairs representing values for precursor and product, repectively. Product can also be neutral loss or chemical loss (`ChemicalLoss` or formula starting with `-`).
+For MS/MS precursor-product pairs, product can be neutral loss or ion loss (`ChemicalLoss` or formula starting with `-`).
 
 !!! Special precaution for applying to MS/MS precursor-product pairs
     Product must come from a single part or mutiple non-overlapping parts of precursor. Isobaric or isomeric products are not considered. For instance, 
@@ -73,72 +282,176 @@ For MS/MS precursor-product pairs, `mz_tol`, `mm_tol`, and `net_charge` are pair
     * PC 18:1/18:0 and fatty acyl 18:0 fragment is also valid but requires additional computation of isobaric contribution of another fatty acid 18:1. 
 
 """
-isotopologues_table(cc::AbstractChemical, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = crit(0.01, 20e-6), mm_tol = crit(0.01, 20e-6)) = 
-    _isotopologues(cc, abundance; abtype, threshold, isobaric, mz_tol, mm_tol, table = true)
-
-isotopologues_table(formula::AbstractString, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = crit(0.01, 20e-6), mm_tol = crit(0.01, 20e-6), net_charge = 0) = 
-    _isotopologues(formula, abundance; abtype, threshold, isobaric, mz_tol, mm_tol, net_charge, table = true)
-    
-isotopologues_table(cc::ChemicalPair, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), mm_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6))) = 
-    _isotopologues(cc, abundance; abtype, threshold, isobaric, mz_tol, mm_tol, table = true)
-
-isotopologues_table(formula::Pair{<: AbstractString, <: AbstractString}, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), mm_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), net_charge = (1, 1)) = 
-    _isotopologues(formula, abundance; abtype, threshold, isobaric, mz_tol, mm_tol, net_charge, table = true)
-
-function isotopologues_table(tbl::Table; colchemical = :Chemical, colabundance = :Abundance, abundance = 1, colpreserve = setdiff(propertynames(tbl), [colchemical, colabundance]), kwargs...)
-    colchemical in propertynames(tbl) || throw(ArgumentError("Column `$colchemical` does not exist."))
-    abundance = colabundance in propertynames(tbl) ? getproperty(tbl, colabundance) : vectorize(abundance, length(tbl))
-    del = Int[]
-    for (i, p) in enumerate(colpreserve)
-        if !in(p, propertynames(tbl))
-            @warn "Column `$p` does not exist. Ignore this column."
-            push!(del, i)
-        elseif p == :Chemical || p == :MZ || p == :Abundance
-            @warn "Column `$p` is preserved. Ignore this column."
-            push!(del, i)
-        end
-    end
-    colpreserve = deleteat!(collect(colpreserve), del)
-    if length(tbl) < Threads.nthreads()
-        mapreduce(vcat, tbl, abundance) do r, m
-            x = isotopologues_table(getproperty(r, colchemical), m; kwargs...)
-            Table(x; (map(colpreserve) do p
-                p => vectorize(getproperty(r, p), length(x))
-            end)...)
-        end |> Table
+function TandemIsotopologues(input_chemical::AbstractChemical; 
+            charge = 1, 
+            loss = 0, 
+            abundance = 1, 
+            abtype = :max, 
+            threshold = rcrit(1e-4), 
+            id = nothing, 
+            precursor_table = nothing, 
+            product = nothing, 
+            proportion = nothing
+        )
+    isnothing(product) && throw(ArgumentError("Require keyword argument `product`."))
+    product = ChemicalSeries.(product; charge, loss)
+    all(x -> msstage(x) < 2, product) || throw(ArgumentError("Products should not MS/MS pairs."))
+    proportion = if isnothing(proportion) 
+        repeat(vcat([1 for i in 1:msstage(input_chemical)], 1/length(product)), length(product))
     else
-        t = Vector{Table}(undef, length(tbl))
+        [vectorize(v, msstage(input_chemical)) for v in vectorize(proportion, length(product))]
+    end
+    abundance = vectorize(abundance, length(product)) .* last.(proportion) ./ maximum(last.(proportion))
+    precursor = detectedchemical(input_chemical)
+    elements_precursor = chemicalelements(input_chemical)
+    element_precursor = filter(x -> haskey(elements_isotopes(), first(x)) && last(x) != 0, elements_precursor)
+    isotope_precursor = filter(x -> !haskey(elements_isotopes(), first(x)) && last(x) != 0, elements_precursor)
+    id = if isnothing(id) 
+        isnothing(precursor_table) ? msstage(input_chemical) : first(precursor_table.ID)
+    else
+        id 
+    end
+    if isnothing(precursor_table)
+        tbl = vcat((Isotopologues(ChemicalPair(input_chemical, product[i]); 
+            id = (id..., i),
+            precursor_table, 
+            abundance = abundance[i],
+            proportion = proportion[i], 
+            abtype, 
+            threshold, 
+            precursor, 
+            elements_precursor,
+            element_precursor,
+            isotope_precursor) for i in eachindex(product))...) 
+    else
+        tbl = vcat((Isotopologues(ChemicalPair(input_chemical, product[i]); 
+            id = (id..., i),
+            precursor_table = Table(precursor_table), 
+            proportion = proportion[i], 
+            abtype = :total, 
+            threshold, 
+            precursor, 
+            elements_precursor,
+            element_precursor,
+            isotope_precursor) for i in eachindex(product))...) 
+    end
+    # spectrum specific threshold ?
+    ab = getproperty(tbl, Symbol(string("Abundance", length(id) + 1)))
+    abundance_cutoff = minimum(makecrit_value(crit(threshold), maximum(ab)))
+    id = findall(>=(abundance_cutoff), ab)
+    tbl[id]
+end
+
+TandemIsotopologues(input_chemical::Pair; 
+            charge = 1, 
+            loss = 0, 
+            abundance = 1, 
+            abtype = :max, 
+            threshold = rcrit(1e-4), 
+            id = nothing, 
+            precursor_table = nothing, 
+            product = nothing, 
+            proportion = nothing
+        ) = TandemIsotopologues(Formula2Chemical(input_chemical; charge, loss); charge, loss, abundance, abtype, threshold, id, precursor_table, product, proportion)
+
+# TandemIsotopologues(input_chemical::Tuple{<: AbstractString, Int}; 
+#             charge = 1, 
+#             loss = 0, 
+#             abundance = 1, 
+#             abtype = :max, 
+#             threshold = rcrit(1e-4), 
+#             precursor_table = nothing, 
+#             product = nothing, 
+#             proportion = nothing
+#         ) = TandemIsotopologues(Formula2Chemical(input_chemical); charge, loss, abundance, abtype, threshold, precursor_table, product, proportion)
+
+TandemIsotopologues(input_chemical::AbstractString; 
+            charge = 1, 
+            loss = 0, 
+            abundance = 1, 
+            abtype = :max, 
+            threshold = rcrit(1e-4), 
+            id = nothing, 
+            precursor_table = nothing, 
+            product = nothing, 
+            proportion = nothing
+        ) = TandemIsotopologues(ChemicalSeries(input_chemical; charge, loss); charge, loss, abundance, abtype, threshold, id, precursor_table, product, proportion)
+
+function TandemIsotopologues(mztable::Table; threshold = rcrit(1e-4), kwargs...)
+    :Chemical in propertynames(mztable) || throw(ArgumentError("No column `Chemical in input table.`"))
+    mztable = Table(mztable; Chemical = ChemicalSeries.(mztable.Chemical; kwargs...))
+    allequal(msstage, mztable.Chemical) || throw(ArgumentError("Chemicals have to be in the same MS stage."))
+    kwargs = Dict(kwargs...)
+    vec_key = Symbol[]
+    # if :charge in keys(kwargs)
+    #     delete!(kwargs, :charge)
+    # end
+    # if :loss in keys(kwargs)
+    #     delete!(kwargs, :loss)
+    # end
+    if :Product in propertynames(mztable)
+        mztable = Table(mztable; product = mztable.Product)
+        push!(vec_key, :product)
+        delete!(kwargs, :product)
+    elseif !isnothing(get(kwargs, :product, nothing))
+        mztable = Table(mztable; product = vectorize(get(kwargs, :product, nothing), length(mztable)))
+        push!(vec_key, :product)
+        delete!(kwargs, :product)
+    else
+        throw(ArgumentError("Require products information. Use column `Product` of the table or keyword arguments `product`."))
+    end
+    # all(x -> all(y -> msstage(y) < 2, x), mztable.Product) || throw(ArgumentError("Products should not MS/MS pairs."))
+    ab_icol = findlast(x -> startswith(x, "Abundance"), string.(propertynames(mztable)))
+    if !isnothing(ab_icol)
+        mztable = Table(mztable; abundance = getproperty(mztable, propertynames(mztable)[ab_icol]))
+        push!(vec_key, :abundance)
+        delete!(kwargs, :abundance)
+    elseif !isnothing(get(kwargs, :abundance, nothing))
+        mztable = Table(mztable; abundance = vectorize(get(kwargs, :abundance, nothing), length(mztable)))
+        push!(vec_key, :abundance)
+        delete!(kwargs, :abundance)
+    end
+    if :Proportion in propertynames(mztable)
+        mztable = Table(mztable; proportion = mztable.Proportion)
+        push!(vec_key, :proportion)
+        delete!(kwargs, :proportion)
+    elseif !isnothing(get(kwargs, :proportion, nothing))
+        mztable = Table(mztable; proportion = vectorize(get(kwargs, :proportion, nothing), length(mztable)))
+        push!(vec_key, :proportion)
+        delete!(kwargs, :proportion)
+    end
+    if !in(:ID, propertynames(mztable))
+        msn = msstage(first(mztable.Chemical)) - 1
+        mztable = Table(mztable; ID = [(i, ntuple(j -> 1, msn)...) for i in eachindex(mztable)])
+    end
+    if length(mztable) < Threads.nthreads()
+        tbl = Table(vcat((TandemIsotopologues(r.Chemical; id = r.ID, [k => getproperty(r, k) for k in vec_key]..., threshold, kwargs...) for r in mztable)...))
+    else
+        t = Vector{Table}(undef, length(mztable))
         Threads.@threads for i in eachindex(t)
-            x = isotopologues_table(getproperty(tbl[i], colchemical), abundance[i]; kwargs...)
-            t[i] = Table(x; (map(colpreserve) do p
-                p => vectorize(getproperty(tbl[i], p), length(x))
-            end)...)
+            t[i] = TandemIsotopologues(mztable.Chemical[i]; id = mztable.ID[i], [k => getproperty(mztable, k)[i] for k in vec_key]..., threshold, kwargs...)
         end
-        Table(; (map(propertynames(t[1])) do p
+        tbl = Table(; (map(propertynames(t[1])) do p
             p => ChainedVector(getproperty.(t, p))
         end)...)
     end
+    colab = propertynames(tbl)[findlast(x -> startswith(x, "Abundance"), string.(propertynames(tbl)))]
+    ab = getproperty(tbl, colab)
+    abundance_cutoff = minimum(makecrit_value(crit(threshold), maximum(ab)))
+    id = findall(>=(abundance_cutoff), ab)
+    tbl[id]
 end
 
-function isotopologues_table(v::Vector, abundance = 1; kwargs...)
-    if length(v) < Threads.nthreads()
-        mapreduce(vcat, v, vectorize(abundance, length(v))) do x, m
-            isotopologues_table(x, m; kwargs...)
-        end |> Table
-    else
-        t = Vector{Table}(undef, length(v))
-        abundance = vectorize(abundance, length(v))
-        Threads.@threads for i in eachindex(t)
-            t[i] = isotopologues_table(v[i], abundance[i]; kwargs...)
-        end
-        Table(; (map(propertynames(t[1])) do p
-            p => ChainedVector(getproperty.(t, p))
-        end)...)
-    end
-end
+TandemIsotopologues(v::Vector; kwargs...) = TandemIsotopologues(Table(; Chemical = v); kwargs...) 
 
-isotopologues_table(::Isobars, abundance = 1; kwargs...) = throw(ArgumentError("`Isobars` is not supported by `isotopologues_table`"))
-isotopologues_table(::Isotopomers, abundance = 1; kwargs...) = throw(ArgumentError("`Isotopomers` is not supported by `isotopologues_table`"))
+# function TandemIsotopologues(v::Vector{<: AbstractString}; charge = nothing, kwargs...) 
+#     isnothing(charge) ? TandemIsotopologues(Table(; Chemical = v); kwargs...) : 
+#         TandemIsotopologues(Table(; Chemical = tuple.(v, charge)); kwargs...)
+# end
+
+TandemIsotopologues(::Isobars; kwargs...) = throw(ArgumentError("`Isobars` is not supported by `TandemIsotopologues`."))
+TandemIsotopologues(::Isotopomers; kwargs...) = throw(ArgumentError("`Isotopomers` is not supported by `TandemIsotopologues`."))
+TandemIsotopologues(::ChemicalLoss; kwargs...) = throw(ArgumentError("`ChemicalLoss` is not supported by `TandemIsotopologues`."))
 
 """
     isotopicabundance(chemical::AbstractChemical; ignore_isotopes = false)
@@ -151,21 +464,22 @@ Parent elements are viewed as major isotopes, and isotopic abundances of all ele
 To compute isotopic abundance of chemicals with all isotopes labeled intentionally and not following natural distribution, set keyword argument `ignore_isotopes` true, and only parent elements are considered.  
 """
 isotopicabundance(cc::AbstractChemical; ignore_isotopes = false) = isotopicabundance(chemicalformula(cc); ignore_isotopes)
+isotopicabundance(chemicalpair::ChemicalPair; ignore_isotopes = false) = isotopicabundance(chemicalformula(chemicalpair.precursor) => chemicalformula(chemicalpair.product); ignore_isotopes)
 isotopicabundance(formula::AbstractString; ignore_isotopes = false) = isotopicabundance(chemicalelements(formula); ignore_isotopes)
 isotopicabundance(elements::Dictionary; ignore_isotopes = false) = isotopicabundance(pairs(elements); ignore_isotopes)
 function isotopicabundance(elements::Union{<: Vector{<: Pair}, <: Dictionaries.PairDictionary}; ignore_isotopes = false)
     element_dict = Dictionary{String, Vector{Int}}()
     # use [12C] for fix 
     for (e, n) in elements
-        haskey(ELEMENTS[:PARENTS], e) || continue
-        k = ELEMENTS[:PARENTS][e]
-        haskey(ELEMENTS[:ISOTOPES], k) || continue
-        get!(element_dict, k, zeros(Int, length(ELEMENTS[:ISOTOPES][k])))
-        haskey(ELEMENTS[:ISOTOPES], e) ? (element_dict[e][begin] += n) : (ignore_isotopes || (element_dict[k][findfirst(==(e), ELEMENTS[:ISOTOPES][k])] += n))
+        haskey(elements_parents(), e) || continue
+        k = elements_parents()[e]
+        haskey(elements_isotopes(), k) || continue
+        get!(element_dict, k, zeros(Int, length(elements_isotopes()[k])))
+        haskey(elements_isotopes(), e) ? (element_dict[e][begin] += n) : (ignore_isotopes || (element_dict[k][findfirst(==(e), elements_isotopes()[k])] += n))
     end # use two vector?
     abundance_sum = 1
     for (e, ns) in pairs(element_dict)
-        abundance = get.(Ref(ELEMENTS[:ABUNDANCE]), ELEMENTS[:ISOTOPES][e], 1)
+        abundance = get.(Ref(elements_abundunce()), elements_isotopes()[e], 1)
         any(==(1), abundance) && continue
         n = sum(ns)
         id = sortperm(ns; rev = true)
@@ -179,6 +493,7 @@ function isotopicabundance(elements::Union{<: Vector{<: Pair}, <: Dictionaries.P
         end
         abundance_sum *= f * popfirst!(abundance) ^ nspop1
         isempty(abundance) && continue
+        # take care if big number
         abundance_sum *= mapreduce(*, ns, abundance) do x, y
             y ^ x / factorial(x)
         end
@@ -188,207 +503,22 @@ end
 
 # ==========================================================================================================================
 # Internal
-function _isotopologues(formula::AbstractString, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = crit(0.01, 20e-6), mm_tol = crit(0.01, 20e-6), net_charge = 0, table = true)
-    if !isobaric
-        it = _isotope_abundance(formula, abundance; abtype, threshold, net_charge)
-        mass = it.Mass ./ max(1, abs(net_charge))
-        chemical = map(chemicalformula, it.Element)
-        table || return chemical
-        if net_charge == 0 
-            tbl = Table(; Isotopologues = chemical, Mass = mass, Abundance = it.Abundance) 
-        else
-            tbl = Table(; Isotopologues = chemical, MZ = mass, Abundance = it.Abundance) 
-        end
-        return tbl
-    end
-    it = _isotope_abundance(formula, abundance; abtype, threshold = threshold / 10, net_charge)
-    # Table(; Formula = map(chemicalformula, it.Element), Mass = it.Mass, Abundance = it.Abundance)   
-    m_tol = crit(net_charge == 0 ? mm_tol : mz_tol)
-    it.Mass ./= max(1, abs(net_charge))
-    element_single, mass_sum, abundance_single = isobaric_sum(it.Element, it.Mass, it.Abundance, m_tol)
-    abundance_sum = map(sum, abundance_single)
-    id = findall(>=(maximum(makecrit_value(crit(threshold), abundance))), abundance_sum)
-    if table 
-        if net_charge == 0 
-            Table(; Isotopologues = map(x -> chemicalformula.(x), element_single[id]), Mass = mass_sum[id], Abundance = abundance_sum[id]) 
-        else
-            Table(; Isotopologues = map(x -> chemicalformula.(x), element_single[id]), MZ = mass_sum[id], Abundance = abundance_sum[id]) 
-        end
-    else 
-        map(x -> chemicalformula.(x), element_single[id])
-    end 
-end
-
-function _isotopologues(input_chemical::AbstractChemical, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = crit(0.01, 20e-6), mm_tol = crit(0.01, 20e-6), table = true)
-    # if charge(input_chemical) == 0 
-    #     it = _isotope_abundance(chemicalformula(input_chemical), abundance; abtype, threshold)
-    #     return table ? Table(; Chemical = Isotopomers.(x, it.Element), Mass = it.Mass, Abundance = it.Abundance) : Isotopomers.(x, it.Element)
-    # end
-    # thresh / 10, to make error of abundance less than 10%
-    if !isobaric
-        it = _isotope_abundance(chemicalelements(input_chemical), abundance; abtype, threshold, net_charge = charge(input_chemical))
-        mass = it.Mass ./ max(1, ncharge(input_chemical))
-        chemical = Isotopomers.(input_chemical, it.Element)
-        table || return chemical
-        if charge(input_chemical) == 0 
-            tbl = Table(; Isotopologues = chemical, Mass = mass, Abundance = it.Abundance) 
-        else
-            tbl = Table(; Isotopologues = chemical, MZ = mass, Abundance = it.Abundance) 
-        end
-        return tbl
-    end
-    it = _isotope_abundance(chemicalelements(input_chemical), abundance; abtype, threshold = threshold / 10, net_charge = charge(input_chemical))
-    # it = Table(it; Element = map(x -> loss_elements!(unique_elements(x), adductelements(input_chemical)), it.Element))
-    m_tol = crit(charge(input_chemical) == 0 ? mm_tol : mz_tol)
-    it.Mass ./= max(1, ncharge(input_chemical))
-    element_single, mass_sum, abundance_single = isobaric_sum(it.Element, it.Mass, it.Abundance, m_tol)
-    abundance_sum = map(sum, abundance_single)
-    id = findall(>=(maximum(makecrit_value(crit(threshold), abundance))), abundance_sum)
-    if table 
-        if charge(input_chemical) == 0 
-            Table(; Isotopologues = map((x, y) -> Isobars(Isotopomers.(input_chemical, x), y), element_single[id], abundance_single[id]), Mass = mass_sum[id], Abundance = abundance_sum[id]) 
-        else
-            Table(; Isotopologues = map((x, y) -> Isobars(Isotopomers.(input_chemical, x), y), element_single[id], abundance_single[id]), MZ = mass_sum[id], Abundance = abundance_sum[id]) 
-        end
-    else 
-        map((x, y) -> Isobars(Isotopomers.(input_chemical, x), y), element_single[id], abundance_single[id])
-    end
-end
-
-function _isotopologues(formula::Pair{<: AbstractString, <: AbstractString}, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), mm_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), net_charge = (1, 1), table = true)
-    elements_precursor = chemicalelements(first(formula))
-    element_precursor = filter(x -> haskey(ELEMENTS[:ISOTOPES], first(x)) && last(x) != 0, elements_precursor)
-    isotope_precursor = filter(x -> !haskey(ELEMENTS[:ISOTOPES], first(x)) && last(x) != 0, elements_precursor)
-    # any(x -> !haskey(ELEMENTS[:ISOTOPES], first(x)) && last(x) > 0, element_precursor) && throw(ArgumentError("Isotopologues table for MS/MS fragments of isotopic-labeled chemicals is not suppoeted"))
-    if startswith(last(formula), "-")
-        net_charge = (first(net_charge), first(net_charge) - last(net_charge))
-        elements_product = chemicalelements(last(formula)[begin + 1:end])
-        element_residual = unique_elements(filter(x -> haskey(ELEMENTS[:ISOTOPES], first(x)) && last(x) != 0, elements_product))
-        isotope_residual = unique_elements(filter(x -> !haskey(ELEMENTS[:ISOTOPES], first(x)) && last(x) != 0, elements_product))
-        element_product = loss_elements(element_precursor, element_residual)
-        isotope_product = loss_elements(isotope_precursor, isotope_residual)
-        loss = true
-    else
-        elements_product = chemicalelements(last(formula))
-        element_product = unique_elements(filter(x -> haskey(ELEMENTS[:ISOTOPES], first(x)) && last(x) != 0, elements_product))
-        isotope_product = unique_elements(filter(x -> !haskey(ELEMENTS[:ISOTOPES], first(x)) && last(x) != 0, elements_product))
-        element_residual = loss_elements(element_precursor, element_product)
-        loss = false
-    end
-    any(==(0), net_charge) && any(!=(0), net_charge) && throw(ArgumentError("Charges must be all non-zero or all zero."))
-    # element_precursor_all, mass_precursor_all, abundance_precursor_all = _isotopologues(first(formula), abundance; abtype, threshold, isobaric, mz_tol = first(mz_tol), mm_tol = first(mm_tol), net_charge = first(net_charge), colision, table)
-    if !isobaric
-        it1 = _isotope_abundance(first(formula), abundance; abtype, threshold, net_charge = first(net_charge), normalize = false)
-        it = _isotope_abundance_ms2(it1, isotope_precursor, element_product, isotope_product, element_residual, abundance; abtype, threshold, net_charge = last(net_charge))
-        mass1 = it.Mass1 ./ max(1, abs(first(net_charge)))
-        mass2 = it.Mass2 ./ max(1, abs(last(net_charge)))
-        chemical = map(x -> chemicalformula(first(x)) => chemicalformula(last(x)), it.Element)
-        table || return chemical
-        if last(net_charge) == 0 
-            tbl = Table(; Isotopologues = chemical, Mass1 = mass1, Mass2 = mass2, Abundance = it.Abundance) 
-        else
-            tbl = Table(; Isotopologues = chemical, MZ1 = mass1, MZ2 = mass2, Abundance = it.Abundance) 
-        end
-        return tbl
-    end
-    it1 = _isotope_abundance(first(formula), abundance; abtype, threshold = threshold / 10, net_charge = first(net_charge), normalize = false)
-    it = _isotope_abundance_ms2(it1, isotope_precursor, element_product, isotope_product, element_residual, abundance; abtype, threshold, net_charge = last(net_charge))
-    it.Mass1 ./= max(1, first(net_charge))
-    it.Mass2 ./= max(1, last(net_charge))
-    m_tol = (crit(first(net_charge) == 0 ? first(mm_tol) : first(mz_tol)), crit(last(net_charge) == 0 ? last(mm_tol) : last(mz_tol)))
-    element_pair_single, mass_precursor_sum, mass_product_sum, abundance_pair_single = isobaric_sum(it.Element, it.Mass1, it.Mass2, it.Abundance, m_tol)
-    abundance_pair_sum = map(sum, abundance_pair_single)
-    id = findall(>=(maximum(makecrit_value(crit(threshold), abundance))), abundance_pair_sum)
-    if table 
-        if last(net_charge) == 0 
-            Table(; Isotopologues = map(x -> map(y -> Pair(chemicalformula(first(y)), chemicalformula(last(y))), x), element_pair_single[id]), Mass1 = mass_precursor_sum[id], Mass2 = mass_product_sum[id], Abundance = abundance_pair_sum[id]) 
-        else
-            Table(; Isotopologues = map(x -> map(y -> Pair(chemicalformula(first(y)), chemicalformula(last(y))), x), element_pair_single[id]), MZ1 = mass_precursor_sum[id], MZ2 = mass_product_sum[id], Abundance = abundance_pair_sum[id]) 
-        end
-    else 
-        map(x -> map(y -> Pair(chemicalformula(first(y)), chemicalformula(last(y))), x), element_pair_single[id])
-    end 
-end
-
-function _isotopologues(cp::ChemicalPair, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), isobaric = true, mz_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), mm_tol = (crit(0.35, 5e-4), crit(0.01, 20e-6)), table = true)
-    net_charge = (ncharge(cp.precursor), ncharge(cp.product))
-    elements_precursor = chemicalelements(cp.precursor)
-    elements_product = chemicalelements(cp.product)
-    element_precursor = filter(x -> haskey(ELEMENTS[:ISOTOPES], first(x)) && last(x) != 0, elements_precursor)
-    isotope_precursor = filter(x -> !haskey(ELEMENTS[:ISOTOPES], first(x)) && last(x) != 0, elements_precursor)
-    # any(x -> !haskey(ELEMENTS[:ISOTOPES], first(x)) && last(x) > 0, element_precursor) && throw(ArgumentError("Isotopologues table for MS/MS fragments of isotopic-labeled chemicals is not suppoeted"))  
-    if cp.product isa ChemicalLoss
-        net_charge = (first(net_charge), first(net_charge) - last(net_charge))
-        element_residual = unique_elements(filter(x -> haskey(ELEMENTS[:ISOTOPES], first(x)) && last(x) != 0, elements_product))
-        isotope_residual = unique_elements(filter(x -> !haskey(ELEMENTS[:ISOTOPES], first(x)) && last(x) != 0, elements_product))
-        element_product = loss_elements(element_precursor, element_residual)
-        isotope_product = loss_elements(isotope_precursor, isotope_residual)
-        loss = true
-    else
-        element_product = unique_elements(filter(x -> haskey(ELEMENTS[:ISOTOPES], first(x)) && last(x) != 0, elements_product))
-        isotope_product = unique_elements(filter(x -> !haskey(ELEMENTS[:ISOTOPES], first(x)) && last(x) != 0, elements_product))
-        element_residual = loss_elements(element_precursor, element_product)
-        loss = false
-    end
-    any(==(0), net_charge) && any(!=(0), net_charge) && throw(ArgumentError("Charges must be all non-zero or all zero."))
-    if !isobaric
-        it1 = _isotope_abundance(chemicalelements(cp.precursor), abundance; abtype, threshold, net_charge = first(net_charge), normalize = false)
-        it = _isotope_abundance_ms2(it1, isotope_precursor, element_product, isotope_product, element_residual, abundance; abtype, threshold, net_charge = last(net_charge))
-        mass1 = it.Mass1 ./ max(1, abs(first(net_charge)))
-        mass2 = it.Mass2 ./ max(1, abs(last(net_charge)))
-        chemical = loss ? ChemicalPair.(Isotopomers.(cp.precursor, first.(it.Element)), Isotopomers.(cp.product, loss_elements.(first.(it.Element), last.(it.Element)))) : 
-            ChemicalPair.(Isotopomers.(cp.precursor, first.(it.Element)), Isotopomers.(cp.product, last.(it.Element)))
-        table || return chemical
-        if last(net_charge) == 0 
-            tbl = Table(; Isotopologues = chemical, Mass1 = mass1, Mass2 = mass2, Abundance = it.Abundance) 
-        else
-            tbl = Table(; Isotopologues = chemical, MZ1 = mass1, MZ2 = mass2, Abundance = it.Abundance) 
-        end
-        return tbl
-    end
-    it1 = _isotope_abundance(chemicalelements(cp.precursor), abundance; abtype, threshold = threshold / 10, net_charge = first(net_charge), normalize = false)
-    it = _isotope_abundance_ms2(it1, isotope_precursor, element_product, isotope_product, element_residual, abundance; abtype, threshold, net_charge = last(net_charge))
-    it.Mass1 ./= max(1, first(net_charge))
-    it.Mass2 ./= max(1, last(net_charge))
-    m_tol = (crit(first(net_charge) == 0 ? first(mm_tol) : first(mz_tol)), crit(last(net_charge) == 0 ? last(mm_tol) : last(mz_tol)))
-    element_pair_single, mass_precursor_sum, mass_product_sum, abundance_pair_single = isobaric_sum(it.Element, it.Mass1, it.Mass2, it.Abundance, m_tol)
-    abundance_pair_sum = map(sum, abundance_pair_single)
-    id = findall(>=(maximum(makecrit_value(crit(threshold), abundance))), abundance_pair_sum)
-    if table 
-        if last(net_charge) == 0 && loss
-            Table(; Isotopologues = map((x, a) -> Isobars(map(y -> ChemicalPair(Isotopomers(cp.precursor, first(y)), Isotopomers(cp.product, loss_elements(first(y), last(y)))), x), a), element_pair_single[id], abundance_pair_single[id]), Mass1 = mass_precursor_sum[id], Mass2 = mass_product_sum[id], Abundance = abundance_pair_sum[id]) 
-        elseif last(net_charge) == 0
-            Table(; Isotopologues = map((x, a) -> Isobars(map(y -> ChemicalPair(Isotopomers(cp.precursor, first(y)), Isotopomers(cp.product, last(y))), x), a), element_pair_single[id], abundance_pair_single[id]), Mass1 = mass_precursor_sum[id], Mass2 = mass_product_sum[id], Abundance = abundance_pair_sum[id]) 
-        elseif loss
-            Table(; Isotopologues = map((x, a) -> Isobars(map(y -> ChemicalPair(Isotopomers(cp.precursor, first(y)), Isotopomers(cp.product, loss_elements(first(y), last(y)))), x), a), element_pair_single[id], abundance_pair_single[id]), MZ1 = mass_precursor_sum[id], MZ2 = mass_product_sum[id], Abundance = abundance_pair_sum[id]) 
-        else
-            Table(; Isotopologues = map((x, a) -> Isobars(map(y -> ChemicalPair(Isotopomers(cp.precursor, first(y)), Isotopomers(cp.product, last(y))), x), a), element_pair_single[id], abundance_pair_single[id]), MZ1 = mass_precursor_sum[id], MZ2 = mass_product_sum[id], Abundance = abundance_pair_sum[id]) 
-        end
-    elseif loss
-        map((x, a) -> Isobars(map(y -> ChemicalPair(Isotopomers(cp.precursor, first(y)), Isotopomers(cp.product, loss_elements(first(y), last(y)))), x), a), element_pair_single[id], abundance_pair_single[id])
-    else
-        map((x, a) -> Isobars(map(y -> ChemicalPair(Isotopomers(cp.precursor, first(y)), Isotopomers(cp.product, last(y))), x), a), element_pair_single[id], abundance_pair_single[id])
-    end 
-end
-
-# loewest level
-_isotope_abundance(x::AbstractString, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), net_charge = 0, table = true, normalize = true) = 
-    _isotope_abundance(chemicalelements(x), abundance; abtype, threshold, net_charge, table, normalize)
-function _isotope_abundance(input_element::Vector, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), net_charge = 0, table = true, normalize = true)
-    abundance_cutoff = maximum(makecrit_value(crit(threshold), abundance))
+_isotopologues_elements(x::AbstractString, abundance, abtype, threshold, net_charge; table = true, normalize = true) = 
+    _isotopologues_elements(chemicalelements(x), abundance, abtype, threshold, net_charge; table, normalize)
+function _isotopologues_elements(input_element::Vector, abundance, abtype, threshold, net_charge; table = true, normalize = true)
     # record elements change
     element_dictionary = Dictionary{String, Int}()
     isotope_dictionary = Dictionary{String, Int}()
     fix_dictionary = Dictionary{String, Int}()
     first_element_dictionary = Dictionary{String, Int}()
     for (e, n) in input_element
-        if haskey(ELEMENTS[:ISOTOPES], e)
+        if haskey(elements_isotopes(), e)
             get!(element_dictionary, e, 0)
             element_dictionary[e] += n
             get!(first_element_dictionary, e, 0)
             first_element_dictionary[e] += n
-        elseif first(ELEMENTS[:ISOTOPES][get(ELEMENTS[:PARENTS], e, e)]) == e 
-            p = get(ELEMENTS[:PARENTS], e, e)
+        elseif first(elements_isotopes()[get(elements_parents(), e, e)]) == e 
+            p = get(elements_parents(), e, e)
             get!(fix_dictionary, p, 0)
             fix_dictionary[p] += n
             get!(element_dictionary, p, 0)
@@ -396,7 +526,7 @@ function _isotope_abundance(input_element::Vector, abundance = 1; abtype = :max,
             get!(first_element_dictionary, p, 0)
             first_element_dictionary[p] += n
         else 
-            p = get(ELEMENTS[:PARENTS], e, e)
+            p = get(elements_parents(), e, e)
             get!(fix_dictionary, e, 0)
             fix_dictionary[e] += n
             get!(isotope_dictionary, e, 0)
@@ -408,24 +538,28 @@ function _isotope_abundance(input_element::Vector, abundance = 1; abtype = :max,
     # element => isoptope pairs
     # remove first
     element_isotope_pair = mapreduce(vcat, collect(keys(element_dictionary))) do e
-        v = map(get(ELEMENTS[:ISOTOPES], e, e)) do x
+        v = map(get(elements_isotopes(), e, e)) do x
             (e, x)
         end
         deleteat!(v, 1)
     end
-    sort!(element_isotope_pair; by = x -> ELEMENTS[:ABUNDANCE][last(x)], rev = true)
+    sort!(element_isotope_pair; by = x -> elements_abundunce()[last(x)], rev = true)
     first_proportion = isotopicabundance(input_element; ignore_isotopes = true)
-    abundance_cutoff_normalize = @match abtype begin
-        :input => abundance_cutoff * first_proportion
-        :max  => abundance_cutoff * first_proportion
-        _     => abundance_cutoff
-    end
+    # abundance_cutoff_normalize = @match abtype begin
+    #     :input => abundance_cutoff * first_proportion
+    #     :max  => abundance_cutoff * first_proportion
+    #     _     => abundance_cutoff
+    # end
+    abundance_cutoff = minimum(makecrit_value(crit(threshold), abundance)) * first_proportion
     # serve abundance as sums
-    element_chemical, abundance_chemical = rec_addisotopes!([first_element_dictionary], [abundance * first_proportion], element_dictionary, isotope_dictionary, isotope_dictionary, element_isotope_pair, 1, abundance * first_proportion, abundance_cutoff_normalize)
+    element_chemical, abundance_chemical = rec_addisotopes!([first_element_dictionary], [abundance * first_proportion], element_dictionary, isotope_dictionary, isotope_dictionary, element_isotope_pair, 1, abundance * first_proportion, abundance_cutoff)
     # Normalize after resolution check?
-    abundance_chemical_normalize = abtype == :max ? abundance_chemical ./ maximum(abundance_chemical) .* abundance : abtype == :input ? abundance_chemical ./ first(abundance_chemical) .* abundance : abundance_chemical
+    abundance_chemical_normalize = abtype == :max ? abundance_chemical ./ maximum(abundance_chemical) .* abundance : 
+                                    abtype == :input ? abundance_chemical ./ first(abundance_chemical) .* abundance : 
+                                    abtype == :list ? abundance_chemical ./ sum(abundance_chemical) .* abundance : abundance_chemical
     mass_chemical = map(mmi, element_chemical, repeat([net_charge], length(element_chemical)))
     id = sortperm(mass_chemical)
+    abundance_cutoff = minimum(makecrit_value(crit(threshold), maximum(abundance_chemical_normalize)))
     filter!(x -> >=(abundance_chemical_normalize[x], abundance_cutoff), id)
     element_chemical = element_chemical[id]
     abundance_chemical = normalize ? abundance_chemical_normalize[id] : abundance_chemical[id]
@@ -433,28 +567,30 @@ function _isotope_abundance(input_element::Vector, abundance = 1; abtype = :max,
     table ? Table(; Element = element_chemical, Mass = mass_chemical, Abundance = abundance_chemical) : element_chemical
 end
 
-function _isotope_abundance_ms2(it1, isotope_precursor, element_product, isotope_product, element_residual, abundance = 1; abtype = :max, threshold = crit(abundance * 1e-4, 1e-4), net_charge = 0, normalize = true, table = true)
-    abundance_cutoff = maximum(makecrit_value(crit(threshold), abundance))
-    element_pair = Pair[]
-    mass_product = Float64[]
-    mass_precursor = Float64[]
-    abundance_pair = Float64[]
+function _isotopologues_elements_ms2(it1, isotope_precursor, element_product, isotope_product, element_residual, abundance, abtype, threshold, net_charge; normalize = true, table = true)
     msfix = mmi(isotope_product, net_charge)
-    for (element_precursor_i, mass_precursor_i, abundance_precursor_i) in zip(it1.Element, it1.Mass, it1.Abundance)
-        element_product_is, mass_product_is, proportion_product_is = isotopes_proportion(loss_elements(element_precursor_i, isotope_precursor), element_product, element_residual, msfix, net_charge)
+    data = map(it1) do r 
+        element_product_is, mass_product_is, proportion_product_is = isotopes_proportion(loss_elements(r.Element, isotope_precursor), element_product, element_residual, msfix, net_charge)
         id = sortperm(mass_product_is)
-        element_pair = vcat(element_pair, Ref(element_precursor_i) .=> add_elements.(Ref(isotope_product), element_product_is[id]))
-        mass_product = vcat(mass_product, mass_product_is[id])
-        mass_precursor = vcat(mass_precursor, repeat([mass_precursor_i], length(element_product_is[id])))
-        abundance_pair = vcat(abundance_pair, abundance_precursor_i .* proportion_product_is[id])
+        (; Element = add_elements.(Ref(isotope_product), element_product_is[id]), 
+           Mass = mass_product_is[id], 
+           Abundance = r.Abundance .* proportion_product_is[id])
     end
-    abundance_pair_normalize = abtype == :max ? abundance_pair ./ maximum(abundance_pair) .* abundance : abtype == :input ? abundance_pair ./ first(abundance_pair) .* abundance : abundance_pair
+    element_product = vcat((getproperty(x, :Element) for x in data)...)
+    mass_product = vcat((getproperty(x, :Mass) for x in data)...)
+    abundance_pair = vcat((getproperty(x, :Abundance) for x in data)...)
+    id_pair = vcat(([i for _ in eachindex(getproperty(x, :Abundance))] for (i, x) in enumerate(data))...)
+    abundance_pair_normalize = abtype == :max ? abundance_pair ./ maximum(abundance_pair) .* abundance : 
+                                abtype == :input ? abundance_pair ./ first(abundance_pair) .* abundance : 
+                                abtype == :list ? abundance_pair ./ sum(abundance_pair) .* abundance : abundance_pair
+    # spectrum specific threshold ?
+    abundance_cutoff = minimum(makecrit_value(crit(threshold), maximum(abundance_pair_normalize)))
     id = findall(>=(abundance_cutoff), abundance_pair_normalize)
-    element_pair = element_pair[id]
-    mass_precursor = mass_precursor[id]
+    id_pair = id_pair[id]
+    element_product = element_product[id]
     mass_product = mass_product[id]
     abundance_pair = normalize ? abundance_pair_normalize[id] : abundance_pair[id]
-    table ? Table(; Element = element_pair, Mass1 = mass_precursor, Mass2 = mass_product, Abundance = abundance_pair) : element_pair
+    table ? Table(; ID = id_pair, Element = element_product, Mass = mass_product, Abundance = abundance_pair) : element_product
 end
 
 function rec_addisotopes!(element_vec::Vector, abundance_vec::Vector, element_dictionary::Dictionary, isotope_dictionary::Dictionary, fix_dictionary::Dictionary, element_isotope_pair::Vector, isotope_position::Int, prev_abundance, threshold)
@@ -479,9 +615,10 @@ function rec_addisotopes!(element_vec::Vector, abundance_vec::Vector, element_di
 end
 
 function update_abundance(prev_abundance, old_element, new_element, nold, nnew, delta)
-    x = get(ELEMENTS[:ABUNDANCE], old_element, 1)
-    y = get(ELEMENTS[:ABUNDANCE], new_element, 1)
+    x = get(elements_abundunce(), old_element, 1)
+    y = get(elements_abundunce(), new_element, 1)
     (x == 1 || y == 1) && return prev_abundance
+    # take care of large numbers
     prev_abundance * factorial(nold, nold - delta) / factorial(nnew + delta, nnew) * (y / x) ^ delta
 end
 
@@ -494,12 +631,12 @@ function isotopes_proportion(element_precursor_dictionary::Dictionary, element_p
     # element => isoptope pairs
     # remove first
     element_isotope_pair = mapreduce(vcat, collect(keys(element_product_dictionary))) do e
-        v = map(get(ELEMENTS[:ISOTOPES], e, e)) do x
+        v = map(get(elements_isotopes(), e, e)) do x
             (e, x)
         end
         deleteat!(v, 1)
     end
-    sort!(element_isotope_pair; by = x -> ELEMENTS[:ABUNDANCE][last(x)], rev = true)
+    sort!(element_isotope_pair; by = x -> elements_abundunce()[last(x)], rev = true)
     element_product_vec, isotope_product_vec, element_residual_vec, isotope_residual_vec = distribute_isotopes!(element_precursor_dictionary, first_element_product_dictionary, first_isotope_product_dictionary, first_element_residual_dictionary, first_isotope_residual_dictionary)
     # initial proportion
     element_pair = Dictionary[]
@@ -513,7 +650,7 @@ function isotopes_proportion(element_precursor_dictionary::Dictionary, element_p
             push!(proportion_pair, proportion_pairi)
         end
     end
-    mass_pair = map(mmi, element_pair, repeat([net_charge], length(element_pair))) .+ msfix
+    mass_pair = map(mmi, element_pair) .+ msfix
     id = sortperm(mass_pair)
     element_pair = element_pair[id]
     proportion_pair = proportion_pair[id]
@@ -522,13 +659,13 @@ function isotopes_proportion(element_precursor_dictionary::Dictionary, element_p
 end
 
 function distribute_isotopes!(element_precursor_dictionary::Dictionary, element_product_dictionary::Dictionary, isotope_product_dictionary::Dictionary, element_residual_dictionary::Dictionary, isotope_residual_dictionary::Dictionary)
-    elements = unique(map(e -> get(ELEMENTS[:PARENTS], e, e), collect(keys(element_precursor_dictionary))))
+    elements = unique(map(e -> get(elements_parents(), e, e), collect(keys(element_precursor_dictionary))))
     element_product_vec = [element_product_dictionary]
     isotope_product_vec = [isotope_product_dictionary]
     element_residual_vec = [element_residual_dictionary]
     isotope_residual_vec = [isotope_residual_dictionary]
     for e in elements
-        isotopes = filter(i -> i != e && get(element_precursor_dictionary, i, 0) > 0, ELEMENTS[:ISOTOPES][e])
+        isotopes = filter(i -> i != e && get(element_precursor_dictionary, i, 0) > 0, elements_isotopes()[e])
         nisotopes_vec = map(x -> element_precursor_dictionary[x], isotopes)
         nisotopes_total = sum(nisotopes_vec)
         if get(last(element_residual_vec), e, 0) >= nisotopes_total 
@@ -592,6 +729,7 @@ function initial_proportion(element_product::Dictionary, isotope_product::Dictio
     p = 1
     element_total = add_elements(element_product, element_residual)
     isotope_total = add_elements(isotope_product, isotope_residual)
+    # Take care of large numbers
     for e in keys(element_total)
         n = 0
         for i in ISOTOPES[e]
@@ -651,82 +789,4 @@ function rec_moveisotopes!(element_vec::Vector, abundance_vec::Vector, element_p
     element_vec, abundance_vec
 end
 
-function update_proportion(prev_proportion, nold, nnew, delta)
-    prev_proportion * factorial(nold, nold - delta) / factorial(nnew + delta, nnew)
-end
-
-function isobaric_sum(element::T, mass::Vector{<: Number}, abundance, m_tol) where {T}
-    element_single = T[]
-    mass_sum = Float64[0]
-    abundance_single = Vector{Float64}[]
-    for (e, m, a) in zip(element, mass, abundance)
-        if any(r -> in(m, r), makecrit_delta(m_tol, last(mass_sum)))
-            mass_sum[end] = (sum(last(abundance_single)) * mass_sum[end] + a * m) / (sum(last(abundance_single)) + a)
-            push!(last(element_single), e)
-            push!(last(abundance_single), a)
-        else
-            push!(element_single, [e])
-            push!(abundance_single, [a])
-            push!(mass_sum, m)
-        end
-    end
-    popfirst!(mass_sum)
-    for (x, y) in zip(element_single, abundance_single)
-        ord = sortperm(y; rev = true)
-        x .= x[ord]
-        y .= y[ord]
-    end
-    element_single, mass_sum, abundance_single
-end
-
-function isobaric_sum(element::T, mass1::Vector{<: Number}, mass2::Vector{<: Number}, abundance, m_tol) where {T}
-    element_single = Vector{T}[]
-    mass1_sum = Vector{Float64}[[0]]
-    mass2_sum = Vector{Float64}[[0]]
-    abundance_single = Vector{Vector{Float64}}[]
-    for (e, m1, m2, a) in zip(element, mass1, mass2, abundance)
-        push_m1 = false
-        push_m2 = false
-        for (i, (rm1, rm2)) in enumerate(zip(last(mass1_sum), last(mass2_sum)))
-            if any(r -> in(m1, r), makecrit_delta(first(m_tol), rm1)) 
-                push_m1 = true
-                if any(r -> in(m2, r), makecrit_delta(first(m_tol), rm2))
-                    mass1_sum[end][i] = (sum(last(abundance_single)[i]) * mass1_sum[end][i] + a * m1) / (sum(last(abundance_single)[i]) + a)
-                    mass2_sum[end][i] = (sum(last(abundance_single)[i]) * mass2_sum[end][i] + a * m2) / (sum(last(abundance_single)[i]) + a)
-                    push!(last(element_single)[i], e)
-                    push!(last(abundance_single)[i], a)
-                    push_m2 = true
-                    break 
-                end
-            end
-        end
-        if push_m1 && !push_m2
-            push!(last(mass1_sum), m1)
-            push!(last(mass2_sum), m2)
-            push!(last(element_single), [e])
-            push!(last(abundance_single), [a])
-            id = sortperm(last(mass2_sum))
-            mass1_sum[end] = mass1_sum[end][id]
-            mass2_sum[end] = mass2_sum[end][id]
-            element_single[end] = element_single[end][id]
-            abundance_single[end] = abundance_single[end][id]
-        elseif !push_m1
-            push!(mass1_sum, [m1])
-            push!(mass2_sum, [m2])
-            push!(element_single, [[e]])
-            push!(abundance_single, [[a]])
-        end
-    end
-    popfirst!(mass1_sum)
-    popfirst!(mass2_sum)
-    mass1_sum = vcat(mass1_sum...)
-    mass2_sum = vcat(mass2_sum...)
-    element_single = vcat(element_single...)
-    abundance_single = vcat(abundance_single...)
-    for (x, y) in zip(element_single, abundance_single)
-        ord = sortperm(y; rev = true)
-        x .= x[ord]
-        y .= y[ord]
-    end
-    element_single, mass1_sum, mass2_sum, abundance_single
-end
+update_proportion(prev_proportion, nold, nnew, delta) = prev_proportion * factorial(nold, nold - delta) / factorial(nnew + delta, nnew)

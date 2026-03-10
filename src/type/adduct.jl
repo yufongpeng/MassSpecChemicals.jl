@@ -24,7 +24,7 @@ Adduct with positive charges.
 
 This general adduct cannot be applied to isotopic labeled chemicals which the adduct ion formed with isotopes loss. Adducts with isotopic labeled have to be defined as different adduct.
 
-It is recommended to define custumized adduct when this condition may occur for more generalized use.
+It is recommended to define custumized adduct when this condition may occur for more custumized use.
 """
 struct PosAdduct <: AbstractPosAdduct
     kmer::Int
@@ -39,7 +39,7 @@ Adduct with negative charges.
 
 This general adduct cannot be applied to isotopic labeled chemicals which the adduct ion formed with isotopes loss. Adducts with isotopic labeled have to be defined as different adduct.
 
-It is recommended to define custumized adduct when this condition may occur for more generalized use.
+It is recommended to define custumized adduct when this condition may occur for more custumized use.
 """
 struct NegAdduct <: AbstractNegAdduct
     kmer::Int
@@ -216,16 +216,6 @@ struct AddOAc <: AbstractNegAdduct end
 [M+OFo]-
 """
 struct AddOFo <: AbstractNegAdduct end
-
-# struct LossCH2O <: AbstractNegAdduct end
-# struct AddO <: AbstractNegAdduct end
-# struct AddC2H2O <: AbstractNegAdduct end
-# struct LossCH8NO <: AbstractNegAdduct end
-# struct LossC2H8NO <: AbstractNegAdduct end
-# struct AddC3H5NO <: AbstractNegAdduct end
-# struct AddC2H5NO <: AbstractNegAdduct end
-# struct LossCH3 <: AbstractNegAdduct end
-# struct DeprotonationLossSerineAddH2O <: AbstractNegAdduct end
 """
     Fluoridation <: AbstractNegAdduct
 

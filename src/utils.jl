@@ -1,11 +1,32 @@
 """
-    acrit(x)
+    match_chemical(exp::Table, lib::Table; colexp = :Chemical, collib = :Chemical) -> Table
+
+Match chemicals in `exp` to chemicals in `lib`. The resulting table is `exp` with matched chemicals and information from `lib`.
+
+If chemicals in `exp` are chemical pairs, the detected chemicals are utilized. See `detectedchemical` for details.
+"""
+function match_chemical(exp::Table, lib::Table; colexp = :Chemical, collib = :Chemical)
+    del = Int[]
+    libid = Int[]
+    chemical_exp = detectedchemical.(getproperty(exp, colexp))
+    chemical_lib = getproperty(lib, collib)
+    for i in eachindex(exp)
+        j = findfirst(x -> ischemicalequal(x, chemical_exp[i]), chemical_lib)
+        isnothing(j) ? push!(del, i) : push!(libid, j)
+    end
+    id = setdiff(eachindex(exp), del)
+    ps = filter(!=(collib), propertynames(lib))
+    Table(exp[id]; [p => [getproperty(lib, p)[i] for i in libid] for p in ps]...)
+end
+
+"""
+    acrit(x) -> Criteria
 
 Cnstructing a `Criteria` with only absolute criteria.
 """
 acrit(x) = Criteria(x, missing)
 """
-    rcrit(x)
+    rcrit(x) -> Criteria
 
 Cnstructing a `Criteria` with only relative criteria. 
 """
@@ -13,7 +34,7 @@ rcrit(x) = Criteria(missing, x)
 """
     crit(absolute)
     crit(x::Criteria)
-    crit(absolute, relative)
+    crit(absolute, relative) -> Criteria
 
 Cnstructing a `Criteria`. When a non `Criteria` value is given, it consider it as absolute criteria; when two values are given, the first one is absolute, the second one is relative.
 """
@@ -68,7 +89,7 @@ macro ri_str(expr)
 end
 
 """
-    zero_center_interval(val; LB = Closed, RB = Closed)
+    zero_center_interval(val; LB = Closed, RB = Closed) -> IntervalSet
     zero_center_interval(val::Missing; LB = Closed, RB = Closed) = missing
     zero_center_interval(val::IntervalSet; LB = Closed, RB = Closed) = val
 
@@ -89,7 +110,7 @@ zero_center_interval(val::IntervalSet; LB = Closed, RB = Closed) = val
 # real_interval(center, delta; LB = Closed, RB = Closed) = zero_center_interval(delta; LB, RB) + center
 
 """
-    makecrit_value(crit, x)
+    makecrit_value(crit::Criteria, x) -> Tuple
 
 Create a tuple of criteria based on input value `x`. The relative criterion is multiplied by `x`. 
 
@@ -112,7 +133,7 @@ makecrit_value(c::Criteria{Missing}, x) = (c.rval * x, )
 makecrit_value(c::Criteria{A, Missing}, x) where A = (c.aval, )
 
 """
-    makecrit_delta(crit, x)
+    makecrit_delta(crit::Criteria, x) -> Tuple
 
 Create a tuple of criteria based on input value `x`. The relative criterion is multiplied by `x`, and both criteria are offset by `x` as they represent difference.
 
@@ -155,6 +176,6 @@ end
 tuplize(x::Tuple) = x
 tuplize(x) = (x, )
 vectorize(x::AbstractVector) = x
-vectorize(x::AbstractVector, n::Int) = x[begin:begin + n - 1]
+vectorize(x::AbstractVector, n::Int) = n == lastindex(x) ? x : n > lasindex(x) ? vcat(x, repeat([last(x)], n - lastindex(x))) : x[begin:begin + n - 1]
 vectorize(x) = [x]
 vectorize(x, n) = repeat([x], n)

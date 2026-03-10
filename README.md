@@ -12,11 +12,21 @@ Charged chemicals with specific adduct or molecule loss that formed in MS (adduc
 1. `Chemical`: unstructured chemicals, storing name, elements, and other attributes
 
     ```julia
-        Chemical(name::AbstractString, elements::Vector{Pair{String, Int}}; attr...)
+        Chemical(name::AbstractString, elements::Vector{Pair{String, Int}}; property...)
 
-        Chemical(name::AbstractString, formula::String; attr...)
+        Chemical(name::AbstractString, formula::String; property...)
 
-        Chemical(name::String, elements::Vector{Pair{String, Int}}, attr::Vector{Pair{Symbol, Any}})
+        Chemical(name::String, elements::Vector{Pair{String, Int}}, property::Vector{Pair{Symbol, Any}})
+    ```
+
+2. `FormulaChemical`: unstructured chemicals using formula as name
+
+    ```julia
+        FormulaChemical(elements::Vector{Pair{String, Int}}; property...)
+
+        FormulaChemical(formula::String; property...)
+
+        FormulaChemical(elements::Vector{Pair{String, Int}}, property::Vector{Pair{Symbol, Any}})
     ```
 
 2. `AdductIon`: charged chemicals with specific adduct or molecule loss.
@@ -48,6 +58,17 @@ Charged chemicals with specific adduct or molecule loss that formed in MS (adduc
     ```julia
         ChemicalPair(precursor::AbstractChemical, product::AbstractChemical)
     ```
+Users can create chemical(s) with strings and pairs by `ChemicalSeries`.
+
+```julia
+ChemicalSeries("[H3O]+") # H3O with 1 positive charge
+ChemicalSeries("[H2O+H]+") # Protonated H2O 
+ChemicalSeries("[C6H12O6+H]+" => "[H2O+H]+") # Protonated C6H12O6 framented to Protonated H2O 
+ChemicalSeries("[C6H12O6+H]+" => "-H2O") # Protonated C6H12O6 and neutral loss H2O
+ChemicalSeries("[C6H12O6+2H]2+" => "-[H2O+H]+") # DiProtonated C6H12O6 and loss Protonated H2O 
+ChemicalSeries("C6H14O6" => "-H3O"; charge = 2, loss = 1) # C6H14O6 (charge = 2) and loss H3O (charge = 1)
+ChemicalSeries("[C6H12O6+2H]2+" => ChemicalLoss(Chemical("Water", "H2O"))) # mixing with other chemical type 
+```
 
 # Elements
 ## Parent Elements and Major isotopes
@@ -144,43 +165,93 @@ For example, [2M+H]+, and [M-2H-2H2O]2- can be created by
 
 # API
 ## Attributes of `AbstractChemical`
-`getchemicalattr(chemical::ChemicalType, attr::Symbol; kwargs...)` returns the attribute `attr` of `chemical` with additional settings by `kwargs`. 
+Attributes are interfaces directly accessing properties and fields through `getchemicalproperty` or deriving values from other attributes.
 
-To define new attributes or overwrite defaults for `ChemicalType`, define the following method 
-```julia
-    getchemicalattr(chemical::ChemicalType, attr::Val{attr}; kwargs...)
-``` 
+|Attribute|Return type|Description|
+|----|----|-----------|
+|`chemicalname`|`String`|unique chemical name|
+|`chemicalformula`|`String`|chemical formula|
+|`chemicalelements`|`Vector{Pair{String, Int}}`|chemical elements| 
+|`chemicalabbr`|`String`|common abbreviation; defaults to `chemicalname`| 
+|`chemicalsmiles`|`String`|SMILES; defaults to `""`| 
+|`charge`|`Int`|charges (positive or negative); defaults to 0|
+|`ncharge`|`Int`|number of charges|
+|`retentiontime`|`Float64`|retention time; defaults to `NaN`| 
+|`chemicalentity`|`AbstractChemical`|representative single chemical entity| 
+|`chemicalspecies`|`Vector{<: AbstractChemical}`|chemical species represented by a vector| 
+|`chemicalpair`|`Pair{<: AbstractChemical, <: AbstractChemical`|chemical pair represented by a pair| 
+|`chemicalparent`|`AbstractChemical`|parent chemical without delocalized isotopes replacement|
+|`isotopomersisotopes`|`Vector{Pair{String, Int}}`|delocalized isotopes replacement of isotopomers|
+|`analyzedchemical`|`AbstractChemical`|single chemical entity that is directly analyzed in the very begining of instrumental analysis| 
+|`detectedchemical`|`AbstractChemical`|single chemical entity that is directly detected in the very ending of instrumental analysis| 
+|`detectedisotopes`|`Vector{Pair{String, Int}}`|delocalized isotopes replacement of detected chemical| 
+|`detectedcharge`|`Int`|charge state of detected chemical| 
+|`detectedelements`|`Vector{Pair{String, Int}}`|elements of detected chemical| 
+|`inputchemical`|`AbstractChemical`|single chemical representation that is the input of the very begining of instrumental analysis| 
+|`outputchemical`|`AbstractChemical`|single chemical representation that is the output of the very ending of instrumental analysis| 
+|`analyzedprecursor`|`AbstractChemical`|single chemical entity that is directly analyzed in the nearest instrumental analysis| 
+|`detectedproduct`|`AbstractChemical`|single chemical entity that is directly detected in the nearest instrumental analysis| 
+|`detectedproductisotopes`|`Vector{Pair{String, Int}}`|delocalized isotopes replacement of detected product| 
+|`detectedproductcharge`|`Int`|charge state of detected product| 
+|`detectedproductelements`|`Vector{Pair{String, Int}}`|elements of detected product| 
+|`inputprecursor`|`AbstractChemical`|single chemical representation that is the input of the nearest instrumental analysis| 
+|`outputproduct`|`AbstractChemical`|single chemical representation that is the output of the nearest instrumental analysis| 
+|`msstage`|`Int`|stage of MS the chemical has been through| 
+|`chemicaltransitions`|`Vector{<: AbstractChemical}`|chemical entity(s) that are directly analyzed in each stage of instrumental analysis|
+|`mmi`|`Float64`|monoisotopic mass|
+|`molarmass`|`Float64`|molar mass|
+|`mz`|`Float64`|m/z; mass-to-charge ratio|
 
-For attributes exclusive for the instance, the attibutes have to be stored in the instance and `getchemicalattr(chemical::ChemicalType, attr::Val{attr}; kwargs...)` is defined as extracting the value from `chemical`. For example, the default `Chemical` stores any non-default attributes in the field `attr`, and `getchemicalattr` extracts value from the field. User can also add attributes by directly pushing the attr_name-attr_value pair to `chemical.attr`.
+### Type-specific attributes 
+Users can define new attributes or directly overload existing attribute functions for any chemical types
 ```julia
-    chemical = Chemical("18:0 PC-d9", "	C44H79NO8PD9")
-    push!(chemical.attr, :rt => 10)
-    rt(chemical) == 10
+abstract type Lipid <: AbstractChemical end 
+struct Fattyacid <: Lipid 
+    ncarbon::Int
+    ndoublebond::Int 
+end
+struct Acylglycerol <: Lipid 
+    carbonchains::Vector{Fattyacid}
+end
+# Different attribute methods for different chemical types 
+ncarbon(chemical::Fattyacid) = chemical.ncarbon 
+ncarbon(chemical::Acylglycerol) = sum(ncarbon, chemical.carbonchains) + 3
+fa1 = Fattyacid(18, 0)
+fa2 = Fattyacid(18, 1)
+dg = Acylglycerol([fa1, fa2])
+ncarbon(fa1) == 18 
+ncarbon(dg) == 39 
+```
+### Instance-specific attributes 
+For attributes defined in only some instances, users can use `getchemicalproperty` to handle the missing attributes. 
+```julia
+# Access the property through :carbonchains getchemicalproperty, default to [chemical]
+carbonchains(chemical::Lipid) = getchemicalproperty(chemical, :carbonchains, [chemical])
+carbonchains(dg) == [fa1, fa2]
+carbonchains(fa1) == [fa1]
+```
+The type `Chemical` stores any non-default attributes in the field `property`, user can  create object with these attributes as keyword arguments or add attributes by directly pushing the attr_name-attr_value pair to `chemical.property`, and define the attrubte function to access it. 
+```julia
+    chemical = Chemical("18:0 PC-d9", "	C44H79NO8PD9"; lipidclass = "PC")
+    
+    lipidclass(chemical::Chemical) = getchemicalproperty(chemical, :lipidclass) # new attribute
+    lipidclass(chemical) == "PC"
+
+    push!(chemical.property, :retentiontime => 10)
+    retentiontime(chemical) == 10 # Defined as accessing :rt through getchemicalproperty
 ```
 
-The following getter functions are user friendly interfaces for `getchemicalattr`.
-|Function|Attr|Return type|Description|
-|--------|----|----|-----------|
-|`chemicalname`|`:name`|`String`|unique chemical name|
-|`chemicalformula`|`:formula`|`String`|chemical formula|
-|`chemicalelements`|`:elements`|`Vector{Pair{String, Int}}`|chemical elements| 
-|`chemicalabbr`|`:abreviation`|`String`|common abbreviation; defaults to `chemicalname`| 
-|`chemicalsmiles`|`:SMILES`|`String`|SMILES; defaults to `""`| 
-|`charge`|`:charge`|`Int`|charges (positive or negative); defaults to 0|
-|`abundantchemical`|`:abundant_chemical`|`AbstractChemical`|the most abundant chemical from a chemical (itself) or isobars|
-|`rt`|`:rt`|`Float64`|retention time; defaults to `NaN`|  
-
 ### Additional Atttributes of `AbstractAdductIon`
-|Function|Attr|Return type|Description|
-|--------|----|----|-----------|
-|`ioncore`|`:core`|`AbstractChemical`|core chemical|
-|`ionadduct`|`:adduct`|`AbstractAdduct`|adduct originated from ionization|
-|`kmer`|`:kmer`|`Int`|number of core chemical|
+|Attribute|Return type|Description|
+|----|----|-----------|
+|`ioncore`|`AbstractChemical`|core chemical|
+|`ionadduct`|`AbstractAdduct`|adduct originated from ionization|
+|`kmer`|`Int`|number of core chemical|
 
-When isotopes are involved in addut ion formation for an object `adduct_ion` which `chemical = ioncore(adduct_ion)::ChemicalTypeT` and `adduct = ionadduct(adduct_ion)::Affected_Adduct`, there are two solutions.
+When isotopes are involved in addut ion formation for an object `adduct_ion` which `chemical = ioncore(adduct_ion)::ChemicalType` and `adduct = ionadduct(adduct_ion)::Affected_Adduct`, there are two solutions.
 1. If `ChemicalType` is a customized chemical type, define type-specific `adductisotopes`
     ```julia
-        adductisotopes(adduct_ion::AbstractAdductIon{Affected_Adduct, T})
+        adductisotopes(adduct_ion::AbstractAdductIon{ChemicalType, Affected_Adduct})
     ```
     
     `adductisotopes` returns element-number pairs which are the elements changed when the core chemical has isotopic labeling that is lost during adduct formation. For instance, [M-Me]- (`Demethylation`) of Deuterium-labeled phosphatidylcholine (`DL_PC`) may turn out to be [M-CD3]- rather than [M-CH3]- if Deuteriums are labeled on the methyl group of choline. In this case, extend `adductisotopes(::AbstractAdductIon{Demethylation, DL_PC})` such that
@@ -193,50 +264,13 @@ When isotopes are involved in addut ion formation for an object `adduct_ion` whi
 2. If `ChemicalType` is `Chemical`, define an attribute `:adductisotopes` for the `chemical`. The attribute should be ionadduct-(element-number pairs) pairs. `adductisotopes` finds this attribute, and extracts the value of key `adduct`. If the attribute or the key does not exist, empty vector is returned. 
     ```julia
         chemical = Chemical("18:0 PC-d9", "	C44H79NO8PD9")
-        push!(chemical.attr, :adductisotopes => [Demethylation() => ["H" => 3, "D" => -3]])
-        adductisotopes(Adduction(chemical, "[M+H]+")) == []
+        push!(chemical.property, :adductisotopes => [Demethylation() => ["H" => 3, "D" => -3]])
+        adductisotopes(Adduction(chemical, "[M+H]+")) == [] # No key Protonation()
         adductisotopes(Adduction(chemical, "[M-Me]-")) == ["H" => 3, "D" => -3]
     ```
 
-### Additional Atttributes of `Isobars`
-|Function|Attr|Return type|Description|
-|--------|----|----|-----------|
-||`:chemicals`|`Vector{<: AbstractChemical}`|composition of isabars|
-||`:abundance`|`Vector{Float64}`|abundance of each isabars|
-
-### Additional Atttributes of `Isotopomers`
-|Function|Attr|Return type|Description|
-|--------|----|----|-----------|
-||`:parent`|`AbstractChemical`|shared chemical structure of isotopomers prior to isotopic replacement|
-||`:isotopes`|`Vector{Pair{String, Int}}`|isotopes-number pairs of isotopic replacement|
-
-### Additional Atttributes of `ChemicalPair`
-|Function|Attr|Return type|Description|
-|--------|----|----|-----------|
-||`:precursor`|`AbstractChemical`|chemical prior to fragmentation|
-||`:product`|`AbstractChemical`|one of the fragments|
-
-### Additional Atttributes of `ChemicalLoss`
-|Function|Attr|Return type|Description|
-|--------|----|----|-----------|
-||`:chemical`|`AbstractChemical`|chemical loss from a precursor|
-
-
-### Functions for Attributes derived from other attributes
-|Function|Required attr|Return type|Description|
-|--------|----|----|-----------|
-|`mmi`|`:elements` or `:formula`|`Float64`|monoisotopic mass|
-|`molarmass`|`:elements` or `:formula`|`Float64`|molar mass|
-|`mz`|`:elements` or `:formula` and `:charge`|`Float64`|m/z|
-|`ncharge`|`:charge`|`Int`|number of charges|
-|`isotopicabundance`|`:elements` or `:formula`|`Float64`|isotopic abundance of a single monoisotopic chemical or formula|
-|`isotopologues`|`:elements` or `:formula`|`Vector{<:　ＡｂｓｔｒａｃｔＣｈｅｍｉｃａｌ}`|isotopologues of a single chemical or formula, and MS/MS transition|
-|`isotopologues_table`|`:elements` or `:formula`|`Table`|a table containing isotopologues information|
-|`isobars_rt`|`:elements` or `:formula`, and `rt`|`Isobars`|isobars under specific m/z, mass, and fwhm|
-|`isobars_rt_table`|`:elements` or `:formula`, and `rt`|`Table`|a table containing co-eluting isobars information|
-
-## Functions for Attributes of `AbstractAdduct`
-|Function|Return type|Description|
+## Attributes of `AbstractAdduct`s
+|Attribute|Return type|Description|
 |--------|----|-----------|
 |`kmer`|`Int`|number of core chemical|
 |`charge`|`Int`|charges (positive or negative); defaults to 0|
@@ -250,21 +284,37 @@ There are three related functions
     
     This function computes isotopic abundance of the input elements composition (`Vector{Pair{Int}}` or `Dictionary`), formula, and chemical (converted to elements by `chemicalelements`). Parent elements are viewed as major isotopes, and isotopic abundances of all elements are considered in computation. To compute isotopic abundance of chemicals with all isotopes labeled intentionally and not following natural distribution, set keyword argument `ignore_isotopes` true, and only parent elements are considered.
 
-* `isotopologues`
+* `Isotopologues`
 
-    This function computes isotopologues of formula, single chemical, or MS/MS precursor-product pairs (formula pairs or `ChemicalPair`). Only isotopic abundance of parent elements are considered, and isotopes are viewed as intentionally labeled elements. Isotopologues can be filtered by abundance threshold, and grouped by m/z or monoisotopic mass. MS/MS product can be neutral loss or chemical loss. 
+    This function computes isotopologues of formula, single chemical, MS/MS precursor-product pairs (formula pairs or `ChemicalPair`) or multiple chemicals. Only isotopic abundance of parent elements are considered, and isotopes are viewed as intentionally labeled elements. Isotopologues can be filtered by abundance threshold. MS/MS product can be neutral loss or chemical loss. 
 
-* `isotopologues_table`
+* `TandemIsotopologues`
 
-    It is similar to `isotopologues` but stores all information in a `Table`, including mass or m/z, and abundance. Multiple chemicals are supported.
+    This function is similar to `Isotopologues`; it computes isotopologues of given precursor(s) and additionally computes the abundance of fragments with given fragmentation patterns. 
 
+## Mass Spectrometer 
+There are four functions to handle ions in mass spectrometer. 
+1. `TargetIon`: isolating Isolating target ion(s) with specific m/z values and resolution to enter the next MS stage. 
+2. `AllIons`: allow all Ions within m/z range entering the next MS stage. 
+3. `Fragmentation`: create a table of fragments with given fragmentation patterns. 
+4. `MSScan`: perform MS scan using given mass analyzer. This function creates `Spectrum` objects, which be visualized by `plot_spectrum` and `plot_spectrum!`. Peak lists can be extracted with function `peak_table`. 
+
+Common mass analyzer are defined.
+1. `Quadrupole`
+2. `QuadrupoleIon` or `QIT`
+3. `LinearIonTrap` or `LIT`
+4. `TimeOfFlight` or `TOF`
+5. `Orbitrap`
+6. `FourierTransformIonCyclotronResonance` or `FTICR`
+
+Default settings related to resolution, and isolation window are defined. To create generic mass analyzer, use `MSAnalyzer`.
 ## Co-eluting isobars
 There are two related functions
 * `isobars_rt`
 
     This function finds all potential isobars of a detected chemical from a library (`AbstractVector` or `Table`). It returns only isobars without any additional information.
 
-* `isotopologues_table`
+* `isobars_rt_table`
 
     This function works very similar, but stores information including difference of retention time, m/z, ID, etc, in a `Table`. Another difference is not restricted to one chemical (`AbstractChemical`, `AbstractVector` or `Table`). 
 
@@ -275,7 +325,10 @@ There are two related functions
 * `isadductequal`: whether two adducts chemically equivalent.
 * `isadductequaltransform`: return an object for comparison with other adducts by `istransformedadduct`.
 * `istransformedadduct`: whether two adducts are chemically equivalent after applying `isadductequaltransform`.
+* `match_chemical`: match detected chemicals with reference library.
 * `acrit`: create absolute criterion.
 * `rcrit`: create relative criterion.
 * `crit`: create both absolute and relative criterion.
 * `@ri_str`: real number interval.
+* `plot_resolving_power` and `plot_resolving_power!`: plot the function of m/z to resolving_power.
+* `plot_window` and `plot_window!`: plot the window function.

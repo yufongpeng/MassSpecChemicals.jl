@@ -1,18 +1,17 @@
 """
     mmi(formula::AbstractString, net_charge = 0)
-    mmi(elements::Union{<: Vector{<: Pair}, <: Dictionaries.PairDictionary}, net_charge = 0)
+    mmi(elements::Union{<: Vector{<: Pair}, <: Dictionaries.PairDictionary}, net_charge = 0) -> AbstractFloat
     mmi(chemical::AbstractChemical)
-    mmi(chemicalpair::ChemicalPair)
 
-Monoisotopic mass of a formula, collection of elements pairs or chemical.
+Monoisotopic mass of formula, elements or chemical entity.
 
-This function calculates weighted average of monoisotopic masses for multiple chemicals. 
+This function calculates weighted average of monoisotopic masses for `Isobars`. 
 """
 function mmi(elements::Union{<: Vector{<: Pair}, <: Dictionaries.PairDictionary}, net_charge = 0)
     # Vector of el => #el
     weight = 0.0u"g"
     for (el, n) in elements
-        weight += ELEMENTS[:MASS][string(el)] * n
+        weight += elements_mass()[string(el)] * n
     end
     weight -= net_charge * ME
     ustrip(weight)
@@ -32,30 +31,29 @@ function mmi(formula::AbstractString, net_charge = 0)
 end
 
 mmi(cc::AbstractChemical) = mmi(chemicalelements(cc), charge(cc))
-mmi(isobars::Isobars) = mean(mmi.(chemicalelements(isobars), charge.(isobars.chemicals)), weights(isobars.abundance))
+mmi(isobars::Isobars) = mean([mmi(chemicalelements(x), charge(x)) for x in isobars.chemicals], weights(isobars.abundance))
 mmi(isotopomers::Isotopomers) = mmi(chemicalelements(isotopomers), charge(isotopomers))
-mmi(cp::ChemicalPair) = mmi(cp.precursor) => mmi(cp.product)
+mmi(cp::ChemicalPair) = mmi(cp.precursor)
 
 """
     molarmass(formula::AbstractString, net_charge = 0)
-    molarmass(elements::Union{<: Vector{<: Pair}, <: Dictionaries.PairDictionary}, net_charge = 0)
+    molarmass(elements::Union{<: Vector{<: Pair}, <: Dictionaries.PairDictionary}, net_charge = 0) -> AbstractFloat
     molarmass(chemical::AbstractChemical)
-    molarmass(chemicalpair::ChemicalPair)
 
-Molar mass of a formula, collection of elements pairs or chemical.
+Molar mass of formula, elements or chemical entity.
 
-This function calculates weighted average of molar masses for multiple chemicals. 
+This function calculates weighted average of molar masses for `Isobars`. 
 """
 function molarmass(elements::Union{<: Vector{<: Pair}, <: Dictionaries.PairDictionary}, net_charge = 0)
     # Vector of el => #el
     weight = 0.0u"g"
     for (el, n) in elements
-        if haskey(ELEMENTS[:ISOTOPES], string(el))
-            for i in ELEMENTS[:ISOTOPES][string(el)]
-                weight += ELEMENTS[:MASS][i] * n * ELEMENTS[:ABUNDANCE][i]
+        if haskey(elements_isotopes(), string(el))
+            for i in elements_isotopes()[string(el)]
+                weight += elements_mass()[i] * n * elements_abundunce()[i]
             end
         else
-            weight += ELEMENTS[:MASS][string(el)] * n
+            weight += elements_mass()[string(el)] * n
         end
     end
     weight -= net_charge * ME
@@ -76,20 +74,26 @@ function molarmass(formula::AbstractString, net_charge = 0)
 end
 
 molarmass(cc::AbstractChemical) = molarmass(chemicalelements(cc), charge(cc))
-molarmass(isobars::Isobars) = mean(molarmass.(chemicalelements(isobars), charge.(isobars.chemicals)), weights(isobars.abundance))
-molarmass(isotopomers::Isotopomers) = mmi(chemicalelements(isotopomers), charge(isotopomers))
-molarmass(cp::ChemicalPair) = molarmass(cp.precursor) => molarmass(cp.product)
+molarmass(isobars::Isobars) = mean([molarmass(chemicalelements(x), charge(x)) for x in isobars.chemicals], weights(isobars.abundance))
+molarmass(isotopomers::Isotopomers) = molarmass(chemicalelements(isotopomers), charge(isotopomers))
+molarmass(cp::ChemicalPair) = molarmass(cp.precursor)
+
+"""
+    pair_molarmass(chemicalpair::ChemicalPair) -> Pair{<: AbstractFloat, <: AbstractFloat}
+
+Molar mass of of precursor and product.
+"""
+pair_molarmass(cp::ChemicalPair) = molarmass(cp.precursor) => molarmass(cp.product)
 
 """
     mz(charged_chemical::AbstractChemical)
     mz(chemical::AbstractChemical, adduct::AbstractAdduct)
     mz(chemical::AbstractChemical, adduct::AbstractString)
-    mz(adduct_ion::AbstractAdductIon, adduct = ionadduct(adduct_ion))
+    mz(adduct_ion::AbstractAdductIon, adduct = ionadduct(adduct_ion)) -> AbstractFloat
     mz(isobars::Isobars) 
-    mz(isobars::Isobars, adduct) 
-    mz(chemicalpair::ChemicalPair)
+    mz(isobars::Isobars, adduct)
 
-Calculate m/z (monoisotopic mass over # charge) of `charged_chemical`, `adduct_ion`, `chemicalpair`, `isobars` or `chemical` with adduct `adduct`. It is equivalent to `mmi(cc) / ncharge(cc)`.
+Mass to charge ratio (m/z) of charged chemical or chemical with adduct. It is equivalent to `mmi(charged_chemical) / ncharge(charged_chemical)`.
 """
 mz(charged_cc::AbstractChemical) = charge(charged_cc) == 0 ? NaN : mmi(charged_cc) / ncharge(charged_cc)
 mz(cc::AbstractChemical, adduct) = mz(AdductIon(cc, parse_adduct(adduct)))
@@ -101,27 +105,4 @@ mz(adduct_ion::AbstractAdductIon, adduct) = mz(AdductIon(ioncore(adduct_ion), pa
 mz(isotopomers::Isotopomers{<: AbstractAdductIon}, adduct) = mz(Isotopomers(AdductIon(ioncore(isotopomers.parent), parse_adduct(adduct)), isotopomers.isotopes))
 mz(isobars::Isobars{<: AbstractAdductIon}) = mean(mz.(isobars.chemicals), weights(isobars.abundance))
 mz(isobars::Isobars, adduct) = mean(mz.(isobars.chemicals, adduct), weights(isobars.abundance))
-mz(cp::ChemicalPair) = mz(cp.precursor) => mz(cp.product)
-
-# function mz(m::AbstractChemical, adduct::AbstractString)
-#     ad = get(ADDUCT_NAME, string(adduct), nothing)
-#     isnothing(ad) || return mz(m, ad)
-#     adduct = replace(adduct, ADDUCT_ABBR...)
-#     ion, charge = split(adduct, "]")
-#     charge = split(charge, "+", keepempty = false)
-#     charge = isempty(charge) ? 1 : begin
-#         charge = split(only(charge), "-", keepempty = false)
-#         isempty(charge) ? 1 : parse(Int, only(charge))
-#     end
-#     ion = replace(ion, "[" => "")
-#     # #chemicals
-#     nm, ion = split(ion, "M")
-#     nm = isempty(nm) ? 1 : parse(Int, nm)
-
-#     pos_adds = split(ion, "+", keepempty = false)
-#     madd = mapreduce(+, pos_adds) do pos_add
-#         # M-H / M+FA-H
-#         mapreduce(mmi, -, split(pos_add, "-"))
-#     end
-#     (mmi(m) * nm + madd) / charge
-# end
+mz(cp::ChemicalPair) = mz(cp.precursor)

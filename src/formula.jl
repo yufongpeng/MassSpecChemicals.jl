@@ -75,7 +75,7 @@ const ADDUCTS = Dict(
 )
 
 """
-    set_adduct_abbr!(abbr, fm)
+    set_adduct_abbr!(abbr::AbstractString, fm::AbstractString)
 
 Set `abbr` to be an abbreviation of adduct formula `fm`. 
 """
@@ -99,10 +99,13 @@ For custumized adduct type, this function is required to make `nm` parsed into `
 set_adduct_name!(nm::AbstractString, adduct::AbstractAdduct) = push!(ADDUCTS[:NAME], nm => adduct)
 
 """
-    chemicalformula(elements::Dictionary; delim = "", unique = true)
-    chemicalformula(elements::Union{<: Vector{<: Pair}, <: Dictionaries.PairDictionary}; delim = "", unique = true)
+    chemicalformula(elements::Dictionary; delim = "", unique = true) -> String
+    chemicalformula(elements::Union{<: Vector{<: Pair}, <: Dictionaries.PairDictionary}; delim = "", unique = true) -> String
 
-Create chemical formula using given element-number pairs. `delim` assigns the delimiter between each element, and `unique` determines whether combines the elements to become unique or not.
+Create chemical formula using given element-number pairs. 
+
+* `delim` assigns the delimiter between each element.
+* `unique` determines whether combines the elements to become unique or not.
 """
 function chemicalformula(elements::Union{<: Vector{<: Pair}, <: Dictionaries.PairDictionary}; delim = "", unique = true)
     unique ? chemicalformula(unique_elements(elements); delim) : join((v == 1 ? k : string(k, v) for (k, v) in elements if v != 0), delim)
@@ -147,7 +150,7 @@ function add_elements!(elements::Dictionary, y::Union{<: Vector{<: Pair}, <: Dic
         get!(elements, k, 0)
         elements[k] += v
     end
-    elements
+    filter!(!=(0), elements)
 end
 
 """
@@ -169,7 +172,7 @@ function loss_elements!(elements::Dictionary, y::Union{<: Vector{<: Pair}, <: Di
         get!(elements, k, 0)
         elements[k] -= v
     end
-    elements
+    filter!(!=(0), elements)
 end
 
 function encode_isotopes(formula::AbstractString)
@@ -177,7 +180,7 @@ function encode_isotopes(formula::AbstractString)
     f2 = f
     for i in eachmatch(r"\[(\d*)([^\]]*)\]", f)
         m, e = i
-        delta = isempty(m) ? 0 : (parse(Int, m) - round(Int, ustrip(ELEMENTS[:MASS][e])))
+        delta = isempty(m) ? 0 : (parse(Int, m) - round(Int, ustrip(elements_mass()[e])))
         e = delta > 0 ? string(e, "it") * "n" ^ delta :
             delta < 0 ? string(e, "it") * "p" ^ abs(delta) : string(e, "itz")
         f2 = replace(f2, i.match => e)
@@ -190,8 +193,9 @@ end
 
 Create element-number pairs from chemical formula. 
 """
-function chemicalelements(formula::AbstractString)
-    [ELEMENTS[:DECODES][k] => v for (k, v) in parse_compound(encode_isotopes(formula))]
+function chemicalelements(formula::AbstractString; kwargs...)
+    formula = startswith(formula, "-") ? formula[begin + 1:end] : formula
+    [elements_decodes()[k] => v for (k, v) in parse_compound(encode_isotopes(formula))]
 end
 
 """

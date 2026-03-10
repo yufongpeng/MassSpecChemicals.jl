@@ -238,15 +238,19 @@ const DECODES = Dict(
     # "Mgitnn"    => "[26Mg]"
 )
 
-"""
-    const ELEMENTS
+element_doc = """
+    elements_mass
+    elements_abundunce
+    elements_isotopes
+    elements_parents
+    elements_decodes
 
-Constants related to elements. It is a dictionary with five keys
-* `:MASS`: atomic mass.
-* `:ABUNDANCE`: natrural abundance.
-* `:ISOTOPES`: possible isotopes.
-* `:PARENTS`: parent element. 
-* `:DECODES`: decode encoded string for `parse_compound`.
+Access constants related to elements. 
+* `elements_mass`: atomic mass.
+* `elements_abundunce`: natrural abundance.
+* `elements_isotopes`: possible isotopes.
+* `elements_parents`: parent element. 
+* `elements_decodes`: decode encoded string for `parse_compound`.
 
 # Parent Elements and Major isotopes
 |Symbol|Major isotopes|Atomic number|Mass number|
@@ -293,22 +297,32 @@ By default, parent elements are considered as major isotopes possibly replaced b
 
 One exception is that in `parent` chemical of `Isotopomers`, parent elements are major isotopes, and the number of replacement is restricted by field `isotopes`. 
 """
-const ELEMENTS = Dict{Symbol, Dict}(
-    :MASS       => deepcopy(MASS),
-    :ABUNDANCE  => deepcopy(ABUNDANCE),
-    :ISOTOPES   => deepcopy(ISOTOPES),
-    :PARENTS    => deepcopy(PARENTS),
-    :DECODES    => deepcopy(DECODES)
-)
+
+@doc element_doc
+elements_mass() = MASS
+
+@doc element_doc
+elements_abundunce() = ABUNDANCE
+
+@doc element_doc
+elements_isotopes() = ISOTOPES
+
+@doc element_doc
+elements_parents() = PARENTS
+
+@doc element_doc
+elements_decodes() = DECODES
+
 
 """
-    set_elements!(element::AbstractString, mass, abundance; minor_name = nothing)
+    set_elements!(element, mass, abundance; minor_name = nothing)
 
-Update or insert `elements` in `ELEMENTS`. 
+Update or insert `element`. 
 
-* `mass`: atomic mass of all isotopes.
-* `abundance`: natural abundance of all isotopes.
-* `minor_name`: customized minor element names.
+* `element::AbstractString`: element name.
+* `mass::Vector`: atomic mass of all isotopes.
+* `abundance::Vector`: natural abundance of all isotopes.
+* `minor_name`: custumized minor element names.
 """
 function set_elements!(element::AbstractString, mass, abundance; minor_name = nothing)
     isotopes = isnothing(minor_name) ? map(mass) do m 
@@ -316,20 +330,20 @@ function set_elements!(element::AbstractString, mass, abundance; minor_name = no
         string("[", n, element, "]")
     end : minor_name
     _, i = findmax(abundance)
-    ELEMENTS[:PARENTS][element] = element
-    ELEMENTS[:DECODES][element] = element
-    ELEMENTS[:MASS][element] = mass[i]
-    ELEMENTS[:ABUNDANCE][element] = abundance[i]
+    elements_parents()[element] = element
+    elements_decodes()[element] = element
+    elements_mass()[element] = mass[i]
+    elements_abundunce()[element] = abundance[i]
     ee = encode_isotopes.(isotopes)
     for (e, i, m, a) in zip(ee, isotopes, mass, abundance) 
-        ELEMENTS[:DECODES][e] = i 
-        ELEMENTS[:MASS][i] = m 
-        ELEMENTS[:ABUNDANCE][i] = a 
-        ELEMENTS[:PARENTS][i] = element
+        elements_decodes()[e] = i 
+        elements_mass()[i] = m 
+        elements_abundunce()[i] = a 
+        elements_parents()[i] = element
     end
     id = sortperm(abundance; rev = true)
-    ELEMENTS[:ISOTOPES][element] = isotopes[id]
-    ELEMENTS
+    elements_isotopes()[element] = isotopes[id]
+    MASS
 end
 
 const ME = 0.00054857990924u"g"

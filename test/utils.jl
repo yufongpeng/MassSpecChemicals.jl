@@ -1,0 +1,5 @@
+ct1 = crit(10)
+ct2 = rcrit(0.2)
+ct3 = crit(10, 0.2)
+qualified_peak1(x, x̂, ct) = all(c -> in(x, c), makecrit_delta(ct, x̂))
+qualified_peak2(x, x̂, ct) = any(c -> x >= c, makecrit_value(ct, x̂))
