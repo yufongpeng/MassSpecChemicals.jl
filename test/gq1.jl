@@ -97,5 +97,5 @@ pt = Table(;
     ])
 IGQ1b = AdductIon(GQ1, "[M+2H]2+")
 spec1 = @p Isotopologues(IGQ1b; abtype = :list, abundance = 100000) |> MSScan
-spec2 = @p spec1 |> TargetIon(Quadrupole(1210.588728; fwhm = 1.3, offset = 0.3)) |> Fragmentation(pt) |> MSScan
-spec3 = @p spec2 |> TargetIon(Quadrupole(948.3303; fwhm = 1.3, offset = 0.3)) |> Fragmentation(pt) |> MSScan
+spec2 = @p spec1 |> Isolation(Quadrupole(1210.588728; fwhm = 1.3, offset = 0.3)) |> Fragmentation(pt) |> MSScan
+spec3 = @p spec2 |> Isolation(Quadrupole(948.3303; fwhm = 1.3, offset = 0.3)) |> Fragmentation(pt) |> MSScan

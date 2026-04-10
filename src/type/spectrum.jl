@@ -18,6 +18,13 @@ struct Spectrum{T}
     table::Table
 end
 
+# Record procedure
+# struct MSAnalysis 
+#     procedure::Vector
+#     table::Table
+#     tables::Vector
+# end
+
 abstract type AbstractWindow end
 abstract type ZeroCenteredtWindow end
 struct GaussianWindow <: AbstractWindow end
@@ -85,10 +92,9 @@ Quadrupole MS Analyzer.
 * `stepsize`: step size for discrete mass scan such as quadrupole. It must be multiples of `10 ^ (-digits)`.
 
 # Constructors
-`Quadrupole([mz = nothing]; scan = true, accuracy = 0.1, offset = 0, fwhm = 0.7, digits = nothing, stepsize = nothing, unit = 0.7, flatness = 100, taperproportion = 0.2)`
+`Quadrupole([mz = nothing]; accuracy = 0.1, offset = 0, fwhm = 0.7, digits = nothing, stepsize = nothing, unit = 0.7, flatness = 100, taperproportion = 0.2)`
 
 ## Arguments
-* `scan`: whether operating in scan or SIM mode.
 * `offset`: m/z offset of the center of window. The resulting m/z center will be `mz + offset`.
 * `unit`: unit mass resolution (fwhm); the largest fwhm that remains gaussian. Window function becomes super gaussian (flat top) for fwhm larger than unit.
 * `flatness`: how flat is the gaussian fall-off of the super gaussian function. Practical values range from 10 to 1000. 
@@ -103,9 +109,9 @@ struct Quadrupole{W, M} <: AbstractMSAnalyzer{W, M}
     stepsize
 end 
 
-function Quadrupole(mz = nothing; scan = true, accuracy = 0.1, offset = 0, fwhm = 0.7, digits = nothing, stepsize = nothing, unit = 0.7, flatness = 100, taperproportion = 0.2)
+function Quadrupole(mz = nothing; accuracy = 0.1, offset = 0, fwhm = 0.7, digits = nothing, stepsize = nothing, unit = 0.7, flatness = 100, taperproportion = 0.2)
     mz = isnothing(mz) ? mz : @.(mz + offset)
-    if (isnothing(mz) || mz isa Tuple) && scan
+    if isnothing(mz) || mz isa Tuple
         if fwhm > unit
             f = sqrt(log(2, flatness))
             n = log(2, f) / log(2, unit / fwhm * (f - 1) + 1) * 2
@@ -122,7 +128,7 @@ function Quadrupole(mz = nothing; scan = true, accuracy = 0.1, offset = 0, fwhm 
     end 
 end
 
-"""
+doc_qit = """
     QuadrupoleIonTrap{W, M} <: AbstractMSAnalyzer{W, M} 
     const QIT = QuadrupoleIonTrap
 
@@ -137,13 +143,13 @@ Quadrupole Ion Trap (QIT) MS Analyzer.
 * `stepsize`: step size for discrete mass scan such as quadrupole. It must be multiples of `10 ^ (-digits)`.
 
 # Constructors
-`QuadrupoleIonTrap([mz = nothing]; scan = true, accuracy = 0.1, offset = 0, fwhm = 0.7, stepsize = nothing, power = 4)`
+`QuadrupoleIonTrap([mz = nothing]; accuracy = 0.1, offset = 0, fwhm = 0.7, stepsize = nothing, power = 4)`
 
 ## Arguments
-* `scan`: whether operating in scan or SIM mode.
 * `offset`: m/z offset of the center of window. The resulting m/z center will be `mz + offset`.
 * `power`: the power of super gaussian function (used in SWIFT isolation). Practical values range from 4 to 8. 
 """
+@doc doc_qit
 struct QuadrupoleIonTrap{W, M} <: AbstractMSAnalyzer{W, M} 
     window::W
     mz::M
@@ -153,9 +159,9 @@ struct QuadrupoleIonTrap{W, M} <: AbstractMSAnalyzer{W, M}
     stepsize
 end 
 
-function QuadrupoleIonTrap(mz = nothing; scan = true, accuracy = 0.1, offset = 0, fwhm = 0.7, stepsize = nothing, power = 4)
+function QuadrupoleIonTrap(mz = nothing; accuracy = 0.1, offset = 0, fwhm = 0.7, stepsize = nothing, power = 4)
     mz = isnothing(mz) ? mz : @.(mz + offset)
-    if (isnothing(mz) || mz isa Tuple) && scan
+    if isnothing(mz) || mz isa Tuple
         # Instability scan mode
         QuadrupoleIonTrap(GaussianWindow(), mz, accuracy, fwhm, digits, stepsize)
     else
@@ -163,10 +169,10 @@ function QuadrupoleIonTrap(mz = nothing; scan = true, accuracy = 0.1, offset = 0
         QuadrupoleIonTrap(SuperGaussianWindow(power), mz, accuracy, fwhm, digits, stepsize)
     end
 end
-
+@doc doc_qit
 const QIT = QuadrupoleIonTrap
 
-"""
+doc_lit = """
     LinearIonTrap{W, M} <: AbstractMSAnalyzer{W, M} 
     const LIT = LinearIonTrap
 
@@ -181,13 +187,13 @@ Linear Ion Trap (LIT) MS Analyzer.
 * `stepsize`: step size for discrete mass scan such as quadrupole. It must be multiples of `10 ^ (-digits)`.
 
 # Constructors
-`LinearIonTrap([mz = nothing]; scan = true, accuracy = 0.1, offset = 0, fwhm = 0.7, stepsize = nothing, taperproportion = 0.2)`
+`LinearIonTrap([mz = nothing]; accuracy = 0.1, offset = 0, fwhm = 0.7, stepsize = nothing, taperproportion = 0.2)`
 
 ## Arguments
-* `scan`: whether operating in scan or SIM mode.
 * `offset`: m/z offset of the center of window. The resulting m/z center will be `mz + offset`.
 * `taperproportion`: the proportion of the window that is tapered for `TukeyWindow` (used in SWIFT isolation).
 """
+@doc doc_lit
 struct LinearIonTrap{W, M} <: AbstractMSAnalyzer{W, M} 
     window::W
     mz::M
@@ -197,9 +203,9 @@ struct LinearIonTrap{W, M} <: AbstractMSAnalyzer{W, M}
     stepsize
 end 
 
-function LinearIonTrap(mz = nothing; scan = true, accuracy = 0.1, offset = 0, fwhm = 0.7, stepsize = nothing, taperproportion = 0.2)
+function LinearIonTrap(mz = nothing; accuracy = 0.1, offset = 0, fwhm = 0.7, stepsize = nothing, taperproportion = 0.2)
     mz = isnothing(mz) ? mz : @.(mz + offset)
-    if (isnothing(mz) || mz isa Tuple) && scan 
+    if isnothing(mz) || mz isa Tuple
         # Instability scan mode
         LinearIonTrap(GaussianWindow(), mz, accuracy, fwhm, digits, stepsize)
     elseif taperproportion >= 1
@@ -210,10 +216,10 @@ function LinearIonTrap(mz = nothing; scan = true, accuracy = 0.1, offset = 0, fw
         LinearIonTrap(RectWindow(), mz, accuracy, fwhm, digits, stepsize)
     end 
 end
-
+@doc doc_lit
 const LIT = LinearIonTrap
 
-"""
+doc_tof = """
     TimeOfFlight{W, M} <: AbstractMSAnalyzer{W, M} 
     const TOF = TimeofFlight
 
@@ -227,8 +233,9 @@ Time-of-Flight (TOF) MS Analyzer.
 * `mz50`: m/z value with half `resolution`.
 
 # Constructors
-`TimeOfFlight([mz = nothing]; window = GaussianWindow(), accuracy = rcrit(1e-6), resolution = 66000, mz50 = 120)`
+`TimeOfFlight([mz = nothing]; window = GaussianWindow(), accuracy = rcrit(1e-6), resolution = 80000, mz50 = 120)`
 """
+@doc doc_tof
 struct TimeOfFlight{W, M} <: AbstractMSAnalyzer{W, M} 
     window::W
     mz::M
@@ -236,8 +243,9 @@ struct TimeOfFlight{W, M} <: AbstractMSAnalyzer{W, M}
     resolution
     mz50
 end 
-TimeOfFlight(mz = nothing; window = GaussianWindow(), accuracy = rcrit(1e-6), resolution = 66000, mz50 = 120) = TimeOfFlight(window, mz, accuracy, resolution, mz50)
+TimeOfFlight(mz = nothing; window = GaussianWindow(), accuracy = rcrit(1e-6), resolution = 80000, mz50 = 120) = TimeOfFlight(window, mz, accuracy, resolution, mz50)
 # 100000 .* sqrt.(x) ./ (8 .+ sqrt.(x)) .- 20000
+@doc doc_tof
 const TOF = TimeOfFlight
 
 """
@@ -264,7 +272,7 @@ struct Orbitrap{W, M} <: AbstractMSAnalyzer{W, M}
 end 
 Orbitrap(mz = nothing; window = GaussianWindow(), accuracy = rcrit(1e-6), resolution = 480000, mz50 = 800) = Orbitrap(window, mz, accuracy, resolution, mz50)
 
-"""
+doc_fticr = """
     FourierTransformIonCyclotronResonance{W, M} <: AbstractMSAnalyzer{W, M} 
     const FTICR = FourierTransformIonCyclotronResonance
 
@@ -280,6 +288,7 @@ Fourier-transform ion cyclotron resonance (FTICR) MS Analyzer.
 # Constructors
 `FourierTransformIonCyclotronResonance(mz = nothing; window = GaussianWindow(), accuracy = rcrit(2e-7), resolution = 20000000, mz50 = 400)`
 """
+@doc doc_fticr
 struct FourierTransformIonCyclotronResonance{W, M} <: AbstractMSAnalyzer{W, M} 
     window::W
     mz::M
@@ -288,8 +297,59 @@ struct FourierTransformIonCyclotronResonance{W, M} <: AbstractMSAnalyzer{W, M}
     mz50
 end 
 FourierTransformIonCyclotronResonance(mz = nothing; window = GaussianWindow(), accuracy = rcrit(2e-7), resolution = 20000000, mz50 = 400) = FourierTransformIonCyclotronResonance(window, mz, accuracy, resolution, mz50)
+@doc doc_fticr
 const FTICR = FourierTransformIonCyclotronResonance
 
 abstract type AlgSpecPeak end
-struct LocalMaxima <: AlgSpecPeak end 
+struct LocalMaxima <: AlgSpecPeak
+    threshold::Real
+end 
+LocalMaxima() = LocalMaxima(0.1)
+
 struct FWHMMaxima <: AlgSpecPeak end 
+
+"""
+    CoelutingIsobars
+
+A type for finding coelution isobars. 
+
+# Fields
+* `elution::Vector{<: Pair}`: elution function (e.g. `retentiontime`)-criteria pairs. 
+* `msanalyzer::Vector{<: Pair}`: msanalyzer-abundance criteria pairs.
+* `target::Table`: a table of target chemicals in the form of `Isotopomers`.
+* `isobar::Table`: a table of potential isobars in the form of `Isotopomers`.
+* `tables::Vector`: tables of isotopologues of each target chemicals.
+
+The index of `msanalyzer` matches the index of transition of chemicals. Filtering only occurs on transitions that corresponding msanalyzer has a vector of target mz (this supposes to be empty, but it's fine with some elements). If `msanalyzer` is shorter, no filtering is applied for the transitions that have no corresponding msanalyzer.
+
+# Constructors
+* `CoelutingIsobars(elution, msanalyzer, table::Table; ci_filter = 2, kwargs...)`
+* `CoelutingIsobars(elution, msanalyzer, target::Table, isobar::Table; ci_filter = 2)`
+
+## Arguments 
+* `table`: table of target chemicals not in the form of `Isotopomers`; `target` and `isobar` are generated from this table. 
+* `ci_filter`: number of step to filter isobars. `0` means no filtering, and `tables` would be empty; `1` means filtering by only `elution`; `2` means filtering by both `elution` and `msanalyzer`.
+* Other keyword arguments are for `Isotopologues` to generate `isobar` from `table`.
+"""
+struct CoelutingIsobars 
+    elution::Vector{<: Pair}
+    msanalyzer::Vector{<: Pair}
+    target::Table 
+    isobar::Table
+    tables::Vector
+end
+
+function CoelutingIsobars(elution, ms, table::Table; ci_filter = 2, kwargs...) 
+    isobar = Isotopologues(table; kwargs...)
+    target = isobar[[findfirst(x -> ischemicalequal(x, y), isobar.Chemical) for y in table.Chemical]]
+    CoelutingIsobars(elution, ms, target, isobar; ci_filter)
+end
+
+function CoelutingIsobars(elution, msanalyzer, target::Table, isobar::Table; ci_filter = 2) 
+    ci = CoelutingIsobars(elution, msanalyzer, target, isobar, Any[])
+    ci_filter < 1 && return ci 
+    elution_filter!(ci)
+    ci_filter -= 1
+    ci_filter < 1 && return ci 
+    ms_filter!(ci)
+end

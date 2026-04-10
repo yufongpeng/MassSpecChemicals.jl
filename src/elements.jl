@@ -238,12 +238,12 @@ const DECODES = Dict(
     # "Mgitnn"    => "[26Mg]"
 )
 
-element_doc = """
-    elements_mass
-    elements_abundunce
-    elements_isotopes
-    elements_parents
-    elements_decodes
+elements_doc = """
+    elements_mass()
+    elements_abundunce()
+    elements_isotopes()
+    elements_parents()
+    elements_decodes()
 
 Access constants related to elements. 
 * `elements_mass`: atomic mass.
@@ -298,24 +298,24 @@ By default, parent elements are considered as major isotopes possibly replaced b
 One exception is that in `parent` chemical of `Isotopomers`, parent elements are major isotopes, and the number of replacement is restricted by field `isotopes`. 
 """
 
-@doc element_doc
+@doc elements_doc
 elements_mass() = MASS
 
-@doc element_doc
+@doc elements_doc
 elements_abundunce() = ABUNDANCE
 
-@doc element_doc
+@doc elements_doc
 elements_isotopes() = ISOTOPES
 
-@doc element_doc
+@doc elements_doc
 elements_parents() = PARENTS
 
-@doc element_doc
+@doc elements_doc
 elements_decodes() = DECODES
 
 
 """
-    set_elements!(element, mass, abundance; minor_name = nothing)
+    set_element!(element, mass, abundance; minor_name = nothing)
 
 Update or insert `element`. 
 
@@ -324,7 +324,7 @@ Update or insert `element`.
 * `abundance::Vector`: natural abundance of all isotopes.
 * `minor_name`: custumized minor element names.
 """
-function set_elements!(element::AbstractString, mass, abundance; minor_name = nothing)
+function set_element!(element::AbstractString, mass, abundance; minor_name = nothing)
     isotopes = isnothing(minor_name) ? map(mass) do m 
         n = round(Int, m)
         string("[", n, element, "]")

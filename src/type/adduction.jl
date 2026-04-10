@@ -7,6 +7,8 @@ Abstract type for adduct ions with core chemical type `S` and adduct type `T`.
 * `kmer -> Int`: number of core chemical "M" in adduct ion representation "[M+X]n+". 
 * `ioncore -> S`: the core chemical undergoing ionization. 
 * `ionadduct -> T`: the adduct formed during ionization. 
+* `adductelements -> Vector{Pair{String, Int}}`: the elements changed with adduct of `adduct_ion`.
+* `adductisotopes -> Vector{Pair{String, Int}}`: the elements changed when the core chemical has isotopic labeling that is lost in adduct formation. The returned vector is element-number pairs.
 """
 abstract type AbstractAdductIon{S, T} <: AbstractChemical end
 

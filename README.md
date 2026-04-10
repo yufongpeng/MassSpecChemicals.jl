@@ -12,52 +12,69 @@ Charged chemicals with specific adduct or molecule loss that formed in MS (adduc
 1. `Chemical`: unstructured chemicals, storing name, elements, and other attributes
 
     ```julia
-        Chemical(name::AbstractString, elements::Vector{Pair{String, Int}}; property...)
+    Chemical(name::AbstractString, elements::Vector{Pair{String, Int}}; property...)
 
-        Chemical(name::AbstractString, formula::String; property...)
+    Chemical(name::AbstractString, formula::String; property...)
 
-        Chemical(name::String, elements::Vector{Pair{String, Int}}, property::Vector{Pair{Symbol, Any}})
+    Chemical(name::String, elements::Vector{Pair{String, Int}}, property::Vector{Pair{Symbol, Any}})
     ```
 
 2. `FormulaChemical`: unstructured chemicals using formula as name
 
     ```julia
-        FormulaChemical(elements::Vector{Pair{String, Int}}; property...)
+    FormulaChemical(elements::Vector{Pair{String, Int}}; property...)
 
-        FormulaChemical(formula::String; property...)
+    FormulaChemical(formula::String; property...)
 
-        FormulaChemical(elements::Vector{Pair{String, Int}}, property::Vector{Pair{Symbol, Any}})
+    FormulaChemical(elements::Vector{Pair{String, Int}}, property::Vector{Pair{Symbol, Any}})
     ```
 
 2. `AdductIon`: charged chemicals with specific adduct or molecule loss.
 
     ```julia
-        AdductIon(core::AbstractChemical, adduct::AbstractAdduct)
+    AdductIon(core::AbstractChemical, adduct::AbstractAdduct)
+    ```
+3. `ChemicalTransition`: MS/MS transition.
+
+    ```julia
+    ChemicalTransition(transition::Vector)
+
+    ChemicalTransition(precursor::AbstractChemical, products...)
     ```
 
-3. `Isobars`: multiple chemicals with similar m/z.
+4. `Isobars`: multiple chemicals with similar m/z.
         
     ```julia
-        Isobars(chemical::Vector{<: AbstractChemical}, abundance::Vector{Float64})
+    Isobars(chemical::Vector{<: AbstractChemical}, abundance::VecOrMat)
     ```
 
-4. `Isotopomers`: multiple chemicals differed from isotopic replacement location
+5. `Isotopomers`: multiple chemicals differed from isotopic replacement location
         
     ```julia
-        Isotopomers(parent::AbstractChemical, isotopes::Vector{Pair{String, Int}})
+    Isotopomers(parent::AbstractChemical, isotopes::Vector{Pair{String, Int}})
+
+    Isotopomers(parent::AbstractChemical, fullformula::String)
+
+    Isotopomers(parent::AbstractChemical, fullelements::Dictionary)
+
+    Isotopomers(parent::AbstractChemical, fullelements::Vector{Pair{String, Int}})
     ```
-        
-5. `ChemicalLoss`: chemical loss from a precursor.
+6. `Groupedisotopomers`: isotopomers grouped by isotopomer state
+    ```julia
+    Groupedisotopomers(parent::AbstractChemical, state::Int, isotope::String, isotopes::Vector{Vector{Pair{String, Int}}}
+    , abundance::Vector)
+    ```
+7. `ChemicalLoss`: chemical loss from a precursor.
 
     ```julia
-        ChemicalLoss(chemical::AbstractChemical)
+    ChemicalLoss(chemical::AbstractChemical)
     ```
-
-6. `ChemicalPair`: a pair of precursor and product in MS/MS.
+8. `ChemicalGain`: chemical gain to a precursor.
 
     ```julia
-        ChemicalPair(precursor::AbstractChemical, product::AbstractChemical)
+    ChemicalGain(chemical::AbstractChemical)
     ```
+
 Users can create chemical(s) with strings and pairs by `ChemicalSeries`.
 
 ```julia
@@ -177,30 +194,34 @@ Attributes are interfaces directly accessing properties and fields through `getc
 |`charge`|`Int`|charges (positive or negative); defaults to 0|
 |`ncharge`|`Int`|number of charges|
 |`retentiontime`|`Float64`|retention time; defaults to `NaN`| 
-|`chemicalentity`|`AbstractChemical`|representative single chemical entity| 
-|`chemicalspecies`|`Vector{<: AbstractChemical}`|chemical species represented by a vector| 
-|`chemicalpair`|`Pair{<: AbstractChemical, <: AbstractChemical`|chemical pair represented by a pair| 
-|`chemicalparent`|`AbstractChemical`|parent chemical without delocalized isotopes replacement|
+|`chemicalparent`|`AbstractChemical`|parent chemical without delocalized isotopes replacement| 
 |`isotopomersisotopes`|`Vector{Pair{String, Int}}`|delocalized isotopes replacement of isotopomers|
-|`analyzedchemical`|`AbstractChemical`|single chemical entity that is directly analyzed in the very begining of instrumental analysis| 
-|`detectedchemical`|`AbstractChemical`|single chemical entity that is directly detected in the very ending of instrumental analysis| 
+|`isotopomerstate`|`Int`|isotopomers state, i.e. equivalent number of isotope|
+|`chemicalentity`|`AbstractChemical`|a single chemical entity representing the chemical| 
+|`chemicalspecies`|`Vector{<: AbstractChemical}`|multiple chemical entities having shared properties| 
+|`chemicaltransitions`|`Vector{<: AbstractChemical}`|chemical entities analyzed in each stage of instrumental analysis|
+|`inputchemical`|`AbstractChemical`|a single chemical entity that is the input of the very begining of instrumental analysis| 
+|`outputchemical`|`AbstractChemical`|a single chemical entity that is the output of the very ending of instrumental analysis| 
+|`analyzedchemical`|`AbstractChemical`|a single chemical entity that is directly analyzed in the very begining of instrumental analysis| 
+|`detectedchemical`|`AbstractChemical`|a single chemical entity that is directly detected in the very ending of instrumental analysis| 
 |`detectedisotopes`|`Vector{Pair{String, Int}}`|delocalized isotopes replacement of detected chemical| 
 |`detectedcharge`|`Int`|charge state of detected chemical| 
 |`detectedelements`|`Vector{Pair{String, Int}}`|elements of detected chemical| 
-|`inputchemical`|`AbstractChemical`|single chemical representation that is the input of the very begining of instrumental analysis| 
-|`outputchemical`|`AbstractChemical`|single chemical representation that is the output of the very ending of instrumental analysis| 
-|`analyzedprecursor`|`AbstractChemical`|single chemical entity that is directly analyzed in the nearest instrumental analysis| 
-|`detectedproduct`|`AbstractChemical`|single chemical entity that is directly detected in the nearest instrumental analysis| 
-|`detectedproductisotopes`|`Vector{Pair{String, Int}}`|delocalized isotopes replacement of detected product| 
-|`detectedproductcharge`|`Int`|charge state of detected product| 
-|`detectedproductelements`|`Vector{Pair{String, Int}}`|elements of detected product| 
-|`inputprecursor`|`AbstractChemical`|single chemical representation that is the input of the nearest instrumental analysis| 
-|`outputproduct`|`AbstractChemical`|single chemical representation that is the output of the nearest instrumental analysis| 
-|`msstage`|`Int`|stage of MS the chemical has been through| 
-|`chemicaltransitions`|`Vector{<: AbstractChemical}`|chemical entity(s) that are directly analyzed in each stage of instrumental analysis|
+|`seriesanalyzedchemical`|`Vector{<: AbstractChemical}`|chemical entites that are directly analyzed in each stage of instrumental analysis| 
+|`seriesanalyzedisotopes`|`Vector{Vector{Pair{String, Int}}}`|delocalized isotopes replacements of serially analyzed chemical| 
+|`seriesanalyzedcharge`|`Vector{Int}`|charge state of serially analyzed chemical| 
+|`seriesanalyzedelements`|`Vector{Vector{Pair{String, Int}}}`|elements of serially analyzed chemical| 
+|`msstage`|`Int`|number of stages of MS the chemical has been through| 
 |`mmi`|`Float64`|monoisotopic mass|
 |`molarmass`|`Float64`|molar mass|
 |`mz`|`Float64`|m/z; mass-to-charge ratio|
+
+Specific Methods for the attributes are defined for other intrinsic chemical type on different chemical level
+* Entity Level: attribute of the corresponding chemical entity
+* Species Level: attribute of the corresponding chemical species
+* Transition Level: attribute of the corresponding chemical transitions
+
+See documentation of each attribute for the exact level.
 
 ### Type-specific attributes 
 Users can define new attributes or directly overload existing attribute functions for any chemical types
@@ -238,7 +259,7 @@ The type `Chemical` stores any non-default attributes in the field `property`, u
     lipidclass(chemical) == "PC"
 
     push!(chemical.property, :retentiontime => 10)
-    retentiontime(chemical) == 10 # Defined as accessing :rt through getchemicalproperty
+    retentiontime(chemical) == 10 # Defined as accessing :retentiontime through getchemicalproperty
 ```
 
 ### Additional Atttributes of `AbstractAdductIon`
@@ -247,29 +268,30 @@ The type `Chemical` stores any non-default attributes in the field `property`, u
 |`ioncore`|`AbstractChemical`|core chemical|
 |`ionadduct`|`AbstractAdduct`|adduct originated from ionization|
 |`kmer`|`Int`|number of core chemical|
-
+|`adductelements`|`Vector{Pair{String, Int}}`|the elements changed with adduct|
+|`adductisotopes`|`Vector{Pair{String, Int}}`|the elements changed when the core chemical has isotopic labeling that is lost in adduct formation. The returned vector is element-number pairs|
 When isotopes are involved in addut ion formation for an object `adduct_ion` which `chemical = ioncore(adduct_ion)::ChemicalType` and `adduct = ionadduct(adduct_ion)::Affected_Adduct`, there are two solutions.
 1. If `ChemicalType` is a customized chemical type, define type-specific `adductisotopes`
     ```julia
-        adductisotopes(adduct_ion::AbstractAdductIon{ChemicalType, Affected_Adduct})
+    adductisotopes(adduct_ion::AbstractAdductIon{ChemicalType, Affected_Adduct})
     ```
     
     `adductisotopes` returns element-number pairs which are the elements changed when the core chemical has isotopic labeling that is lost during adduct formation. For instance, [M-Me]- (`Demethylation`) of Deuterium-labeled phosphatidylcholine (`DL_PC`) may turn out to be [M-CD3]- rather than [M-CH3]- if Deuteriums are labeled on the methyl group of choline. In this case, extend `adductisotopes(::AbstractAdductIon{Demethylation, DL_PC})` such that
     ```julia 
-        # dlmcpc: [M-Me]- of Deuterium-labeled phosphatidylcholine on the methyl group of choline
-        # dlpc: [M-Me]- of Deuterium-labeled phosphatidylcholine on other part
-        adductisotopes(dlmcpc) == ["H" => 3, "D" => -3]
-        adductisotopes(dlpc) == []
+    # dlmcpc: [M-Me]- of Deuterium-labeled phosphatidylcholine on the methyl group of choline
+    # dlpc: [M-Me]- of Deuterium-labeled phosphatidylcholine on other part
+    adductisotopes(dlmcpc) == ["H" => 3, "D" => -3]
+    adductisotopes(dlpc) == []
     ```
 2. If `ChemicalType` is `Chemical`, define an attribute `:adductisotopes` for the `chemical`. The attribute should be ionadduct-(element-number pairs) pairs. `adductisotopes` finds this attribute, and extracts the value of key `adduct`. If the attribute or the key does not exist, empty vector is returned. 
     ```julia
-        chemical = Chemical("18:0 PC-d9", "	C44H79NO8PD9")
-        push!(chemical.property, :adductisotopes => [Demethylation() => ["H" => 3, "D" => -3]])
-        adductisotopes(Adduction(chemical, "[M+H]+")) == [] # No key Protonation()
-        adductisotopes(Adduction(chemical, "[M-Me]-")) == ["H" => 3, "D" => -3]
+    chemical = Chemical("18:0 PC-d9", "	C44H79NO8PD9")
+    push!(chemical.property, :adductisotopes => [Demethylation() => ["H" => 3, "D" => -3]])
+    adductisotopes(Adduction(chemical, "[M+H]+")) == [] # No key Protonation()
+    adductisotopes(Adduction(chemical, "[M-Me]-")) == ["H" => 3, "D" => -3]
     ```
 
-## Attributes of `AbstractAdduct`s
+## Attributes of `AbstractAdduct`
 |Attribute|Return type|Description|
 |--------|----|-----------|
 |`kmer`|`Int`|number of core chemical|
@@ -292,12 +314,14 @@ There are three related functions
 
     This function is similar to `Isotopologues`; it computes isotopologues of given precursor(s) and additionally computes the abundance of fragments with given fragmentation patterns. 
 
+Isotopologues table can be aggregated using `group_isotopologues`.
 ## Mass Spectrometer 
-There are four functions to handle ions in mass spectrometer. 
-1. `TargetIon`: isolating Isolating target ion(s) with specific m/z values and resolution to enter the next MS stage. 
+There are five functions to handle ions in mass spectrometer. 
+1. `Isolation`: isolating target ion(s) with specific m/z values and resolution to enter the next MS stage. 
 2. `AllIons`: allow all Ions within m/z range entering the next MS stage. 
 3. `Fragmentation`: create a table of fragments with given fragmentation patterns. 
 4. `MSScan`: perform MS scan using given mass analyzer. This function creates `Spectrum` objects, which be visualized by `plot_spectrum` and `plot_spectrum!`. Peak lists can be extracted with function `peak_table`. 
+5. `SelectedIonMonitor`: perform selected ion monitoring for target transition(s). Peak lists can be extracted with function `peak_table`. 
 
 Common mass analyzer are defined.
 1. `Quadrupole`
@@ -309,16 +333,11 @@ Common mass analyzer are defined.
 
 Default settings related to resolution, and isolation window are defined. To create generic mass analyzer, use `MSAnalyzer`.
 ## Co-eluting isobars
-There are two related functions
-* `isobars_rt`
+The function `CoelutingIsobars` creates an object `CoelutingIsobars` with a vector of elution function-criteria pair, a vector of ms analyzer-criteria pair, and a target chemical table.
 
-    This function finds all potential isobars of a detected chemical from a library (`AbstractVector` or `Table`). It returns only isobars without any additional information.
+This object can be further aggregated using `isobar_table`.
 
-* `isobars_rt_table`
-
-    This function works very similar, but stores information including difference of retention time, m/z, ID, etc, in a `Table`. Another difference is not restricted to one chemical (`AbstractChemical`, `AbstractVector` or `Table`). 
-
-## Other Utility Functions
+## Other Functions
 * `ischemicalequal`: whether two chemicals are chemically equivalent.
 * `ischemicalequaltransform`: return an object for comparison with other chemicals by `istransformedadduct`.
 * `istransformedchemicalequal`: whether two chemicals are chemically equivalent after applying `istransformedchemicalequal`.

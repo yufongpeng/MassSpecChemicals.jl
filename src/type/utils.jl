@@ -45,7 +45,30 @@ struct Criteria{A, R}
     rval::R
 end
 
+"""
+    value_error(x, y)
+
+Error function of difference.
+"""
 value_error(x, y) = x - y
+
+"""
+    relative_error(x, y)
+
+Error function of relative difference.
+"""
 relative_error(x, y) = 2 * (x - y) / (x + y) 
+
+"""
+    percentage_error(x, y)
+
+Error function of relative difference in percentage.
+"""
 percentage_error(x, y) = 2 * (x - y) / (x + y) * 100
+
+"""
+    ppm_error(x, y)
+
+Error function of relative difference in ppm.
+"""
 ppm_error(x, y) = 2 * (x - y) / (x + y) * 10e6

@@ -8,7 +8,7 @@ import Base: show, length, +, -, *, /, isless, isequal, in, union, intersect, it
 
 export 
     # Types
-    AbstractChemical, Chemical, FormulaChemical, ChemicalSeries, Isobars, Isotopomers, ChemicalLoss, ChemicalPair,
+    AbstractChemical, Chemical, FormulaChemical, ChemicalTransition, ChemicalSeries, Isobars, Isotopomers, ChemicalLoss, ChemicalGain, 
     AbstractAdductIon, AdductIon,
     AbstractAdduct, Adduct, ComposedAdduct, 
     LossElectron,
@@ -67,17 +67,16 @@ export
     chemicalparent, isotopomersisotopes,
     analyzedchemical, detectedchemical, detectedelements, detectedcharge, detectedisotopes,
     inputchemical, outputchemical,
-    analyzedprecursor, detectedproduct, detectedproductelements, detectedproductcharge, detectedproductisotopes, 
-    inputprecursor, outputproduct, 
-    msstage, chemicaltransitions, 
+    seriesanalyzedchemical, seriesanalyzedisotopes, seriesanalyzedcharge, seriesanalyzedelements, 
+    msstage, chemicaltransition, isotopomerstate, 
     getchemicalproperty, 
 
     # Derived attributes
     isotopicabundance, Isotopologues, TandemIsotopologues, 
-    isobars_rt, isobars_rt_table, CoelutingIsobars, 
+    CoelutingIsobars, isobar_table, group_isotopologues, 
     
     # Spectrum 
-    Spectrum, MSScan, AllIons, TargetIon, Fragmentation, peak_table, 
+    Spectrum, MSScan, AllIons, Isolation, SelectedIonMonitor, Fragmentation, peak_table, 
     MSAnalyzer, Quadrupole, QuadrupoleIonTrap, QIT, LinearIonTrap, LIT, TimeOfFlight, TOF, Orbitrap, FourierTransformIonCyclotronResonance, FTICR, 
     resolving_power, 
     
@@ -89,7 +88,8 @@ export
     # Utils
     match_chemical, 
     ischemicalequal, isadductequal, 
-    acrit, rcrit, crit, @ri_str, makecrit_delta, makecrit_value
+    acrit, rcrit, crit, @ri_str, makecrit_delta, makecrit_value, 
+    value_error, relative_error, percentage_error, ppm_error
 
 """
     AbstractChemical
@@ -107,14 +107,34 @@ The following attributes are optional, but generic functions are defined.
 * `chemicalabbr -> String`: abbreviation. It defaults to property `:abbreviation` and `chemicalname`. 
 * `chemicalsmiles -> String`: SMILES. It defaults to property `:SMILES` and `""`.
 * `charge -> Int`: charge state; positive for cation, negative for anion. It defaults to property `:charge` annd `0`.
-* `chemicalentity -> AbstractChemical`: chemical entity (representative). 
-* `chemicalspecies -> Vector{<: AbstractChemical}`: chemical species. 
-* `chemicalpair -> Pair{<: AbstractChemical, <: AbstractChemical}`: chemical pair. 
-* `rt -> AbstractFloat`: retention time. It defaults to property `:rt` and `NaN`
-* `ncharge -> Int`: number of charges. 
-* `mmi -> AbstractFloat`: monoisotopic mass.
-* `molarmass -> AbstractFloat`: molar mass.
-* `mz -> AbstractFloat`: mass to charge ratio.
+* `ncharge -> Int`: number of charges
+* `retentiontime -> AbstractFloat`: retention time. It defaults to property `:rt` and `NaN`.
+* `mmi -> AbstractFloat`: monoisotopic mass
+* `molarmass -> AbstractFloat`: molar mass
+* `mz -> AbstractFloat`: mass to charge ratio
+* `chemicalparent -> AbstractChemical`: parent chemical without delocalized isotopes replacement
+* `isotopomersisotopes -> Vector{Pair{String, Int}}`: delocalized isotopes replacement of isotopomers
+* `isotopomerstate -> Int`: isotopomers state, i.e. equivalent number of isotope
+* `chemicalentity -> AbstractChemical`: a single chemical entity representing the chemical
+* `chemicalspecies -> Vector{<: AbstractChemical}`: multiple chemical entities having shared properties. 
+* `chemicaltransition -> Vector{<: AbstractChemical}`: chemical entities analyzed in each stage of instrumental analysis.  
+* `inputchemical -> AbstractChemical`: a single chemical entity that is the input of the very ending of instrumental analysis. 
+* `outputchemical -> AbstractChemical`: a single chemical entity that is the output of the very ending of instrumental analysis. 
+* `analyzedchemical -> AbstractChemical`: a single chemical entity directly detected in the very begining of instrumental analysis. 
+* `detectedchemical -> AbstractChemical`: a single chemical entity directly detected in the very ending of instrumental analysis. 
+* `seriesanalyzedchemical -> Vector{<: AbstractChemical}`: chemical entities directly analyzed in each stage of instrumental analysis.
+* `detectedcharge -> Int`: charge of detected chemical
+* `detectedelements -> Vector{Pair{String, Int}}`: elements of detected chemical
+* `detectedisotopes -> Vector{Pair{String, Int}}`: isotopes replacement of detected chemical
+* `seriesanalyzedcharge -> Vector{Int}`: charge of sereially analyzed chemicals
+* `seriesanalyzedelements -> Vector{Vector{Pair{String, Int}}}`: elements of sereially analyzed chemicals
+* `seriesanalyzedisotopes -> Vector{Vector{Pair{String, Int}}}`: isotopes replacements of sereially analyzed chemicals
+* `msstage -> Int`: number of stages of MS the chemical has been through.
+
+Specific Methods for the attributes are defined for other intrinsic chemical type on different chemical level
+* Entity Level: attribute of the corresponding chemical entity
+* Species Level: attribute of the corresponding chemical species
+* Transition Level: attribute of the corresponding chemical transition
 """
 abstract type AbstractChemical end
 # mt, ccs 
@@ -123,19 +143,19 @@ include(joinpath("type", "chemical.jl"))
 include(joinpath("type", "adduction.jl"))
 include(joinpath("type", "utils.jl"))
 include(joinpath("type", "spectrum.jl"))
+include("interface.jl")
 include("attr.jl")
-include(joinpath("interface", "adduct.jl"))
-include(joinpath("interface", "chemical.jl"))
-include(joinpath("interface", "adduction.jl"))
-include(joinpath("interface", "utils.jl"))
-include(joinpath("interface", "spectrum.jl"))
+include("attr_adduct.jl")
+include("attr_spectrum.jl")
+include("chemicallevelobj.jl")
 include("elements.jl")
-include("formula.jl")
-include("mass.jl")
+include("adduct.jl")
+include("formula_elements.jl")
+include("measure.jl")
 include("isotopologues.jl")
 include("spectrum.jl")
-include("rt.jl")
 include("isobars.jl")
+include("plot.jl")
 include("io.jl")
 include("utils.jl")
 

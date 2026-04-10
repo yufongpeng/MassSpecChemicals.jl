@@ -12,6 +12,19 @@ fwhm_mz(ms::Orbitrap, mz) = mz / ms.resolution * sqrt((3 * mz + ms.mz50 - 800) /
 fwhm_mz(ms::FTICR, mz) = mz / ms.resolution * (mz + ms.mz50 - 400) / (ms.mz50 - 200)
 
 """
+    msanalyzername(ms::AbstractMSAnalyzer)
+
+Common name of the MS analyzer.
+"""
+msanalyzername(::Quadrupole) = "Quadrupole"
+msanalyzername(::QuadrupoleIonTrap) = "QuadrupoleIonTrap"
+msanalyzername(::LinearIonTrap) = "LinearIonTrap"
+msanalyzername(::TOF) = "TOF"
+msanalyzername(::Orbitrap) = "Orbitrap"
+msanalyzername(::FTICR) = "FTICR"
+msanalyzername(::MSAnalyzer) = "MS-Analyzer"
+
+"""
     resolving_power(ms::AbstractMSAnalyzer, mz::Real)
 
 Resolving power of `ms` at `mz`.

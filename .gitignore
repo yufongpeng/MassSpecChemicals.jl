@@ -2,5 +2,4 @@
 *.jl.cov
 *.jl.mem
 /Manifest.toml
-/test/data
-/test/demo.jl
+/demo

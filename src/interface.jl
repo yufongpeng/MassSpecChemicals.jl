@@ -1,3 +1,10 @@
+in(cc::AbstractChemical, isobars::Isobars) = any(i -> ischemicalequal(i, cc), isobars)
+length(isobars::Isobars) = length(chemicalspecies(isobars))
+length(cc::AbstractChemical) = 1
+Broadcast.broadcastable(cc::AbstractChemical) = Ref(cc)
+
+Broadcast.broadcastable(x::AbstractAdduct) = Ref(x)
+
 *(x::Criteria, y::Number) = Criteria(x.aval * y, x.rval * y)
 /(x::Criteria, y::Number) = Criteria(x.aval / y, x.rval / y)
 
@@ -89,10 +96,3 @@ function /(x::T, y::Number) where {F, L , R, T <: Interval{F, L, R}}
         Interval{F, LL, RR}(f, l)
     end
 end
-
-colname(fn::typeof(retentiontime)) = "RT"
-colname(s::AbstractString) = string(s)
-colname(fn, error::typeof(value_error)) = string("Δ", colname(fn))
-colname(fn, error::typeof(relative_error)) = string("Δ", colname(fn), "/", colname(fn))
-colname(fn, error::typeof(percentage_error)) = string("Δ", colname(fn), "/", colname(fn), "(%)")
-colname(fn, error::typeof(ppm_error)) = string("Δ", colname(fn), "/", colname(fn), "(ppm)")

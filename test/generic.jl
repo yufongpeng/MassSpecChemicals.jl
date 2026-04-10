@@ -7,7 +7,7 @@ lossserine = Adduct(1, "-C3H6NO2", -1)
 cserine = Chemical("Serine", "C3H5NO2")
 cserinei = Chemical("Serine[D3,13C3]", "[13C]3H2D3NO2")
 clossserine = ChemicalLoss(cserine)
-
+gainno = ChemicalGain(FormulaChemical("NO"))
 # lossserinei = NegAdduct(1, "-[13C]3H3D3NO2", 1)
 push!(cpsi1.property, :adductisotopes => [lossserine => ["C" => 3, "[13C]" => -3, "H" => 3, "D" => -3]])
 dimh = Adduct(2, "+H", 1)
@@ -19,9 +19,10 @@ icgld = [AdductIon("Glucose-d6", "[M+H]+"; formula = "C6H6D6O6", retentiontime =
 icps = [AdductIon(cps, lossserine), AdductIon(cps, dimh)]
 icpsi1 = [AdductIon(cpsi1, lossserine), AdductIon(cpsi1, dimh)]
 icpsi2 = [AdductIon(cpsi2, lossserine), AdductIon(cpsi2, dimh)]
-cp1 = ChemicalPair(icps[1], AdductIon(Chemical("FA 20:4", "C20H32O2"; retentiontime = 7.78), Deprotonation()))
-cp2 = ChemicalSeries(AdductIon(cps, "[M-H]-") => clossserine => cp1.product)
-cp3 = ChemicalPair(AdductIon(cps, "[M-H]-"), cp1)
-cp4 = ChemicalSeries(Isotopomers(AdductIon(cps, "[M-H]-"), ["[13C]" => 5]) => Isotopomers(cp1.product, ["[13C]" => 5]))
-cp5 = ChemicalPair(Isotopomers(AdductIon(cpsi1, "[M-H]-"), ["[13C]" => 5, "D" => 2]), ChemicalPair(ChemicalLoss(Isotopomers(cserinei, ["D" => 1])), Isotopomers(cp1.product, ["[13C]" => 5])))
+cp1 = ChemicalSeries(icps[1], AdductIon(Chemical("FA 20:4", "C20H32O2"; retentiontime = 7.78), Deprotonation()))
+cp2 = ChemicalSeries(AdductIon(cps, "[M-H]-") => clossserine => outputchemical(cp1))
+cp3 = ChemicalSeries(AdductIon(cps, "[M-H]-"), cp1)
+cp4 = ChemicalSeries(Isotopomers(AdductIon(cps, "[M-H]-"), ["[13C]" => 5]) => Isotopomers(outputchemical(cp1), ["[13C]" => 5]))
+cp5 = ChemicalSeries(Isotopomers(AdductIon(cpsi1, "[M-H]-"), ["[13C]" => 5, "D" => 2]), ChemicalSeries(ChemicalLoss(Isotopomers(cserinei, ["D" => 1])), Isotopomers(outputchemical(cp1), ["[13C]" => 5])))
+cp6 = ChemicalSeries(Isotopomers(AdductIon(cpsi1, "[M-H]-"), ["[13C]" => 5, "D" => 2]), ChemicalSeries(gainno, Isotopomers(outputchemical(cp1), ["[13C]" => 5])))
 pt1 = peak_table(MSScan(Isotopologues(icglc[1]; abundance = 1e5, threshold = crit(1e1, 1e-2))))

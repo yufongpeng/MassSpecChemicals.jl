@@ -162,6 +162,35 @@ function makerttol(fwhm_ion, fwhm_lib, rrt, lib)
         [union(makecrit_delta(crit(x), rrt)...) for x in fwhm]
     end
 end
+
+function findlastcol(p, col; error = true, init = nothing)
+    regex = Regex(string("^", col, "(\\d+\$)"))
+    imatch = map(x -> match(regex, x), p)
+    istage = [isnothing(x) ? 0 : parse(Int, x.captures[1]) for x in imatch]
+    stage, icol = findmax(istage)
+    stage == 0 && (error ? throw(ArgumentError("No column `$(string(col))...` in table.")) : return init)
+    Symbol(p[icol])
+end
+
+function findcol(p, col, i::Int; error = true, init = nothing)
+    regex = Regex(string("^", col, "(\\d+\$)"))
+    imatch = map(x -> match(regex, x), p)
+    istage = [isnothing(x) ? 0 : parse(Int, x.captures[1]) for x in imatch]
+    icol = findfirst(==(i), istage)
+    isnothing(icol) && (error ? throw(ArgumentError("No column `$(string(col))$i` in table.")) : return init)
+    Symbol(p[icol])
+end
+
+function findallcol(p, col; error = true, init = [])
+    regex = Regex(string("^", col, "(\\d+\$)"))
+    imatch = map(x -> match(regex, x), p)
+    istage = [isnothing(x) ? 0 : parse(Int, x.captures[1]) for x in imatch]
+    icol = findall(>(0), istage)
+    isempty(icol) && (error ? throw(ArgumentError("No column `$(string(col))...` in table.")) : return init)
+    id = sortperm(istage[icol])
+    Symbol.(p[icol][id])
+end
+
 function collecfwhm(fwhm, exp)
     v = vectorize(fwhm)
     if length(v) == 1
@@ -173,9 +202,46 @@ function collecfwhm(fwhm, exp)
     end
 end
 
+abtypeop(::Val{:max}) = maximum
+abtypeop(::Val{:input}) = first
+abtypeop(::Val{:list}) = sum
+abtypeop(::Val{:raw}) = nothing
+abtypeop(::Val{:total}) = nothing
+
+normalize_abundance(abvector, abundance, abtype, available_abtype = [:max, :input, :list, :raw, :total]) = 
+    _normalize_abundance!(copy(abvector), abundance, abtype, available_abtype; conversion = true)
+normalize_abundance!(abvector, abundance, abtype, available_abtype = [:max, :input, :list, :raw, :total]) = 
+    _normalize_abundance!(abvector, abundance, abtype, available_abtype)
+function _normalize_abundance!(abvector, abundance, abtype, available_abtype = [:max, :input, :list, :raw, :total]; conversion = false)
+    abtype in available_abtype || throw(ArgumentError("$abtype is not valid; please select from $available_abtype."))
+    fn = abtypeop(Val(abtype))
+    isnothing(fn) && return abvector
+    T = eltype(abvector)
+    S = promote_type(typeof(first(abvector) * abundance / fn(abvector)), T)
+    if T == S
+        abvector .*= abundance / fn(abvector)
+    elseif conversion 
+        abvector .* (abundance / fn(abvector))
+    else
+        throw(ArgumentError("Cannot convert type $S to type $T. Use `normalize_abundance` instead."))
+    end
+end
+
+colname(fn::typeof(retentiontime)) = "RT"
+colname(s::AbstractString) = string(s)
+colname(s::Symbol) = string(s)
+colname(fn, error::typeof(value_error)) = string("Δ", colname(fn))
+colname(fn, error::typeof(relative_error)) = string("Δ", colname(fn), "/", colname(fn))
+colname(fn, error::typeof(percentage_error)) = string("Δ", colname(fn), "/", colname(fn), "(%)")
+colname(fn, error::typeof(ppm_error)) = string("Δ", colname(fn), "/", colname(fn), "(ppm)")
+
+presented_error(::typeof(retentiontime)) = [value_error, percentage_error]
+presented_error(::AbstractMSAnalyzer) = [value_error, ppm_error]
+presented_error(fn) = [value_error]
+
 tuplize(x::Tuple) = x
 tuplize(x) = (x, )
 vectorize(x::AbstractVector) = x
-vectorize(x::AbstractVector, n::Int) = n == lastindex(x) ? x : n > lasindex(x) ? vcat(x, repeat([last(x)], n - lastindex(x))) : x[begin:begin + n - 1]
+vectorize(x::AbstractVector, n::Int) = n == lastindex(x) ? x : n > lastindex(x) ? vcat(x, repeat([last(x)], n - lastindex(x))) : x[begin:begin + n - 1]
 vectorize(x) = [x]
 vectorize(x, n) = repeat([x], n)

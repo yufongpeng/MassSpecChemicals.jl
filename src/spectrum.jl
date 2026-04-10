@@ -19,12 +19,9 @@ function MSScan(msanalyzer::AbstractMSAnalyzer, mztable::Table; min_bin_fwhm = 5
         p = round(Int, stepsize / unit)
         isapprox(stepsize - p * unit, 0) || throw(ArgumentError("`stepsize` must be mutiples of `10 ^ (-digits)`."))
     end
-    icol = findlast(x -> startswith(x, "MZ"), string.(propertynames(mztable)))
-    isnothing(icol) && throw(ArgumentError("No column `MZ1`, ..., `MZn` in mztable."))
-    colmz = propertynames(mztable)[icol]
-    icol = findlast(x -> startswith(x, "Abundance"), string.(propertynames(mztable)))
-    isnothing(icol) && throw(ArgumentError("No column `Abundance1`, ..., `Abundacnen` in mztable."))
-    colab = propertynames(mztable)[icol]
+    sp = string.(propertynames(mztable))
+    colmz = findlastcol(sp, "MZ")
+    colab = findlastcol(sp, "Abundance")
     id = sortperm(getproperty(mztable, colmz))
     if !isnothing(msanalyzer.mz)
         lower_mz, upper_mz = msanalyzer.mz
@@ -81,11 +78,10 @@ Allow all Ions within m/z range entering the next MS stage.
 * `spectrum::Spectrum`: `spectrum.table` is utilized as `mztable`.
 """
 function AllIons(mz_range, mztable::Table)
-    icol = findlast(x -> startswith(x, "MZ"), string.(propertynames(mztable)))
-    isnothing(icol) && throw(ArgumentError("No column `MZ1`, ..., `MZn` in mztable."))
+    colmz = findlastcol(string.(propertynames(mztable)), "MZ")
     if !isnothing(mz_range)
         lower_mz, upper_mz = mz_range 
-        id = findall(x -> lower_mz < x < upper_mz, getproperty(mztable, propertynames(mztable)[icol]))
+        id = findall(x -> lower_mz < x < upper_mz, getproperty(mztable, colmz))
         mztable = mztable[id]
     end
     mztable
@@ -94,35 +90,89 @@ AllIons(mztable) = AllIons(nothing, mztable)
 AllIons(mz_range, spec::Spectrum) = AllIons(mz_range, spec.table)
 
 """
-    TargetIon(msanalyzer, mztable; threshold = rcrit(1e-4)) -> Table
-    TargetIon(msanalyzer, spectrum; threshold = rcrit(1e-4)) -> Table
+    Isolation(msanalyzer, mztable; stage = nothing, threshold = rcrit(1e-4)) -> Table
+    Isolation(msanalyzer, spectrum; stage = nothing, threshold = rcrit(1e-4)) -> Table
 
-Isolating target ion(s) with specific m/z values and resolution to enter the next MS stage. 
+Isolating target ion(s) with specific m/z values and resolutions to enter the next MS stage. 
 
 * `msanalyzer::AbstractMSAnalyzer`: a MS analyzer to perform MS filtering. See documentation of specific analyzer for detailed settings.
 * `mztable::Table`: a table containing columns    
     * `ID`: ID tuples. Each elements represents ID number of ions of each MS stage. 
-    * `Abundance1`, `Abundance2`, ..., `Abundancen`. The last column will be utilized.
-    * `MZ1`, `MZ2`, ..., `MZn`. The last column will be utilized.
+    * `Abundance1`, `Abundance2`, ..., `Abundancen`. 
+    * `MZ1`, `MZ2`, ..., `MZn`. 
 * `spectrum::Spectrum`: `spectrum.table` is utilized as `mztable`.
+* `stage::Int`: MS stage. Default `nothing` for the last MS stage.
 * `threshold` can be a number or criteria (absolute and/or relative to maximum), representing the lower limit of abundance. 
 """
-function TargetIon(msanalyzer::AbstractMSAnalyzer{W, M}, mztable::Table; threshold = rcrit(1e-4)) where {W, M <: Real}
-    icol = findlast(x -> startswith(x, "MZ"), string.(propertynames(mztable)))
-    isnothing(icol) && throw(ArgumentError("No column `MZ1`, ..., `MZn` in mztable."))
-    colmz = propertynames(mztable)[icol] 
-    icol = findlast(x -> startswith(x, "Abundance"), string.(propertynames(mztable)))
-    isnothing(icol) && throw(ArgumentError("No column `Abundance1`, ..., `Abundacnen` in mztable."))
-    colab = propertynames(mztable)[icol]
-    params = window_parameter(msanalyzer, msanalyzer.mz)
+function Isolation(msanalyzer::AbstractMSAnalyzer, mztable::Table; stage = nothing, threshold = rcrit(1e-4)) 
+    isempty(mztable) && return mztable
+    sp = string.(propertynames(mztable))
+    if isnothing(stage)
+        colmz = findlastcol(sp, "MZ")
+        colab = findlastcol(sp, "Abundance")
+    else
+        colmz = findcol(sp, "MZ", stage)
+        colab = findcol(sp, "Abundance", stage)
+    end
+    _Isolation(msanalyzer, mztable, colmz, colab, threshold)
+end
+Isolation(msanalyzer::AbstractMSAnalyzer, spec::Spectrum; stage = nothing, threshold = rcrit(1e-4)) = Isolation(msanalyzer, spec.table; stage, threshold)
+
+function _Isolation(msanalyzer::AbstractMSAnalyzer, mztable::Table, colmz::Symbol, colab::Symbol, threshold)
+    params = [window_parameter(msanalyzer, mz) for mz in vectorize(msanalyzer.mz)]
     ab = map(mztable) do r
-        getproperty(r, colab) * msanalyzer.window(getproperty(r, colmz), params...)
+        getproperty(r, colab) * maximum([msanalyzer.window(getproperty(r, colmz), param...) for param in params])
     end
     tab = minimum(makecrit_value(crit(threshold), maximum(ab)))
     id = findall(>(tab), ab)
     Table(mztable; [colab => ab]...)[id]
 end
-TargetIon(msanalyzer::AbstractMSAnalyzer{W, M}, spec::Spectrum; threshold = rcrit(1e-4)) where {W, M <: Real} = TargetIon(msanalyzer, spec.table; threshold)
+
+@deprecate TargetIon Isolation 
+
+"""
+    SelectedIonMonitor(transitiontable, mztable; threshold = rcrit(1e-4)) -> Table
+    SelectedIonMonitor(transitiontable, spectrum; threshold = rcrit(1e-4)) -> Table
+
+Selected ion monitoring. 
+
+* `transitiontable::Table`: each row represents a transition. Use column `Transition` (optional) for specifying transition name. Other columns must be in analysis-fragmentation-analysis order. Analysis columns contain MS analyzers and Fragmentation columns contain producttables (See `Fragmentation` for detail).
+* `mztable::Table`: a table containing columns    
+    * `ID`: ID tuples. Each elements represents ID number of ions of each MS stage. 
+    * `Abundance1`
+    * `MZ1`
+* `spectrum::Spectrum`: `spectrum.table` is utilized as `mztable`.
+* `threshold` can be a number or criteria (absolute and/or relative to maximum), representing the lower limit of abundance. 
+"""
+function SelectedIonMonitor(transitiontable::Table, mztable::Table; threshold = rcrit(1e-4)) 
+    isempty(mztable) && return transitiontable
+    sp = string.(propertynames(mztable))
+    colmz = findlastcol(sp, "MZ")
+    colmz == :MZ1 || throw(ArgumentError("Require only single MZ column `MZ1."))
+    colab = findlastcol(sp, "Abundance")
+    colab == :Abundance1 || throw(ArgumentError("Require only single Abundance column `Abundance1."))
+    transitions = Table(transitiontable; Transition = nothing)
+    tables = _SelectedIonMonitor(columns(transitions), mztable, colmz, colab, threshold)
+    Table(transitiontable; MZTable = tables)
+end
+SelectedIonMonitor(transitiontable::Table, spec::Spectrum; threshold = rcrit(1e-4)) = SelectedIonMonitor(transitiontable, spec.table; threshold)
+
+function _SelectedIonMonitor(transitions, mztable::Table, colmz::Symbol, colab::Symbol, threshold)
+    length(transitions) % 2 < 1 && throw(ArgumentError("Transitions must have 'analysis-fragmentation-analysis...` pattern."))
+    isolation = true 
+    mztable = repeat([mztable], length(first(transitions)))
+    for transition in transitions
+        if isolation
+            mztable = [_Isolation(trans, mzt, colmz, colab, threshold) for (trans, mzt) in zip(transition, mztable)]
+        else
+            mztable = [Fragmentation(trans, mzt; threshold) for (trans, mzt) in zip(transition, mztable)]
+            colmz = Symbol(string("MZ", parse(Int, string(match(r"\d+", string(colmz)).match)) + 1))
+            colab = Symbol(string("Abundance", parse(Int, string(match(r"\d+", string(colab)).match)) + 1))
+        end
+        isolation = !isolation
+    end
+    mztable
+end
 
 """
     Fragmentation(product_table, precursor_table; threshold) -> Table
@@ -137,7 +187,6 @@ Fragmentation of `precursor_table.Chemical` or `spectrum.table.Chemical` into `p
 * `precursortable::Table`: a table containing columns
     * `ID`: ID tuples. Each element represents ID number of ions of each MS stage. 
     * `Chemical`: chemical objects. 
-    * `Parent`: parent chemical objects. This column is required if `Chemical`s are formulas.
     * `Abundance1`, `Abundance2`, ..., `Abundancen`. The last column will be utilized.
     * `MZ1`, `MZ2`, ..., `MZn`. The last column will be utilized.
 * `spectrum::Spectrum`: `spectrum.table` is utilized as `precursortable`.
@@ -147,7 +196,7 @@ function Fragmentation(producttable::Table, mztable::Table; threshold = rcrit(1e
     # group -> precursor_table, elements_precursor
     if !in(:ID, propertynames(producttable)) && in(:Chemical, propertynames(producttable))
         producttable = match_chemical(mztable, producttable; colexp = :Chemical, collib = :Chemical)
-    else
+    elseif !in(:ID, propertynames(producttable))
         throw(ArgumentError("No column `ID` or `Chemical` in product_table."))
     end
     :ID in propertynames(mztable) || throw(ArgumentError("No column `ID` in precursor_table."))
@@ -156,7 +205,7 @@ function Fragmentation(producttable::Table, mztable::Table; threshold = rcrit(1e
     :MZ1 in propertynames(mztable) || throw(ArgumentError("No column `MZ1`, ..., `MZn` in precursor_table."))
     :Product in propertynames(producttable) || throw(ArgumentError("No column `Product` in product_table."))
     allequal(msstage, mztable.Chemical) || throw(ArgumentError("Chemicals have to be in the same MS stage."))
-    all(x -> all(y -> msstage(y) < 2, x), producttable.Product) || throw(ArgumentError("Products should not MS/MS pairs."))
+    all(x -> all(y -> msstage(y) < 2, x), producttable.Product) || throw(ArgumentError("Products should not be MS/MS pairs."))
     if !in(:Proportion, propertynames(producttable))
         producttable = Table(producttable; Proportion = [nothing for _ in eachindex(producttable)])
     end
@@ -178,9 +227,10 @@ end
 Fragmentation(producttable::Table, spec::Spectrum; threshold = rcrit(1e-4)) = Fragmentation(producttable, spec.table; threshold)
 
 """
-    peak_table(spectrum::Spectrum; alg = LocalMaxima(), abundance = 1, abtype = :max, threshold = crit(abundance * 1e-4, 1e-4))
+    peak_table(spectrum::Spectrum; alg = LocalMaxima(), abundance = 1, abtype = :max, threshold = rcrit(1e-4)) -> Table
+    peak_table(transitiontable::Table; groupedisotopomers = true, isotope = "[13C]") -> Table
 
-Extract peaks from a spectrum.
+Extract peaks from a spectrum or SIM.
 
 * `abundance` sets the abundance of the peak specified by `abtype`. 
 * `abtype`
@@ -188,6 +238,8 @@ Extract peaks from a spectrum.
     * `:list`: sum of listed peaks.
     * `:raw`: no abundance normalization.
 * `threshold` can be a number or criteria (absolute and/or relative to `abundance`), representing the lower limit of abundance. 
+* `groupedisotopomers`: whether group isotopologues by isotopomer state based on `isotope`.
+* `isotope::String`: minor isotope.
 """
 peak_table(spectrum::Spectrum; alg = LocalMaxima(), abundance = 1, abtype = :max, threshold = rcrit(1e-4)) = peak_table(spectrum.table, spectrum.spectrum, spectrum.initial_mass, spectrum.binsize, spectrum.stepsize; alg, abundance, abtype, threshold)
 function peak_table(mztable::Table, spectrum, initial_mass, binsize, nbin_multiplier; alg = LocalMaxima(), abundance = 1, abtype = :max, threshold = rcrit(1e-4))
@@ -201,244 +253,50 @@ function peak_table(mztable::Table, spectrum, initial_mass, binsize, nbin_multip
     end
     id = findall(!isnothing, maxbin)
     mztable = Table(mztable[id]; Max_bin = maxbin[id])
-    gmztable = group(getproperty(:Max_bin), mztable)
     c = length(first(mztable.Convolution)) ÷ 2 + 1
+    gmztable = group(getproperty(:Max_bin), mztable)
     tuples = map(pairs(gmztable)) do (ibin, smztable) 
         cab = map(smztable) do r 
             delta = ibin - r.Bin_id
             r.Convolution[c + delta]
         end
-        id = sortperm(cab; rev = true)
-        (; Chemical = Isobars(getproperty(smztable, :Chemical)[id], cab[id]), MZ = initial_mass + (ibin - 1) * binsize, Abundance = spectrum[ibin])
+        (; Chemical = Isobars(getproperty(smztable, :Chemical), cab), MZ = initial_mass + (ibin - 1) * binsize, Abundance = spectrum[ibin])
     end
     table = Table([t for t in tuples])
-    if abtype == :max
-        table.Abundance .*= abundance / maximum(table.Abundance) 
-    elseif abtype == :list 
-        table.Abundance .*= abundance / sum(table.Abundance) 
-    end
+    normalize_abundance!(table.Abundance, abundance, abtype, [:max, :list, :raw])
     abundance_cutoff = minimum(makecrit_value(crit(threshold), maximum(table.Abundance)))
     table[findall(>=(abundance_cutoff), table.Abundance)]
 end
 
-"""
-    plot_spectrum([mz_range = nothing,] spectrum::Spectrum; deconvolution = false, threshold = rcrit(1e-4), kwargs...)
-    plot_spectrum([mz_range = nothing,] mztable::Table; threshold = rcrit(1e-4), kwargs...)
-
-Plot a spectrum.
-
-* `mz_range::Union{Nothing, Tuple}`: nothing (indicating entire mz range) or a tuple of m/z lower bound an d upper bound.
-* `deconvolution::Bool`: plot deconvoluted or convoluted spectrum.
-* `threshold` can be a number or criteria (absolute and/or relative to maximum), data lower than this value will be set to zero. 
-
-Other keyword arguments can controls the settings of plot.
-"""
-plot_spectrum(mz_range, spectrum::Spectrum; deconvolution = false, threshold = rcrit(1e-4), kwargs...) = 
-    _plot_spectrum(mz_range, spectrum; deconvolution, threshold, kwargs...)
-plot_spectrum(mz_range, mztable::Table; threshold = rcrit(1e-4), kwargs...) = 
-    _plot_spectrum(mz_range, mztable; threshold, kwargs...)
-plot_spectrum(x; kwargs...) = plot_spectrum(nothing, x; kwargs...)
-
-"""
-    plot_spectrum!([mz_range = nothing,] spectrum::Spectrum; deconvolution = false, threshold = rcrit(1e-4), kwargs...)
-    plot_spectrum!([mz_range = nothing,] mztable::Table; threshold = rcrit(1e-4), kwargs...)
-
-Plot a spectrum to an existing figure.
-
-* `mz_range::Union{Nothing, Tuple}`: nothing (indicating entire mz range) or a tuple of m/z lower bound an d upper bound.
-* `deconvolution::Bool`: plot deconvoluted or convoluted spectrum.
-* `threshold` can be a number or criteria (absolute and/or relative to maximum), data lower than this value will be set to zero. 
-
-Other keyword arguments can controls the settings of plot.
-"""
-plot_spectrum!(mz_range, spectrum::Spectrum; deconvolution = false, threshold = rcrit(1e-4), kwargs...) = 
-    _plot_spectrum(mz_range, spectrum; fn = plot!, deconvolution, threshold, kwargs...)
-plot_spectrum!(mz_range, mztable::Table; threshold = rcrit(1e-4), kwargs...) = 
-    _plot_spectrum(mz_range, mztable; fn = plot!, threshold, kwargs...)
-plot_spectrum!(x; kwargs...) = plot_spectrum!(nothing, x; kwargs...)
-
-function _plot_spectrum(mz_range, spectrum::Spectrum; fn = plot, deconvolution = false, threshold = rcrit(1e-4), kwargs...)
-    deconvolution && return _plot_spectrum(mz_range, spectrum.table; fn, threshold, kwargs...)
-    np =  first(Plots.default(:size))
-    if isnothing(mz_range) 
-        range = length(spectrum.spectrum) * spectrum.binsize
-        mz_lower = max(spectrum.initial_mass - 0.1 * range, 0)
-        mz_upper = spectrum.initial_mass + 1.1 * range
-    else
-        mz_lower, mz_upper = mz_range 
-    end
-    mzid_s = Int((mz_lower - spectrum.initial_mass) ÷ (spectrum.binsize * spectrum.stepsize)) * spectrum.stepsize
-    mzid_e = ceil(Int, (mz_upper - spectrum.initial_mass) / (spectrum.binsize * spectrum.stepsize)) * spectrum.stepsize
-    fid = max(firstindex(spectrum.spectrum), mzid_s + 1)
-    lid = min(lastindex(spectrum.spectrum), mzid_e + 1)
-    delta, r = divrem(mzid_e - mzid_s, np)
-    fid >= lid && throw(ArgumentError("No spectrum data; please adjust m/z range."))
-    ab_cutoff = minimum(makecrit_value(crit(threshold), maximum(@view spectrum.spectrum[fid:lid])))
-    delta = max(delta, 1)
-    mzid = delta > 1 ? (mzid_s:delta:(mzid_e - r + delta)) : mzid_s:mzid_e
-    spec = map(mzid) do i 
-        if i + delta < fid || i + 1 > lid
-            s = 0 
-        elseif i + 1 < fid
-            s = maximum(@view spectrum.spectrum[fid:i + delta])
-        elseif i + delta > lid
-            s = maximum(@view spectrum.spectrum[i + 1:lid])
-        else
-            s = maximum(@view spectrum.spectrum[i + 1:i + delta])
+function peak_table(transitiontable::Table; groupedisotopomers = true, isotope = "[13C]")
+    :MZTable in propertynames(transitiontable) || throw(ArgumentError("No column`MZTable` in transitiontable"))
+    mztables = filter(!isempty, transitiontable.MZTable)
+    if groupedisotopomers
+        tables = map(mztables) do table 
+            group_isotopologues(table; isotope)
         end
-        s < ab_cutoff ? 0 : s
-    end
-    kwargs = Dict(kwargs...)
-    spec_kwargs!(kwargs)
-    ms = @. spectrum.initial_mass + (mzid * spectrum.binsize)
-    fn(ms, spec; kwargs...)
-end
-
-function _plot_spectrum(mz_range, mztable::Table; fn = plot, threshold = rcrit(1e-4), kwargs...)
-    icol = findlast(x -> startswith(x, "MZ"), string.(propertynames(mztable)))
-    isnothing(icol) && throw(ArgumentError("No MZ data to process!"))
-    colmz = propertynames(mztable)[icol]
-    mz = getproperty(mztable, colmz)
-    icol = findlast(x -> startswith(x, "Abundance"), string.(propertynames(mztable)))
-    isnothing(icol) && throw(ArgumentError("No Abundance data to process!"))
-    colab = propertynames(mztable)[icol]
-    if isnothing(mz_range) 
-        min_mz, max_mz = extrema(mz)
-        range = (max_mz - min_mz) * 0.1
-        mz_lower = max(min_mz - range, 0)
-        mz_upper = max_mz + range
     else
-        mz_lower, mz_upper = mz_range 
+        tables = mztables
     end
-    kwargs = Dict(kwargs...)
-    spec_kwargs!(kwargs)
-    id = findall(x -> mz_lower <= x <= mz_upper, mz)
-    gmztable = group(getproperty(colmz), mztable[id])
-    ab = map(x -> sum(getproperty(x, colab)), gmztable)
-    ab_cutoff = minimum(makecrit_value(crit(threshold), maximum(ab)))
-    id = findall(>=(ab_cutoff), ab)
-    ab = [ab[i] for i in id]
-    fn(vcat(mz_lower, repeat(collect(id); inner = 3), mz_upper), vcat(0, [[0, a, 0] for a in ab]..., 0); kwargs...)
-end
-
-function spec_kwargs!(kwargs)
-    get!(kwargs, :xlabel, "m/z")
-    get!(kwargs, :ylabel, "Abundance")
-    get!(kwargs, :title, "Spectrum")
-    get!(kwargs, :label, nothing)
-    kwargs
-end
-
-"""
-    plot_resolving_power([mz_range = nothing,] ms::AbstractMSAnalyzer; n = 1000, kwargs...)
-
-Plot the function of m/z to resolving_power.
-
-* `mz_range::Union{Nothing, Tuple}`: nothing (indicating using `ms.mz`) or a tuple of m/z lower bound an d upper bound.
-* `n::Int`: number of data points.
-
-Other keyword arguments can controls the settings of plot.
-"""
-plot_resolving_power(mz_range, ms::AbstractMSAnalyzer; n = 1000, kwargs...) = 
-    _plot_resolving_power(mz_range, ms; n, kwargs...)
-plot_resolving_power(ms::AbstractMSAnalyzer; n = 1000, kwargs...) = plot_resolving_power(nothing, ms; n, kwargs...)
-
-"""
-    plot_resolving_power!([mz_range = nothing,] ms::AbstractMSAnalyzer; n = 1000, kwargs...)
-
-Plot the function of m/z to resolving_power to an existing figure.
-
-* `mz_range::Union{Nothing, Tuple}`: nothing (indicating using `ms.mz`) or a tuple of m/z lower bound an d upper bound.
-* `n::Int`: number of data points.
-
-Other keyword arguments can controls the settings of plot.
-"""
-plot_resolving_power!(mz_range, ms::AbstractMSAnalyzer; n = 1000, kwargs...) = 
-    _plot_resolving_power(mz_range, ms; fn = plot!, n, kwargs...)
-plot_resolving_power!(ms::AbstractMSAnalyzer; n = 1000, kwargs...) = plot_resolving_power!(nothing, ms; n, kwargs...)
-
-function _plot_resolving_power(mz_range, ms::AbstractMSAnalyzer; fn = plot, n = 1000, kwargs...)
-    if isnothing(mz_range)
-        mz_range = ms.mz
+    sp = string.(propertynames(first(tables)))
+    colmz = findallcol(sp, "MZ")
+    colab = findallcol(sp, "Abundance")
+    gt = map(tables) do mztable 
+        isobar = Isobars(mztable.Chemical, hcat(getproperty.(Ref(mztable), colab)...))
+        transitions = chemicaltransition.(mztable.Chemical)
+        if groupedisotopomers
+            (; Chemical = isobar, [c => mean(getproperty(mztable, c), weights(getproperty(mztable, d))) for (c, d) in zip(colmz, colab)]..., [c => sum(getproperty(mztable, c)) for c in colab]...)
+        else
+            uid = [[findfirst(x -> x == t, c) for t in unique(c)] for c in zip(transitions...)]
+            (; Chemical = isobar, [c => mean(getproperty(mztable, c)[i], weights(getproperty(mztable, d)[i])) for (i, c, d) in zip(uid, colmz, colab)]..., [c => sum(getproperty(mztable, c)[i]) for (i, c) in zip(uid, colab)]...)
+        end
     end
-    if mz_range isa Tuple{<: Real, <: Real}
-        mz_lower, mz_upper = mz_range 
+    if :Transition in propertynames(transitiontable)
+        Table(Table(; Transition = transitiontable.Transition), Table(collect(NamedTuple, gt)))
     else
-        throw(ArgumentError("`mz_range` must be a tuple, i.e. (lowerbound, upperbound)."))
+        Table(collect(NamedTuple, gt))
     end
-    x = mz_lower:((mz_upper - mz_lower) / n):mz_upper
-    y = resolving_power.(Ref(ms), x)
-    kwargs = Dict(kwargs...)
-    respow_kwargs!(kwargs)
-    fn(x, y; kwargs...)
 end
-
-function respow_kwargs!(kwargs)
-    get!(kwargs, :xlabel, "m/z")
-    get!(kwargs, :ylabel, "Resolution (m/Δm)")
-    get!(kwargs, :title, "Resolving Power")
-    get!(kwargs, :label, nothing)
-    kwargs
-end
-
-"""
-    plot_window(window::AbstractWindow; fwhm = 0.7, binsize = 0.01, nbin_multiplier = 1, height = 0.01, kwargs...)
-
-Plot the window function.
-
-* `fwhm::Real`: m/z fwhm.
-* `binsize::Real`: binsize of m/z value. 
-* `nbin_multiplier`: multiplier of actual plotted data bin relative to `binsize`.
-* `height::Real`: the lower limit of transmission. 
-
-Other keyword arguments can controls the settings of plot.
-"""
-plot_window(window::AbstractWindow; fwhm = 0.7, binsize = 0.01, stepsize = 1, height = 0.01, kwargs...) = 
-    _plot_window(window; fwhm, binsize, stepsize, height)
-
-"""
-    plot_window!(window::AbstractWindow; fwhm = 0.7, binsize = 0.01, nbin_multiplier = 1, height = 0.01, kwargs...)
-
-Plot the window function to an existing figure.
-
-* `fwhm::Real`: m/z fwhm.
-* `binsize::Real`: binsize of m/z value. 
-* `nbin_multiplier`: multiplier of actual plotted data bin relative to `binsize`.
-* `height::Real`: the lower limit of transmission. 
-
-Other keyword arguments can controls the settings of plot.
-"""
-plot_window!(window::AbstractWindow; fwhm = 0.7, binsize = 0.01, stepsize = 1, height = 0.01, kwargs...) = 
-    _plot_window(window; fn = plot!, fwhm, binsize, stepsize, height)
-
-function _plot_window(window::AbstractWindow; fn = plot, fwhm = 0.7, binsize = 0.01, stepsize = 1, height = 0.01, kwargs...)
-    y = discrete_window(window, fwhm, binsize, stepsize, height)
-    x = (eachindex(y) .- (length(y) ÷ 2 + 1)) .* binsize
-    kwargs = Dict(kwargs...)
-    window_kwargs!(kwargs)
-    fn(x, y; kwargs...)
-end
-
-function window_kwargs!(kwargs)
-    get!(kwargs, :xlabel, "m/z")
-    get!(kwargs, :ylabel, "Transmission")
-    get!(kwargs, :title, "Window")
-    get!(kwargs, :label, nothing)
-    kwargs
-end
-
-# function convolution_window(window::AbstractWindow, hwhm::T, binsize::S, nbin_multiplier::Int, height; normalize = false) where {T, S}
-#     R = promote_type(T, S)
-#     hwhm = convert(R, hwhm)
-#     binsize = convert(R, binsize)
-#     k = discrete_window(window, hwhm, binsize, nbin_multiplier, height)
-#     h = first(k) / 2
-#     i = findfirst(<(h), k)
-#     ihwhm = i - (h - k[i]) / (k[i - 1] - k[i])
-#     k = normalize ? k ./ first(k) : k
-#     ceil(Int, ihwhm), vcat(reverse(k[begin + 1:end]), k)
-# end
-
 
 function bin_offset(outmass, binmass, binsize, nbin_multiplier)
     x = round(Int, (outmass - binmass) / binsize)
@@ -466,8 +324,8 @@ function binnify(mass, binsize, init = first(mass))
     binmass, ibins .- first(ibins)
 end
 
-function find_nearest_peak(::LocalMaxima, convolution, i, k)
-    j = findfirst(>(0.5 * maximum(k)), k)
+function find_nearest_peak(alg::LocalMaxima, convolution, i, k)
+    j = findfirst(>(alg.threshold * maximum(k)), k)
     ihwhm = floor(Int, length(k) / 2) - j + 1
     peak = [convolution[i], convolution[i]]
     dir = [true, true]

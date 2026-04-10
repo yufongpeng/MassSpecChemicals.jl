@@ -1,4 +1,3 @@
-
 # Interface AbstractChemical
 abstract type Hexose <: AbstractChemical end
 struct Glucose <: Hexose
@@ -159,3 +158,4 @@ ips = [AdductIon(ps, "[M-Ser]-"), AdductIon(ps, "[2M+H]+")]
 ipsi1 = [AdductIon(psi1, "[M-Ser]-"), AdductIon(psi1, "[2M+H]+")]
 ipsi2 = [AdductIon(psi2, "[M-Ser]-"), AdductIon(psi2, "[2M+H]+")]
 it3 = Isotopologues(ipsi2[1]; abtype = :total, threshold = crit(1e-3, 1e-3))
+git3 = group_isotopologues(it3)

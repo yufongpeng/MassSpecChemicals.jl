@@ -212,5 +212,3 @@ adductelements(::AddOFo) = ["C" => 1, "H" => 1, "O" => 2]
 adductelements(::Fluoridation) = ["F" => 1]
 adductelements(::Chloridation) = ["Cl" => 1]
 adductelements(::Demethylation) = ["C" => -1, "H" => -3]
-
-Broadcast.broadcastable(x::AbstractAdduct) = Ref(x)
