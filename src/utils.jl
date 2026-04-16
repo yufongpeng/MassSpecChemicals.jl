@@ -152,18 +152,12 @@ makecrit_delta(c::Criteria, x) = (zero_center_interval(c.aval) + x, zero_center_
 makecrit_delta(c::Criteria{Missing}, x) = (zero_center_interval(c.rval * x) + x, )
 makecrit_delta(c::Criteria{A, Missing}, x) where A = (zero_center_interval(c.aval) + x, )
 
-function makerttol(fwhm_ion, fwhm_lib, rrt, lib)
-    fwhm = isnothing(fwhm_lib) ? vectorize(fwhm_ion) : [(fwhm_ion + x) / 2 for x in vectorize(fwhm_lib)]
-    if length(fwhm) == 1
-        [union(makecrit_delta(crit(first(fwhm)), rrt)...) for _ in eachindex(lib)]
-    elseif length(fwhm) != length(lib)
-        [union(makecrit_delta(crit(mean(fwhm)), rrt)...) for _ in eachindex(lib)]
-    else
-        [union(makecrit_delta(crit(x), rrt)...) for x in fwhm]
-    end
-end
+"""
+    lastcolnum(ptnames, col; error = true, init = nothing)
 
-function findlastcol(p, col; error = true, init = nothing)
+Return the last element from `ptnames` such that it starts with `col` and is followed by a number. 
+"""
+function lastcolnum(p, col; error = true, init = nothing)
     regex = Regex(string("^", col, "(\\d+\$)"))
     imatch = map(x -> match(regex, x), p)
     istage = [isnothing(x) ? 0 : parse(Int, x.captures[1]) for x in imatch]
@@ -172,7 +166,12 @@ function findlastcol(p, col; error = true, init = nothing)
     Symbol(p[icol])
 end
 
-function findcol(p, col, i::Int; error = true, init = nothing)
+"""
+    ithcolnum(ptnames, col, i::Int; error = true, init = nothing)
+
+Return element from `ptnames` such that it starts with `col` and is followed by the number `i`. 
+"""
+function ithcolnum(p, col, i::Int; error = true, init = nothing)
     regex = Regex(string("^", col, "(\\d+\$)"))
     imatch = map(x -> match(regex, x), p)
     istage = [isnothing(x) ? 0 : parse(Int, x.captures[1]) for x in imatch]
@@ -181,7 +180,12 @@ function findcol(p, col, i::Int; error = true, init = nothing)
     Symbol(p[icol])
 end
 
-function findallcol(p, col; error = true, init = [])
+"""
+    allcolnum(ptnames, col; error = true, init = [])
+
+Return all elements from `ptnames` such that they start with `col` and is followed by a number. 
+"""
+function allcolnum(p, col; error = true, init = [])
     regex = Regex(string("^", col, "(\\d+\$)"))
     imatch = map(x -> match(regex, x), p)
     istage = [isnothing(x) ? 0 : parse(Int, x.captures[1]) for x in imatch]
@@ -191,31 +195,30 @@ function findallcol(p, col; error = true, init = [])
     Symbol.(p[icol][id])
 end
 
-function collecfwhm(fwhm, exp)
-    v = vectorize(fwhm)
-    if length(v) == 1
-        repeat(v, length(exp))
-    elseif length(v) != length(exp)
-        repeat(mean(v), length(exp))
-    else
-        v
-    end
-end
-
 abtypeop(::Val{:max}) = maximum
 abtypeop(::Val{:input}) = first
 abtypeop(::Val{:list}) = sum
 abtypeop(::Val{:raw}) = nothing
 abtypeop(::Val{:total}) = nothing
 
+normab_doc = """
+    normalize_abundance(abvector, abundance, abtype, available_abtype = [:max, :input, :list, :raw, :total])
+    normalize_abundance!(abvector, abundance, abtype, available_abtype = [:max, :input, :list, :raw, :total])
+
+Normalize raw abundance `abvector` such that the value specified by `abtype` is `abundance`.
+"""
+@doc normab_doc
 normalize_abundance(abvector, abundance, abtype, available_abtype = [:max, :input, :list, :raw, :total]) = 
     _normalize_abundance!(copy(abvector), abundance, abtype, available_abtype; conversion = true)
+
+@doc normab_doc
 normalize_abundance!(abvector, abundance, abtype, available_abtype = [:max, :input, :list, :raw, :total]) = 
     _normalize_abundance!(abvector, abundance, abtype, available_abtype)
 function _normalize_abundance!(abvector, abundance, abtype, available_abtype = [:max, :input, :list, :raw, :total]; conversion = false)
     abtype in available_abtype || throw(ArgumentError("$abtype is not valid; please select from $available_abtype."))
     fn = abtypeop(Val(abtype))
     isnothing(fn) && return abvector
+    abvector = vectorize(abvector)
     T = eltype(abvector)
     S = promote_type(typeof(first(abvector) * abundance / fn(abvector)), T)
     if T == S
@@ -227,20 +230,9 @@ function _normalize_abundance!(abvector, abundance, abtype, available_abtype = [
     end
 end
 
-colname(fn::typeof(retentiontime)) = "RT"
-colname(s::AbstractString) = string(s)
-colname(s::Symbol) = string(s)
-colname(fn, error::typeof(value_error)) = string("Δ", colname(fn))
-colname(fn, error::typeof(relative_error)) = string("Δ", colname(fn), "/", colname(fn))
-colname(fn, error::typeof(percentage_error)) = string("Δ", colname(fn), "/", colname(fn), "(%)")
-colname(fn, error::typeof(ppm_error)) = string("Δ", colname(fn), "/", colname(fn), "(ppm)")
-
-presented_error(::typeof(retentiontime)) = [value_error, percentage_error]
-presented_error(::AbstractMSAnalyzer) = [value_error, ppm_error]
-presented_error(fn) = [value_error]
-
 tuplize(x::Tuple) = x
 tuplize(x) = (x, )
+vectorize(x::AbstractDictionary) = x
 vectorize(x::AbstractVector) = x
 vectorize(x::AbstractVector, n::Int) = n == lastindex(x) ? x : n > lastindex(x) ? vcat(x, repeat([last(x)], n - lastindex(x))) : x[begin:begin + n - 1]
 vectorize(x) = [x]

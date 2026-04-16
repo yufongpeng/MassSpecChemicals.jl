@@ -20,8 +20,8 @@ function MSScan(msanalyzer::AbstractMSAnalyzer, mztable::Table; min_bin_fwhm = 5
         isapprox(stepsize - p * unit, 0) || throw(ArgumentError("`stepsize` must be mutiples of `10 ^ (-digits)`."))
     end
     sp = string.(propertynames(mztable))
-    colmz = findlastcol(sp, "MZ")
-    colab = findlastcol(sp, "Abundance")
+    colmz = lastcolnum(sp, "MZ")
+    colab = lastcolnum(sp, "Abundance")
     id = sortperm(getproperty(mztable, colmz))
     if !isnothing(msanalyzer.mz)
         lower_mz, upper_mz = msanalyzer.mz
@@ -38,7 +38,7 @@ function MSScan(msanalyzer::AbstractMSAnalyzer, mztable::Table; min_bin_fwhm = 5
         nbin_multiplier = ceil(Int, stepsize / binsize)
         binsize = stepsize / nbin_multiplier
     end
-    kernels = discrete_window(msanalyzer.window, mz_vector, msanalyzer, binsize, nbin_multiplier, minimum(ab_vector) / maximum(ab_vector) / 10)
+    kernels = discrete_window(msanalyzer, mz_vector, binsize, nbin_multiplier, minimum(ab_vector) / maximum(ab_vector) / 10)
     # ihwhm, k = convolution_window(window, hwhm, binsize, nbin_multiplier, minimum(mztable.Abundance) / 10; normalize = true)
     initmass = isnothing(digits) ? first(mz_vector) : round(first(mz_vector); digits)
     binmass, ibins = binnify(mz_vector, binsize, initmass)
@@ -78,7 +78,7 @@ Allow all Ions within m/z range entering the next MS stage.
 * `spectrum::Spectrum`: `spectrum.table` is utilized as `mztable`.
 """
 function AllIons(mz_range, mztable::Table)
-    colmz = findlastcol(string.(propertynames(mztable)), "MZ")
+    colmz = lastcolnum(string.(propertynames(mztable)), "MZ")
     if !isnothing(mz_range)
         lower_mz, upper_mz = mz_range 
         id = findall(x -> lower_mz < x < upper_mz, getproperty(mztable, colmz))
@@ -108,11 +108,11 @@ function Isolation(msanalyzer::AbstractMSAnalyzer, mztable::Table; stage = nothi
     isempty(mztable) && return mztable
     sp = string.(propertynames(mztable))
     if isnothing(stage)
-        colmz = findlastcol(sp, "MZ")
-        colab = findlastcol(sp, "Abundance")
+        colmz = lastcolnum(sp, "MZ")
+        colab = lastcolnum(sp, "Abundance")
     else
-        colmz = findcol(sp, "MZ", stage)
-        colab = findcol(sp, "Abundance", stage)
+        colmz = ithcolnum(sp, "MZ", stage)
+        colab = ithcolnum(sp, "Abundance", stage)
     end
     _Isolation(msanalyzer, mztable, colmz, colab, threshold)
 end
@@ -147,9 +147,9 @@ Selected ion monitoring.
 function SelectedIonMonitor(transitiontable::Table, mztable::Table; threshold = rcrit(1e-4)) 
     isempty(mztable) && return transitiontable
     sp = string.(propertynames(mztable))
-    colmz = findlastcol(sp, "MZ")
+    colmz = lastcolnum(sp, "MZ")
     colmz == :MZ1 || throw(ArgumentError("Require only single MZ column `MZ1."))
-    colab = findlastcol(sp, "Abundance")
+    colab = lastcolnum(sp, "Abundance")
     colab == :Abundance1 || throw(ArgumentError("Require only single Abundance column `Abundance1."))
     transitions = Table(transitiontable; Transition = nothing)
     tables = _SelectedIonMonitor(columns(transitions), mztable, colmz, colab, threshold)
@@ -207,7 +207,7 @@ function Fragmentation(producttable::Table, mztable::Table; threshold = rcrit(1e
     allequal(msstage, mztable.Chemical) || throw(ArgumentError("Chemicals have to be in the same MS stage."))
     all(x -> all(y -> msstage(y) < 2, x), producttable.Product) || throw(ArgumentError("Products should not be MS/MS pairs."))
     if !in(:Proportion, propertynames(producttable))
-        producttable = Table(producttable; Proportion = [nothing for _ in eachindex(producttable)])
+        producttable = Table(producttable; Proportion = [1 for _ in eachindex(producttable)])
     end
     # MS1 threshold
     # threshold = acrit(minimum(makecrit_value(crit(threshold), maximum(mztable.Abundance1))))
@@ -220,7 +220,8 @@ function Fragmentation(producttable::Table, mztable::Table; threshold = rcrit(1e
             threshold,
             precursor_table,
             product = producttable.Product[pid],
-            proportion = producttable.Proportion[pid]
+            proportion = producttable.Proportion[pid],
+            transmission = sum(producttable.Proportion[pid])
             )
     end...)
 end
@@ -279,8 +280,8 @@ function peak_table(transitiontable::Table; groupedisotopomers = true, isotope =
         tables = mztables
     end
     sp = string.(propertynames(first(tables)))
-    colmz = findallcol(sp, "MZ")
-    colab = findallcol(sp, "Abundance")
+    colmz = allcolnum(sp, "MZ")
+    colab = allcolnum(sp, "Abundance")
     gt = map(tables) do mztable 
         isobar = Isobars(mztable.Chemical, hcat(getproperty.(Ref(mztable), colab)...))
         transitions = chemicaltransition.(mztable.Chemical)
@@ -322,133 +323,4 @@ function binnify(mass, binsize, init = first(mass))
         end
     end
     binmass, ibins .- first(ibins)
-end
-
-function find_nearest_peak(alg::LocalMaxima, convolution, i, k)
-    j = findfirst(>(alg.threshold * maximum(k)), k)
-    ihwhm = floor(Int, length(k) / 2) - j + 1
-    peak = [convolution[i], convolution[i]]
-    dir = [true, true]
-    start = [false, false]
-    ibin = [i, i]
-    for j in 0:ihwhm
-        if first(dir)
-            if convolution[i - j - 1] > first(peak)
-                start[begin] = true
-                peak[begin] = convolution[i - j - 1]
-            else
-                dir[begin] = false
-                ibin[begin] = i - j
-            end
-        end
-        if last(dir)
-            if convolution[i + j + 1] > last(peak) 
-                start[end] = true
-                peak[end] = convolution[i + j + 1]
-            else
-                dir[end] = false
-                ibin[end] = i + j
-            end
-        end
-        dir'start > 0 || break 
-    end
-    r = @. (!)(dir) * start
-    id = if !any(start)
-        ibin[begin]
-    elseif all(r) && peak[begin] < peak[end]
-        ibin[end]
-    elseif all(r)
-        ibin[begin]
-    elseif first(r)
-        ibin[begin]
-    elseif last(r)
-        ibin[end]
-    else
-        nothing 
-    end
-    id
-    # lm, _ = findmin(convolution[id - ihwhm : id])
-    # rm, _ = findmin(convolution[id : id + ihwhm])
-    # if lm > 0.75 * convolution[id] || rm > 0.75 * convolution[id]
-    #     nothing 
-    # else
-    #     id
-    # end
-end
-
-function find_nearest_peak(::FWHMMaxima, convolution, i, k)
-    j = findfirst(>(0.5), k)
-    ihwhm = floor(Int, length(k) / 2) - j + 1
-    range = i - ihwhm : i + ihwhm
-    _, v = findmax(convolution[range])
-    mbin = range[v]
-    n = ihwhm * 2
-    if mbin == i - ihwhm
-        while n > 0 && convolution[mbin] < convolution[mbin - 1]
-            mbin -= 1
-            n -= 1
-            if n == 0
-                mbin = nothing
-                break 
-            end
-            if mbin == firstindex(convolution)
-                break 
-            end
-        end
-    elseif mbin == i + ihwhm
-        while n > 0 && convolution[mbin] < convolution[mbin + 1]
-            mbin += 1
-            n -= 1
-            if n == 0
-                mbin = nothing
-                break 
-            end
-            if mbin == lastindex(convolution)
-                break 
-            end
-        end
-    else
-        lrange = mbin - ihwhm : mbin
-        rrange = mbin : mbin + ihwhm
-        lm, lmbin = findmin(convolution[lrange])
-        rm, rmbin = findmin(convolution[rrange])
-        lmbin = lrange[lmbin]
-        rmbin = rrange[rmbin]
-        if lm > 0.6 * convolution[mbin]
-            while n > 0 && convolution[lmbin] < convolution[lmbin - 1]
-                lmbin -= 1
-                n -= 1
-                if lmbin == firstindex(convolution)
-                    break 
-                end
-            end
-            if convolution[lmbin] < convolution[mbin]
-                lmbin = -Inf
-            end
-        else
-            lmbin = -Inf
-        end
-        if rm > 0.6 * convolution[mbin]
-            while n > 0 && convolution[rmbin] < convolution[rmbin + 1]
-                rmbin += 1
-                n -= 1
-                if rmbin == lastindex(convolution)
-                    break 
-                end
-            end
-            if convolution[rmbin] < convolution[mbin]
-                rmbin = Inf
-            end
-        else
-            rmbin = Inf
-        end
-        if isinf(rmbin) && isinf(lmbin)
-            mbin = mbin
-        elseif rmbin - mbin > mbin - lmbin
-            mbin = lmbin 
-        else
-            mbin = rmbin
-        end
-    end
-    mbin
 end

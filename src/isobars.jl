@@ -89,7 +89,7 @@ function ms_filter!(ci::CoelutingIsobars)
 end
 
 """
-    isobar_table(ci::CoelutingIsobars; isotope = "[13C]", threshold = rcrit(1e-4), error_elution = presented_error.(ci.elution), error_mz = presented_error.(ci.msanalyzer)) -> Table
+    isobar_table(ci::CoelutingIsobars; isotope = "[13C]", threshold = rcrit(1e-4), error_elution = measure_error.(ci.elution), error_mz = measure_error.(ci.msanalyzer)) -> Table
 
 A table listing all target chemicals and their isobars grouped by isomeric state based on `isotope` from `ci`.
 
@@ -101,8 +101,8 @@ A table listing all target chemicals and their isobars grouped by isomeric state
 function isobar_table(ci::CoelutingIsobars; 
         isotope = "[13C]",
         threshold = rcrit(1e-4), 
-        error_elution = presented_error.(ci.elution), 
-        error_mz = presented_error.(ci.msanalyzer)
+        error_elution = measure_error.(first.(ci.elution)), 
+        error_mz = measure_error.(first.(ci.msanalyzer))
     )
     id = findall(!isempty, ci.tables)
     # group by parent and In 
@@ -114,22 +114,23 @@ function isobar_table(ci::CoelutingIsobars;
     for (i, fns) in enumerate(error_elution)
         elu_value = [(first(ci.elution[i])(x), first(ci.elution[i])(y)) for (x, y) in zip(last(first(cols)), last(last(cols)))]
         for fn in fns
-            push!(cols, Symbol(colname(first(ci.elution[i]), fn)) => [fn(x...) for x in elu_value])
+            push!(cols, Symbol(measure_name(first(ci.elution[i]), fn)) => [fn(x...) for x in elu_value])
         end
     end
     sp = string.(propertynames(first(gt)))
-    colmz = findallcol(sp, "MZ")
-    colab = findallcol(sp, "Abundance")
+    colmz = allcolnum(sp, "MZ")
+    colab = allcolnum(sp, "Abundance")
     for (i, fns) in enumerate(error_mz)
         mz_value = zip([x[i] for x in target_mz], vcat(getproperty.(gt, colmz[i])...))
         for fn in fns
-            push!(cols, Symbol(colname(colmz[i], fn)) => [fn(x...) for x in mz_value])
+            push!(cols, Symbol(measure_name(colmz[i], fn)) => [fn(x...) for x in mz_value])
         end
     end
     for c in colab
         push!(cols, Symbol(string(c, "(%)")) => vcat(getproperty.(gt, c) ./ getproperty(ci.target[id], c) .* 100...))
     end
     table = Table(; cols...)
+    isnothing(threshold) && return table
     abundance_cutoff = minimum(makecrit_value(crit(threshold), 1)) * 100
     table[findall(>=(abundance_cutoff), getproperty(table, first(last(cols))))]
 end

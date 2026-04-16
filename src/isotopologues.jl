@@ -31,7 +31,7 @@ Only isotopic abundance of parent elements are considered, and isotopes are view
 
 For MS/MS transition, product can be chemical loss or gain (`ChemicalLoss`, `ChemicalGain` or formula starting with `-` or `+`).
 
-!!! Special precaution for applying to MS/MS precursor-product pairs
+!!! note "Special precaution for applying to MS/MS precursor-product pairs"
     Product must come from a single part or mutiple non-overlapping parts of precursor. Isobaric or isomeric products are not considered. For instance, 
     * PC 18:0/18:0 and fatty acyl 18:0 fragment is valid because two fatty acids are independent and identical. 
     * PC 18:0[D5]/18:0 and fatty acyl 18:0[D5] fragment is valid but the contribution of another fatty acid 18:0 is not considered and addional computation of this pair and summation with knowledge of fragmentation efficiency are required for the correct abundances. 
@@ -167,7 +167,7 @@ function Isotopologues(mztable::Table; threshold = rcrit(1e-4), kwargs...)
     if :loss in keys(kwargs)
         delete!(kwargs, :loss)
     end
-    colab = findallcol(string.(propertynames(mztable)), "Abundance"; error = false)
+    colab = allcolnum(string.(propertynames(mztable)), "Abundance"; error = false)
     if !isempty(colab)
         mztable = Table(mztable; abundance = collect.(getproperties(mztable, colab)))
         push!(vec_key, :abundance)
@@ -202,7 +202,7 @@ function Isotopologues(mztable::Table; threshold = rcrit(1e-4), kwargs...)
         end)...)
     end
     # spectrum specific threshold ?
-    ab = getproperty(tbl, findlastcol(string.(propertynames(tbl)), "Abundance"))
+    ab = getproperty(tbl, lastcolnum(string.(propertynames(tbl)), "Abundance"))
     abundance_cutoff = minimum(makecrit_value(crit(threshold), maximum(ab)))
     id = findall(>=(abundance_cutoff), ab)
     tbl[id]
@@ -248,7 +248,7 @@ Only isotopic abundance of parent elements are considered, and isotopes are view
 
 For MS/MS precursor-product pairs, product can be neutral loss or ion loss (`ChemicalLoss` or formula starting with `-`).
 
-!!! Special precaution for applying to MS/MS precursor-product pairs
+!!! note "Special precaution for applying to MS/MS precursor-product pairs"
     Product must come from a single part or mutiple non-overlapping parts of precursor. Isobaric or isomeric products are not considered. For instance, 
     * PC 18:0/18:0 and fatty acyl 18:0 fragment is valid because two fatty acids are independent and identical. 
     * PC 18:0[D5]/18:0 and fatty acyl 18:0[D5] fragment is valid but the contribution of another fatty acid 18:0 is not considered and addional computation of this pair and summation with knowledge of fragmentation efficiency are required for the correct abundances. 
@@ -285,7 +285,7 @@ function TandemIsotopologues(input_chemical::AbstractChemical;
     end
     if !isnothing(precursor_table)
         precursor_table = Table(precursor_table)
-        colab = findallcol(string.(propertynames(Table(precursor_table))), "Abundance")
+        colab = allcolnum(string.(propertynames(Table(precursor_table))), "Abundance")
         if !isempty(colab)
             precursor_tables = map(proportion) do p 
                 pa = p / sump
@@ -377,7 +377,7 @@ function TandemIsotopologues(mztable::Table; threshold = rcrit(1e-4), kwargs...)
         throw(ArgumentError("Require products information. Use column `Product` of the table or keyword arguments `product`."))
     end
     # all(x -> all(y -> msstage(y) < 2, x), mztable.Product) || throw(ArgumentError("Products should not MS/MS pairs."))
-    colab = findallcol(string.(propertynames(mztable)), "Abundance"; error = false)
+    colab = allcolnum(string.(propertynames(mztable)), "Abundance"; error = false)
     if !isempty(colab)
         mztable = Table(mztable; abundance = collect.(getproperties(mztable, colab)))
         push!(vec_key, :abundance)
@@ -449,8 +449,8 @@ function group_isotopologues(mztable::Table; isotope = "[13C]")
     gf = gf_parent_isotope(isotope)
     gid = groupfind(gf, mztable.Chemical)
     sp = string.(propertynames(mztable))
-    colmz = findallcol(sp, "MZ")
-    colab = findallcol(sp, "Abundance")
+    colmz = allcolnum(sp, "MZ")
+    colab = allcolnum(sp, "Abundance")
     transitions = chemicaltransition.(mztable.Chemical)
     gt = map(gid) do v 
         uid = [[findfirst(x -> x == t, c) for t in unique(c)] for c in zip(transitions[v]...)]

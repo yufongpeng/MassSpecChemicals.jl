@@ -1,5 +1,28 @@
 """
-    fwhm_mz(ms::AbstractMSAnalyzer, mz::Real)
+    measure_name(fn[, error]) -> String 
+
+Common name of measurement `fn` with or without `error`.
+"""
+measure_name(fn) = repr(fn)
+measure_name(fn::typeof(retentiontime)) = "RT"
+measure_name(s::AbstractString) = string(s)
+measure_name(s::Symbol) = string(s)
+measure_name(fn, error::typeof(value_error)) = string("Δ", measure_name(fn))
+measure_name(fn, error::typeof(relative_error)) = string("Δ", measure_name(fn), "/", measure_name(fn))
+measure_name(fn, error::typeof(percentage_error)) = string("Δ", measure_name(fn), "/", measure_name(fn), "(%)")
+measure_name(fn, error::typeof(ppm_error)) = string("Δ", measure_name(fn), "/", measure_name(fn), "(ppm)")
+
+"""
+    measure_error(fn) -> Vector{<: Function}
+
+Common error functions for measurement `fn`.
+"""
+measure_error(::typeof(retentiontime)) = [value_error]
+measure_error(::AbstractMSAnalyzer) = [value_error, ppm_error]
+measure_error(fn) = [value_error]
+
+"""
+    fwhm_mz(ms::AbstractMSAnalyzer, mz::Real) -> Real
 
 FWHM of `mz`.
 """
@@ -12,20 +35,20 @@ fwhm_mz(ms::Orbitrap, mz) = mz / ms.resolution * sqrt((3 * mz + ms.mz50 - 800) /
 fwhm_mz(ms::FTICR, mz) = mz / ms.resolution * (mz + ms.mz50 - 400) / (ms.mz50 - 200)
 
 """
-    msanalyzername(ms::AbstractMSAnalyzer)
+    msanalyzer_name(ms::AbstractMSAnalyzer) -> String
 
 Common name of the MS analyzer.
 """
-msanalyzername(::Quadrupole) = "Quadrupole"
-msanalyzername(::QuadrupoleIonTrap) = "QuadrupoleIonTrap"
-msanalyzername(::LinearIonTrap) = "LinearIonTrap"
-msanalyzername(::TOF) = "TOF"
-msanalyzername(::Orbitrap) = "Orbitrap"
-msanalyzername(::FTICR) = "FTICR"
-msanalyzername(::MSAnalyzer) = "MS-Analyzer"
+msanalyzer_name(::Quadrupole) = "Quadrupole"
+msanalyzer_name(::QuadrupoleIonTrap) = "Quadrupole Ion Trap"
+msanalyzer_name(::LinearIonTrap) = "Linear Ion Trap"
+msanalyzer_name(::TOF) = "TOF"
+msanalyzer_name(::Orbitrap) = "Orbitrap"
+msanalyzer_name(::FTICR) = "FTICR"
+msanalyzer_name(::MSAnalyzer) = "MS-Analyzer"
 
 """
-    resolving_power(ms::AbstractMSAnalyzer, mz::Real)
+    resolving_power(ms::AbstractMSAnalyzer, mz::Real) -> Real
 
 Resolving power of `ms` at `mz`.
 """
@@ -132,25 +155,45 @@ function (f::GaussianDilatedWindow)(x, μ, fwhm)
     end
 end
 
-window_parameter(msanalyzer::AbstractMSAnalyzer{W}, μ) where {W <: GaussianTailedUniformWindow} = (μ, fwhm_mz(msanalyzer, μ))
-window_parameter(msanalyzer::AbstractMSAnalyzer{W}, μ) where {W <: GaussianWindow} = (μ, fwhm_mz(msanalyzer, μ) ^ 2 / log(256))
-window_parameter(msanalyzer::AbstractMSAnalyzer{W}, μ) where {W <: FixedTaperTukeyWindow} = (μ, fwhm_mz(msanalyzer, μ))
-window_parameter(msanalyzer::AbstractMSAnalyzer{W}, μ) where {W <: TukeyWindow} = (μ, fwhm_mz(msanalyzer, μ))
-window_parameter(msanalyzer::AbstractMSAnalyzer{W}, μ) where {W <: CosineWindow} = (μ, fwhm_mz(msanalyzer, μ))
-window_parameter(msanalyzer::AbstractMSAnalyzer{W}, μ) where {W <: PowerCosineWindow} = (μ, fwhm_mz(msanalyzer, μ))
-window_parameter(msanalyzer::AbstractMSAnalyzer{W}, μ) where {W <: RectWindow} = (μ, fwhm_mz(msanalyzer, μ))
-window_parameter(msanalyzer::AbstractMSAnalyzer{W}, μ) where {W <: SuperGaussianWindow} = (μ, fwhm_mz(msanalyzer, μ) / (sqrt(8) * log(2) ^ (1 / msanalyzer.window.power)))
+"""
+    window_parameter(msanalyzer::AbstractMSAnalyzer, mz)
 
-function discrete_window(window::AbstractWindow, μ::Vector{T}, msanalyzer, binsize, nbin_multiplier, height) where T
+Parameters of the window function `msanalyzer.window` with `mz` value. It typically returns the center and dispersion of the window. See documentation of each window for details.
+"""
+window_parameter(msanalyzer::AbstractMSAnalyzer{<: GaussianTailedUniformWindow}, μ) = (μ, fwhm_mz(msanalyzer, μ))
+window_parameter(msanalyzer::AbstractMSAnalyzer{<: GaussianWindow}, μ) = (μ, fwhm_mz(msanalyzer, μ) ^ 2 / log(256))
+window_parameter(msanalyzer::AbstractMSAnalyzer{<: FixedTaperTukeyWindow}, μ) = (μ, fwhm_mz(msanalyzer, μ))
+window_parameter(msanalyzer::AbstractMSAnalyzer{<: TukeyWindow}, μ) = (μ, fwhm_mz(msanalyzer, μ))
+window_parameter(msanalyzer::AbstractMSAnalyzer{<: CosineWindow}, μ) = (μ, fwhm_mz(msanalyzer, μ))
+window_parameter(msanalyzer::AbstractMSAnalyzer{<: PowerCosineWindow}, μ) = (μ, fwhm_mz(msanalyzer, μ))
+window_parameter(msanalyzer::AbstractMSAnalyzer{<: RectWindow}, μ) = (μ, fwhm_mz(msanalyzer, μ))
+window_parameter(msanalyzer::AbstractMSAnalyzer{<: SuperGaussianWindow}, μ) = (μ, fwhm_mz(msanalyzer, μ) / (sqrt(8) * log(2) ^ (1 / msanalyzer.window.power)))
+
+"""
+    discrete_window(msanalyzer::AbstractMSAnalyzer, mz::Vector, binsize, nbin_multiplier, height) 
+    discrete_window(window::AbstractWindow, fwhm, binsize, nbin_multiplier, height)
+
+Discrete values of `window` with `fwhm` or `msanalyzer.window` at `mz` values (FWHM is computed through `fwhm_mz`).
+
+# Arguments 
+* `msanalyzer`: MS Analyzer
+* `mz`: m/z values
+* `window`: window
+* `fwhm`: FWHM
+* `binsize`: the size of m/z bin
+* `nbin_multiplier`: the interval between sampled bins
+* `height`: minimal window value
+"""
+function discrete_window(msanalyzer::AbstractMSAnalyzer, μ::Vector{T}, binsize, nbin_multiplier, height) where T
     fwhm_ref = fwhm_mz(msanalyzer, first(μ))
-    window_ref = discrete_window(window, fwhm_ref, binsize, nbin_multiplier, height)
+    window_ref = discrete_window(msanalyzer.window, fwhm_ref, binsize, nbin_multiplier, height)
     windows = [Vector{T}() for _ in μ]
     for (i, m) in enumerate(μ)
         fwhm = fwhm_mz(msanalyzer, m)
         if fwhm - fwhm_ref < binsize * nbin_multiplier
             windows[i] = window_ref 
         else
-            windows[i] = discrete_window(window, fwhm, binsize, nbin_multiplier, height)
+            windows[i] = discrete_window(msanalyzer.window, fwhm, binsize, nbin_multiplier, height)
             window_ref = windows[i]
             fwhm_ref = fwhm
         end
@@ -335,4 +378,133 @@ function estimate_t(window::SuperGaussianWindow, bsqrtt, ihwhml, ihwhmr, log_n =
         bsqrtt += (0.5 - (hl + hr) / 2) / (hl - hr)
         return estimate_t(window, bsqrtt, ihwhml, ihwhmr, log_n + 1)
     end
+end
+
+function find_nearest_peak(alg::LocalMaxima, convolution, i, k)
+    j = findfirst(>(alg.threshold * maximum(k)), k)
+    ihwhm = floor(Int, length(k) / 2) - j + 1
+    peak = [convolution[i], convolution[i]]
+    dir = [true, true]
+    start = [false, false]
+    ibin = [i, i]
+    for j in 0:ihwhm
+        if first(dir)
+            if convolution[i - j - 1] > first(peak)
+                start[begin] = true
+                peak[begin] = convolution[i - j - 1]
+            else
+                dir[begin] = false
+                ibin[begin] = i - j
+            end
+        end
+        if last(dir)
+            if convolution[i + j + 1] > last(peak) 
+                start[end] = true
+                peak[end] = convolution[i + j + 1]
+            else
+                dir[end] = false
+                ibin[end] = i + j
+            end
+        end
+        dir'start > 0 || break 
+    end
+    r = @. (!)(dir) * start
+    id = if !any(start)
+        ibin[begin]
+    elseif all(r) && peak[begin] < peak[end]
+        ibin[end]
+    elseif all(r)
+        ibin[begin]
+    elseif first(r)
+        ibin[begin]
+    elseif last(r)
+        ibin[end]
+    else
+        nothing 
+    end
+    id
+    # lm, _ = findmin(convolution[id - ihwhm : id])
+    # rm, _ = findmin(convolution[id : id + ihwhm])
+    # if lm > 0.75 * convolution[id] || rm > 0.75 * convolution[id]
+    #     nothing 
+    # else
+    #     id
+    # end
+end
+
+function find_nearest_peak(::FWHMMaxima, convolution, i, k)
+    j = findfirst(>(0.5), k)
+    ihwhm = floor(Int, length(k) / 2) - j + 1
+    range = i - ihwhm : i + ihwhm
+    _, v = findmax(convolution[range])
+    mbin = range[v]
+    n = ihwhm * 2
+    if mbin == i - ihwhm
+        while n > 0 && convolution[mbin] < convolution[mbin - 1]
+            mbin -= 1
+            n -= 1
+            if n == 0
+                mbin = nothing
+                break 
+            end
+            if mbin == firstindex(convolution)
+                break 
+            end
+        end
+    elseif mbin == i + ihwhm
+        while n > 0 && convolution[mbin] < convolution[mbin + 1]
+            mbin += 1
+            n -= 1
+            if n == 0
+                mbin = nothing
+                break 
+            end
+            if mbin == lastindex(convolution)
+                break 
+            end
+        end
+    else
+        lrange = mbin - ihwhm : mbin
+        rrange = mbin : mbin + ihwhm
+        lm, lmbin = findmin(convolution[lrange])
+        rm, rmbin = findmin(convolution[rrange])
+        lmbin = lrange[lmbin]
+        rmbin = rrange[rmbin]
+        if lm > 0.6 * convolution[mbin]
+            while n > 0 && convolution[lmbin] < convolution[lmbin - 1]
+                lmbin -= 1
+                n -= 1
+                if lmbin == firstindex(convolution)
+                    break 
+                end
+            end
+            if convolution[lmbin] < convolution[mbin]
+                lmbin = -Inf
+            end
+        else
+            lmbin = -Inf
+        end
+        if rm > 0.6 * convolution[mbin]
+            while n > 0 && convolution[rmbin] < convolution[rmbin + 1]
+                rmbin += 1
+                n -= 1
+                if rmbin == lastindex(convolution)
+                    break 
+                end
+            end
+            if convolution[rmbin] < convolution[mbin]
+                rmbin = Inf
+            end
+        else
+            rmbin = Inf
+        end
+        if isinf(rmbin) && isinf(lmbin)
+            mbin = mbin
+        elseif rmbin - mbin > mbin - lmbin
+            mbin = lmbin 
+        else
+            mbin = rmbin
+        end
+    end
+    mbin
 end

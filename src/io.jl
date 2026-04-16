@@ -134,5 +134,5 @@ function Base.show(io::IO, spec::Spectrum)
 end
 
 function Base.show(io::IO, ci::CoelutingIsobars)
-    print(io, "Co-eluting isobars: ", join([colname(first(x)) for x in ci.elution], " -> "), " -> ", join([msanalyzername(first(x)) for x in ci.msanalyzer], " -> "))
+    print(io, "Co-eluting isobars: ", join([measure_name(first(x)) for x in ci.elution], " -> "), " -> ", join([msanalyzer_name(first(x)) for x in ci.msanalyzer], " -> "))
 end

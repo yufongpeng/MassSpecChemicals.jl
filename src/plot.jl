@@ -91,9 +91,9 @@ end
 
 function plot_spectrum_params(mz_range, mztable::Table; fn = plot, abundance = 1, abtype = :max, threshold = rcrit(1e-4))
     sp = string.(propertynames(mztable))
-    colmz = findlastcol(sp, "MZ")
+    colmz = lastcolnum(sp, "MZ")
     mz = getproperty(mztable, colmz)
-    colab = findlastcol(sp, "Abundance")
+    colab = lastcolnum(sp, "Abundance")
     if isnothing(mz_range) 
         min_mz, max_mz = extrema(mz)
         range = (max_mz - min_mz) * 0.1

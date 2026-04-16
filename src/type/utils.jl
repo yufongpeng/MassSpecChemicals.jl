@@ -48,27 +48,48 @@ end
 """
     value_error(x, y)
 
-Error function of difference.
+Error function of difference; `y - x`.
 """
-value_error(x, y) = x - y
+value_error(x, y) = y - x
 
 """
     relative_error(x, y)
 
-Error function of relative difference.
+Error function of relative difference (relative to true value x); `(y - x) / x`.
 """
-relative_error(x, y) = 2 * (x - y) / (x + y) 
+relative_error(x, y) = (y - x) / x
+
+"""
+    relative_error_mean(x, y)
+
+Error function of relative difference (relative to mean); `(y - x) / ((x + y) / 2)`.
+"""
+relative_error_mean(x, y) = 2 * (y - x) / (x + y) 
 
 """
     percentage_error(x, y)
 
-Error function of relative difference in percentage.
+Error function of relative difference in percentage (relative to true value x); `(y - x) / x * 100`.
 """
-percentage_error(x, y) = 2 * (x - y) / (x + y) * 100
+percentage_error(x, y) = (y - x) / x * 100
+
+"""
+    percentage_error_mean(x, y)
+
+Error function of relative difference in percentage (relative to mean); `(y - x) / ((x + y) / 2) * 100`.
+"""
+percentage_error_mean(x, y) = 2 * (y - x) / (x + y) * 100
 
 """
     ppm_error(x, y)
 
-Error function of relative difference in ppm.
+Error function of relative difference in ppm (relative to true value x); `(y - x) / x * 1e6`.
 """
-ppm_error(x, y) = 2 * (x - y) / (x + y) * 10e6
+ppm_error(x, y) = (y - x) / x * 1e6
+
+"""
+    ppm_error_mean(x, y)
+
+Error function of relative difference in ppm (relative to mean); `(y - x) / ((x + y) / 2) * 1e6`.
+"""
+ppm_error_mean(x, y) = 2 * (y - x) / (x + y) * 1e6

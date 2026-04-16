@@ -96,6 +96,26 @@ pt = Table(;
         [0.2, 0.8], [0.8]
     ])
 IGQ1b = AdductIon(GQ1, "[M+2H]2+")
-spec1 = @p Isotopologues(IGQ1b; abtype = :list, abundance = 100000) |> MSScan
+IGD3 = AdductIon(GD3, "[M+H]+")
+ms0 = Isotopologues(IGQ1b; abtype = :list, abundance = 100000)
+spec1 = @p ms0 |> MSScan
 spec2 = @p spec1 |> Isolation(Quadrupole(1210.588728; fwhm = 1.3, offset = 0.3)) |> Fragmentation(pt) |> MSScan
 spec3 = @p spec2 |> Isolation(Quadrupole(948.3303; fwhm = 1.3, offset = 0.3)) |> Fragmentation(pt) |> MSScan
+
+transitiontable = Table(;
+    MS1 = [
+            Quadrupole(mz(IGQ1b); fwhm = 0.7, digits = 1), 
+            Quadrupole(mz(IGQ1b); fwhm = 0.7, digits = 1), 
+            Quadrupole(mz(IGQ1b); fwhm = 0.7, digits = 1),
+            Quadrupole(mz(IGD3); fwhm = 0.7, digits = 1)
+    ],
+    Product = [pt, pt, pt, pt],
+    MS2 = [
+        Quadrupole(mz(AdductIon(nana, "[M+H-2H2O]+")); fwhm = 0.7, digits = 1),
+        Quadrupole(mz(AdductIon(f948, "[M+H-H2O]+")); fwhm = 0.7, digits = 1), 
+        Quadrupole(mz(IGD3); fwhm = 0.7, digits = 1),
+        Quadrupole(mz(AdductIon(nana, "[M+H-2H2O]+")); fwhm = 0.7, digits = 1)
+    ]
+)
+sim = SelectedIonMonitor(transitiontable, vcat(Isotopologues(IGQ1b; abtype = :input, abundance = 100000), Isotopologues(IGD3; abtype = :input, abundance = 10000)))
+pt2 = peak_table(sim)

@@ -161,6 +161,7 @@ end
     end
     @testset "Spectrum" begin 
         @test @test_noerror test_show(spec1)
+        @test isapprox(pt2.Abundance2[1], 20000)
         @test @test_noerror plot_spectrum((948.1, 951.5), spec2)
         @test @test_noerror plot_spectrum!((948.1, 951.5), spec2; deconvolution = true)
         @test @test_noerror plot_window(MSC.GaussianWindow())

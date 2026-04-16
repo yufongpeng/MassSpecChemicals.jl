@@ -12,6 +12,9 @@ retentiontime(loss::ChemicalLoss; kwargs...) = retentiontime(chemicalentity(loss
 retentiontime(gain::ChemicalGain; kwargs...) = retentiontime(chemicalentity(gain); kwargs...)
 retentiontime(ct::ChemicalTransition; kwargs...) = retentiontime(chemicalentity(ct); kwargs...)
 
+msstage(isobars::Isobars{<: ChemicalTransition}; kwargs...) = only(unique(msstage.(chemicalspecies(isobars); kwargs...)))
+msstage(ct::ChemicalTransition; kwargs...) = length(ct.transition)
+
 _isobar_species_attr(fn, isobars::Isobars, args...; kwargs...) = mean(fn.(chemicalspecies(isobars), args...), weights(isobars.abundance))
 _isobar_species_attr(fn, isobars::Isobars{<: ChemicalTransition}, args...; kwargs...) = mean(fn.(chemicalspecies(isobars), args...), weights(isobars.abundance[begin:size(isobars.abundance, 1)]))
 

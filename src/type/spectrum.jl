@@ -27,6 +27,18 @@ end
 
 abstract type AbstractWindow end
 abstract type ZeroCenteredtWindow end
+
+"""
+    GaussianWindow <: AbstractWindow 
+
+Gaussian window.
+
+# Window Function
+    (::GaussianWindow)(x, μ, σ2)
+
+* `μ`: mean (center)
+* `σ2`: variance
+"""
 struct GaussianWindow <: AbstractWindow end
 struct GaussianDilatedWindow <: AbstractWindow
     taperwidth
@@ -37,19 +49,122 @@ GaussianDilatedWindow(taperwidth, taperheight) = GaussianDilatedWindow(taperwidt
 struct GaussianTailedUniformWindow <: AbstractWindow
     taperwidth
 end
+
+"""
+    FixedTaperTukeyWindow <: AbstractWindow 
+
+Tukey window with fixed width of taper.
+
+# Fields 
+* `taperwidth`: width of taper
+
+# Window Function
+    (::FixedTaperTukeyWindow)(x, μ, fwhm)
+
+* `μ`: mean (center)
+* `fwhm`: full width at half maximum
+"""
 struct FixedTaperTukeyWindow <: AbstractWindow 
     taperwidth
 end
+
+"""
+    TukeyWindow <: AbstractWindow 
+
+Tukey window.
+
+# Window Function
+    (::TukeyWindow)(x, μ, fwhm)
+
+* `μ`: mean (center)
+* `fwhm`: full width at half maximum
+"""
 struct TukeyWindow <: AbstractWindow 
     taperproportion
 end
+
+"""
+    CosineWindow <: AbstractWindow 
+
+Cosine window.
+
+# Window Function
+    (::CosineWindow)(x, μ, fwhm)
+
+* `μ`: mean (center)
+* `fwhm`: full width at half maximum
+"""
 struct CosineWindow <: AbstractWindow end
+
+"""
+    RectWindow <: AbstractWindow 
+
+Rectangular window.
+
+# Window Function
+    (::RectWindow)(x, μ, fwhm)
+
+* `μ`: mean (center)
+* `fwhm`: full width at half maximum
+"""
 struct RectWindow <: AbstractWindow end
+
+"""
+    DiscreteGaussianWindow <: ZeroCenteredtWindow 
+
+Discrete gaussian window.
+
+# Window Function
+    (::DiscreteGaussianWindow)(x, t)
+
+* `t`: variance
+"""
 struct DiscreteGaussianWindow <: ZeroCenteredtWindow end
+
+"""
+    SampledGaussianWindow <: ZeroCenteredtWindow 
+
+Sampled gaussian window.
+
+# Window Function
+    (::SampledGaussianWindow)(x, t)
+
+* `t`: variance
+"""
 struct SampledGaussianWindow <: ZeroCenteredtWindow end
+
+"""
+    SuperGaussianWindow <: AbstractWindow 
+
+Super gaussian window.
+
+# Fields 
+* `power`: the power of exponential. `2` is equivalent to typical gaussian window.
+
+# Window Function
+    (::SuperGaussianWindow)(x, μ, σ)
+
+* `μ`: mean (center)
+* `σ`: standard deviation
+"""
 struct SuperGaussianWindow{T} <: AbstractWindow 
     power::T
 end
+
+"""
+    PowerCosineWindow <: AbstractWindow 
+
+Power cosine (top half) window.
+
+# Fields 
+* `power`: the power of cosine
+
+# Window Function
+    (::PowerCosineWindow)(x, μ, fwhm)
+
+* `μ`: mean (center)
+* `fwhm`: full width at half maximum
+"""
 struct PowerCosineWindow{T} <: AbstractWindow 
     power::T
 end

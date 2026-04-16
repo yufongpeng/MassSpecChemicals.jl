@@ -89,7 +89,7 @@ export
     match_chemical, 
     ischemicalequal, isadductequal, 
     acrit, rcrit, crit, @ri_str, makecrit_delta, makecrit_value, 
-    value_error, relative_error, percentage_error, ppm_error
+    value_error, relative_error, percentage_error, ppm_error, relative_error_mean, percentage_error_mean, ppm_error_mean
 
 """
     AbstractChemical
@@ -146,8 +146,8 @@ include(joinpath("type", "spectrum.jl"))
 include("interface.jl")
 include("attr.jl")
 include("attr_adduct.jl")
-include("attr_spectrum.jl")
-include("chemicallevelobj.jl")
+include("attr_measure.jl")
+include("chemical.jl")
 include("elements.jl")
 include("adduct.jl")
 include("formula_elements.jl")

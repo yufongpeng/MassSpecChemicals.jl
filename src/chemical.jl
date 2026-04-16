@@ -215,7 +215,3 @@ function _detectedproduct(precursor, product::ChemicalGain)
     chemical = Chemical(string(prename, postname), unique_elements(gain_elements(preelements, postelements)); charge = precharge + postcharge)
     isempty(isotopes) ? chemical : Isotopomers(chemical, isotopes)
 end
-
-msstage(isobars::Isobars{<: ChemicalTransition}; kwargs...) = only(unique(msstage.(chemicalspecies(isobars); kwargs...)))
-msstage(ct::ChemicalTransition; kwargs...) = length(ct.transition)
-
