@@ -202,7 +202,7 @@ Transform input into valid chemical structure.
 
 * `formula` is parsed into `FormulaChemical`. 
 If it has adduct ion like structure, i.e. `"[formula+adduct]x+"` or `"[formula+adduct]x-"`, `FormulaChemical` will be wrapped by `AdductIon` with adduct (optional) if the charge is nonzero.
-It is further wrapped as chemical gain or loss if starting with + or -. 
+It is further wrapped as chemical gain or loss if starting with `"+"` or `"-"`. 
 * `pair` can be a series of precursor-product pair. Individual chemical is splated before parsing. 
 """
 ChemicalSeries(cc::AbstractChemical) = cc

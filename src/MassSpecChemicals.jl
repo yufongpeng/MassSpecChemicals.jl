@@ -4,7 +4,7 @@ using Combinatorics, TypedTables, MLStyle, Statistics, StatsBase, Dictionaries, 
 using UnitfulMoles: parse_compound, ustrip, @u_str
 using SentinelArrays: ChainedVector
 using Bessels: besseli, besseli!
-import Base: show, length, +, -, *, /, isless, isequal, in, union, intersect, iterate, Broadcast.broadcastable
+import Base: show, length, +, -, *, /, isless, isequal, in, union, intersect, iterate, Broadcast.broadcastable, ==, hash
 
 export 
     # Types

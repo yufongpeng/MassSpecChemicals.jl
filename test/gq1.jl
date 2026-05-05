@@ -103,18 +103,21 @@ spec2 = @p spec1 |> Isolation(Quadrupole(1210.588728; fwhm = 1.3, offset = 0.3))
 spec3 = @p spec2 |> Isolation(Quadrupole(948.3303; fwhm = 1.3, offset = 0.3)) |> Fragmentation(pt) |> MSScan
 
 transitiontable = Table(;
+    Transition = collect(1:5),
     MS1 = [
             Quadrupole(mz(IGQ1b); fwhm = 0.7, digits = 1), 
             Quadrupole(mz(IGQ1b); fwhm = 0.7, digits = 1), 
             Quadrupole(mz(IGQ1b); fwhm = 0.7, digits = 1),
-            Quadrupole(mz(IGD3); fwhm = 0.7, digits = 1)
+            Quadrupole(mz(IGD3); fwhm = 0.7, digits = 1),
+            Quadrupole(1000.0; fwhm = 0.7, digits = 1)
     ],
-    Product = [pt, pt, pt, pt],
+    Product = [pt, pt, pt, pt, pt],
     MS2 = [
         Quadrupole(mz(AdductIon(nana, "[M+H-2H2O]+")); fwhm = 0.7, digits = 1),
         Quadrupole(mz(AdductIon(f948, "[M+H-H2O]+")); fwhm = 0.7, digits = 1), 
         Quadrupole(mz(IGD3); fwhm = 0.7, digits = 1),
-        Quadrupole(mz(AdductIon(nana, "[M+H-2H2O]+")); fwhm = 0.7, digits = 1)
+        Quadrupole(mz(AdductIon(nana, "[M+H-2H2O]+")); fwhm = 0.7, digits = 1),
+        Quadrupole(200.0; fwhm = 0.7, digits = 1)
     ]
 )
 sim = SelectedIonMonitor(transitiontable, vcat(Isotopologues(IGQ1b; abtype = :input, abundance = 100000), Isotopologues(IGD3; abtype = :input, abundance = 10000)))

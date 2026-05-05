@@ -4,11 +4,12 @@
 Determine whether two chemicals are chemically equivalent. By default, it transforms both chemicals by `ischemicalequaltransform` and compares them by `istransformedchemicalequal`.
 """
 ischemicalequal(x::AbstractChemical, y::AbstractChemical) = istransformedchemicalequal(ischemicalequaltransform(x), ischemicalequaltransform(y))
-ischemicalequal(x::Isobars, y::Isobars) = all(ischemicalequal(a, b) for (a, b) in zip(x.chemicals, y.chemicals)) && all(isapprox(a, b) for (a, b) in zip(x.abundance, y.abundance))
-ischemicalequal(x::Isotopomers, y::Isotopomers) = ischemicalequal(x.parent, y.parent) && isequal(sort!(unique_elements(x.isotopes)), sort!(unique_elements(y.isotopes)))
-ischemicalequal(x::ChemicalLoss, y::ChemicalLoss) = ischemicalequal(x.chemical, y.chemical)
-ischemicalequal(x::ChemicalGain, y::ChemicalGain) = ischemicalequal(x.chemical, y.chemical)
-ischemicalequal(x::ChemicalTransition, y::ChemicalTransition) = all(ischemicalequal.(x.transition, y.transition))
+ischemicalequal(x::Isobars, y::Isobars) = istransformedchemicalequal(x, y)
+ischemicalequal(x::Isotopomers, y::Isotopomers) = istransformedchemicalequal(x, y)
+ischemicalequal(x::Groupedisotopomers, y::Groupedisotopomers) = istransformedchemicalequal(x, y)
+ischemicalequal(x::ChemicalLoss, y::ChemicalLoss) = istransformedchemicalequal(x, y)
+ischemicalequal(x::ChemicalGain, y::ChemicalGain) = istransformedchemicalequal(x, y)
+ischemicalequal(x::ChemicalTransition, y::ChemicalTransition) = istransformedchemicalequal(x, y)
 
 """
     ischemicalequaltransform(x::AbstractChemical) 
@@ -16,15 +17,15 @@ ischemicalequal(x::ChemicalTransition, y::ChemicalTransition) = all(ischemicaleq
 Return an object for comparison with other chemicals by `istransformedchemicalequal`. 
 """
 ischemicalequaltransform(x::AbstractChemical) = x 
-ischemicalequaltransform(x::Isobars) = length(x) == 1 ? chemicalentity(x) : x
+ischemicalequaltransform(x::Isobars) = length(x) == 1 ? ischemicalequaltransform(chemicalentity(x)) : x
 ischemicalequaltransform(x::Isotopomers) = isempty(unique_elements(x.isotopes)) ? x.parent : x 
+ischemicalequaltransform(x::Groupedisotopomers) = length(x.isotopes) > 1 ? x : isempty(unique_elements(x.isotopes[1])) ? x.parent : Isotopomers(x.parent, x.isotopes[1]) 
 ischemicalequaltransform(x::ChemicalLoss) = x 
 ischemicalequaltransform(x::ChemicalGain) = x 
 ischemicalequaltransform(x::ChemicalTransition) = x 
 
 """
     istransformedchemicalequal(x::AbstractChemical, y::AbstractChemical)
-    istransformedchemicalequal(x::Chemical, y::Chemical)
 
 Determine whether two chemicals are chemically equivalent after applying `ischemicalequaltransform`. For `Chemical` and `FormulaChemical`, It tests the name and the elements composition. For others, it defaults to `isequal`.
 """
@@ -33,11 +34,17 @@ istransformedchemicalequal(x::Chemical, y::Chemical) =
     isequal(chemicalname(x), chemicalname(y)) && isequal(sort!(unique_elements(chemicalelements(x))), sort!(unique_elements(chemicalelements(y))))
 istransformedchemicalequal(x::FormulaChemical, y::FormulaChemical) = 
     isequal(chemicalname(x), chemicalname(y)) 
+istransformedchemicalequal(x::Isobars, y::Isobars) = all(ischemicalequal(a, b) for (a, b) in zip(x.chemicals, y.chemicals)) && all(isapprox(a, b) for (a, b) in zip(x.abundance, y.abundance))
+istransformedchemicalequal(x::Isotopomers, y::Isotopomers) = ischemicalequal(x.parent, y.parent) && isequal(sort!(unique_elements(x.isotopes)), sort!(unique_elements(y.isotopes)))
+istransformedchemicalequal(x::Groupedisotopomers, y::Groupedisotopomers) = ischemicalequal(x.parent, y.parent) && x.state == y.state && x.isotope == y.isotope && all(isequal(sort!(unique_elements(vx)), sort!(unique_elements(vy))) for (vx, vy) in zip(x.isotopes, y.isotopes)) && all(isapprox(a, b) for (a, b) in zip(x.abundance, y.abundance))
+istransformedchemicalequal(x::ChemicalLoss, y::ChemicalLoss) = ischemicalequal(x.chemical, y.chemical)
+istransformedchemicalequal(x::ChemicalGain, y::ChemicalGain) = ischemicalequal(x.chemical, y.chemical)
+istransformedchemicalequal(x::ChemicalTransition, y::ChemicalTransition) = all(ischemicalequal.(x.transition, y.transition))
 
 """
     istransformedchemicalequal(x::AbstractAdductIon, y::AbstractAdductIon)
 
-Determine whether two adduct ions or isobars are chemically equivalent. The equality relies on both `isadductequal` of adducts and `ischemicalequal` of core chemicals.
+Determine whether two adduct ions are chemically equivalent. The equality relies on both `isadductequal` of adducts and `ischemicalequal` of core chemicals.
 """
 istransformedchemicalequal(x::AbstractAdductIon, y::AbstractAdductIon) = isadductequal(ionadduct(x), ionadduct(y)) && ischemicalequal(ioncore(x), ioncore(y))
 

@@ -1,22 +1,24 @@
 """
-    match_chemical(exp::Table, lib::Table; colexp = :Chemical, collib = :Chemical) -> Table
+    match_chemical(exp, lib; colexp = :Chemical, collib = :Chemical) -> Table
 
-Match chemicals in `exp` to chemicals in `lib`. The resulting table is `exp` with matched chemicals and information from `lib`.
+Match chemicals in `exp` (a `Table` or `Vector`) to chemicals in `lib` (a `Table` or `Vector`). 
+The resulting table is `exp` with matched index (column `LibID`), matched chemicals (column `Match`) and other information from `lib`.
 
 If chemicals in `exp` are chemical pairs, the detected chemicals are utilized. See `detectedchemical` for details.
 """
-function match_chemical(exp::Table, lib::Table; colexp = :Chemical, collib = :Chemical)
+function match_chemical(exp, lib; colexp = :Chemical, collib = :Chemical)
     del = Int[]
     libid = Int[]
+    exp = hasproperty(exp, colexp) ? exp : Table(; Chemical = exp)
     chemical_exp = detectedchemical.(getproperty(exp, colexp))
-    chemical_lib = getproperty(lib, collib)
+    chemical_lib = hasproperty(lib, collib) ? getproperty(lib, collib) : lib
     for i in eachindex(exp)
         j = findfirst(x -> ischemicalequal(x, chemical_exp[i]), chemical_lib)
         isnothing(j) ? push!(del, i) : push!(libid, j)
     end
     id = setdiff(eachindex(exp), del)
     ps = filter(!=(collib), propertynames(lib))
-    Table(exp[id]; [p => [getproperty(lib, p)[i] for i in libid] for p in ps]...)
+    Table(exp[id]; LibID = libid, Match = chemical_lib[libid], [p => [getproperty(lib, p)[i] for i in libid] for p in ps]...)
 end
 
 """

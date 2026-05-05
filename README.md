@@ -270,6 +270,7 @@ The type `Chemical` stores any non-default attributes in the field `property`, u
 |`kmer`|`Int`|number of core chemical|
 |`adductelements`|`Vector{Pair{String, Int}}`|the elements changed with adduct|
 |`adductisotopes`|`Vector{Pair{String, Int}}`|the elements changed when the core chemical has isotopic labeling that is lost in adduct formation. The returned vector is element-number pairs|
+
 When isotopes are involved in addut ion formation for an object `adduct_ion` which `chemical = ioncore(adduct_ion)::ChemicalType` and `adduct = ionadduct(adduct_ion)::Affected_Adduct`, there are two solutions.
 1. If `ChemicalType` is a customized chemical type, define type-specific `adductisotopes`
     ```julia

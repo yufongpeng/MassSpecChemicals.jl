@@ -1,6 +1,6 @@
 """
-    MSScan([msanalyzer = TOF(),] mztable; min_bin_fwhm = 50) -> Spectrum
-    MSScan([msanalyzer = TOF(),] spectrum; min_bin_fwhm = 50) -> Spectrum
+    MSScan([msanalyzer = TOF(),] mztable; min_bin_fwhm = 50) -> Union{Spectrum, Nothing}
+    MSScan([msanalyzer = TOF(),] spectrum; min_bin_fwhm = 50) -> Union{Spectrum, Nothing}
 
 Perform MS scan. Theoretical m/z signals are convoluted with `msanalyzer.window`. 
 
@@ -12,6 +12,7 @@ Perform MS scan. Theoretical m/z signals are convoluted with `msanalyzer.window`
 * `min_bin_fwhm`: minimal number of bins within fwhm. 
 """
 function MSScan(msanalyzer::AbstractMSAnalyzer, mztable::Table; min_bin_fwhm = 50)
+    isempty(mztable) && return nothing
     digits = hasproperty(msanalyzer, :digits) ? msanalyzer.digits : nothing
     stepsize = hasproperty(msanalyzer, :stepsize) ? msanalyzer.stepsize : nothing
     if !isnothing(stepsize) && !isnothing(digits) 
@@ -120,6 +121,8 @@ Isolation(msanalyzer::AbstractMSAnalyzer, spec::Spectrum; stage = nothing, thres
 
 function _Isolation(msanalyzer::AbstractMSAnalyzer, mztable::Table, colmz::Symbol, colab::Symbol, threshold)
     params = [window_parameter(msanalyzer, mz) for mz in vectorize(msanalyzer.mz)]
+    isempty(params) && return mztable
+    isempty(mztable) && return mztable
     ab = map(mztable) do r
         getproperty(r, colab) * maximum([msanalyzer.window(getproperty(r, colmz), param...) for param in params])
     end
@@ -203,6 +206,20 @@ function Fragmentation(producttable::Table, mztable::Table; threshold = rcrit(1e
     :Chemical in propertynames(mztable) || throw(ArgumentError("No column `Chemical` in precursor_table."))
     :Abundance1 in propertynames(mztable) || throw(ArgumentError("No column `Abundance1`, ..., `Abundacnen` in precursor_table."))
     :MZ1 in propertynames(mztable) || throw(ArgumentError("No column `MZ1`, ..., `MZn` in precursor_table."))
+    if isempty(mztable) 
+        lc = lastcolnum(string.(propertynames(mztable)), "MZ")
+        (n, ) = match(r"MZ(\d+)", string(lc))
+        n = parse(Int, n)
+        mspre = map(1:n) do i 
+            s = Symbol(string("MZ", i))
+            s => getproperty(mztable, s)
+        end
+        abpre = map(1:n) do i 
+            s = Symbol(string("Abundance", i))
+            s => getproperty(mztable, s)
+        end
+        return Table(; ID = mztable.ID, Chemical = mztable.Chemical, mspre..., [Symbol(string("MZ", n + 1)) => getproperty(mztable, :MZ1)]..., abpre..., [Symbol(string("Abundance", n + 1)) => getproperty(mztable, :Abundance1)]...) 
+    end
     :Product in propertynames(producttable) || throw(ArgumentError("No column `Product` in product_table."))
     allequal(msstage, mztable.Chemical) || throw(ArgumentError("Chemicals have to be in the same MS stage."))
     all(x -> all(y -> msstage(y) < 2, x), producttable.Product) || throw(ArgumentError("Products should not be MS/MS pairs."))
@@ -271,7 +288,8 @@ end
 
 function peak_table(transitiontable::Table; groupedisotopomers = true, isotope = "[13C]")
     :MZTable in propertynames(transitiontable) || throw(ArgumentError("No column`MZTable` in transitiontable"))
-    mztables = filter(!isempty, transitiontable.MZTable)
+    id = findall(!isempty, transitiontable.MZTable)
+    mztables = transitiontable.MZTable[id]
     if groupedisotopomers
         tables = map(mztables) do table 
             group_isotopologues(table; isotope)
@@ -293,7 +311,7 @@ function peak_table(transitiontable::Table; groupedisotopomers = true, isotope =
         end
     end
     if :Transition in propertynames(transitiontable)
-        Table(Table(; Transition = transitiontable.Transition), Table(collect(NamedTuple, gt)))
+        Table(Table(; Transition = transitiontable.Transition[id]), Table(collect(NamedTuple, gt)))
     else
         Table(collect(NamedTuple, gt))
     end

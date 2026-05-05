@@ -80,6 +80,20 @@ end
         @test ischemicalequal(ChemicalSeries("[C6H12O6+2H]2+" => "C6H10O5"; charge = 1), ChemicalSeries(AdductIon(FormulaChemical("C6H12O6"), DiProtonation()) => AdductIon(FormulaChemical("C6H10O5"), LossElectron())))
         @test ischemicalequal(ChemicalSeries("[C6H12O6+2H]2+" => "-H3O" => "-[CO2]"; charge = 1, loss = 1), ChemicalSeries(ChemicalSeries(AdductIon(FormulaChemical("C6H12O6"), DiProtonation()), ChemicalSeries(ChemicalLoss(AdductIon(FormulaChemical("H3O"), LossElectron())), ChemicalLoss(FormulaChemical("CO2"))))))
         @test ischemicalequal(ChemicalSeries("[C6H12O6+2H]2+" => "-H3O" => "-[CO2]"; charge = 1, loss = 1), ChemicalSeries(AdductIon(FormulaChemical("C6H12O6"), DiProtonation()) => ChemicalSeries(ChemicalLoss(AdductIon(FormulaChemical("H3O"), LossElectron())), ChemicalLoss(FormulaChemical("CO2")))))
+        @test Chemical("Glucose", ["C" => 6, "H" => 12, "O" => 6]; retentiontime = 1.5, abbreviation = "Glc", SMILES = "") == cglc 
+        @test hash(Chemical("Glucose", ["C" => 6, "H" => 12, "O" => 6]; retentiontime = 1.5, abbreviation = "Glc", SMILES = "")) == hash(cglc) 
+        @test clossserine == ChemicalLoss(cserine)
+        @test hash(clossserine) == hash(ChemicalLoss(cserine))
+        @test gainno == ChemicalGain(FormulaChemical("NO"))
+        @test hash(gainno) == hash(ChemicalGain(FormulaChemical("NO")))
+        @test first(icglc) == AdductIon(cglc, Protonation())
+        @test hash(first(icglc)) == hash(AdductIon(cglc, Protonation()))
+        @test cp3 == ChemicalSeries(AdductIon(cps, "[M-H]-"), cp1)
+        @test hash(cp3) == hash(ChemicalSeries(AdductIon(cps, "[M-H]-"), cp1))
+        @test pt1.Chemical[3] == peak_table(MSScan(Isotopologues(icglc[1]; abundance = 1e5, threshold = crit(1e1, 1e-2)))).Chemical[3]
+        @test hash(pt1.Chemical[3]) == hash(peak_table(MSScan(Isotopologues(icglc[1]; abundance = 1e5, threshold = crit(1e1, 1e-2)))).Chemical[3])
+        @test git3.Chemical[2] == group_isotopologues(Isotopologues(ipsi2[1]; abtype = :total, threshold = crit(1e-3, 1e-3))).Chemical[2]
+        @test hash(git3.Chemical[2]) == hash(group_isotopologues(Isotopologues(ipsi2[1]; abtype = :total, threshold = crit(1e-3, 1e-3))).Chemical[2])
     end
     @testset "Customized interface" begin 
         # User defined chemical, adduct
@@ -189,6 +203,9 @@ end
         @test isapprox(charge(pt1.Chemical[2]), 1)
         @test getchemicalproperty(pt1.Chemical[2], :chemicals) == pt1.Chemical[2].chemicals
         @test getchemicalproperty(pt1.Chemical[2], :abundance) == pt1.Chemical[2].abundance
+        @test !ischemicalequal(pt1.Chemical[1], pt1.Chemical[2])
+        @test ischemicalequal(pt1.Chemical[2], pt1.Chemical[2])
+        @test ischemicalequal(chemicalentity(pt1.Chemical[1]), pt1.Chemical[1])
         @test ischemicalequal(chemicalentity(pt1.Chemical[2]), first(pt1.Chemical[2].chemicals))
         @test isapprox(retentiontime(pt1.Chemical[1]), 1.5)
     end
@@ -203,7 +220,7 @@ end
         # other attrs
         @test ischemicalequal(chemicalentity(igld[1]), igld[1])
         @test ischemicalequal(chemicalentity(glc), glc)
-        @test ischemicalequal(chemicalparent(chemicalentity(it3.Chemical[1])), ipsi2[1])
+        @test ischemicalequal(it3.Chemical[1], ipsi2[1])
         @test MSC.unique_elements(isotopomersisotopes(it3.Chemical[2])) ==  MSC.unique_elements(["[13C]" => 1])
     end
     @testset "Groupedisotopomers" begin 
@@ -211,6 +228,9 @@ end
         @test chemicalname(git3.Chemical[2]) == "[(PS 18:0[D5]/20:4)-Ser]-(+1)"
         @test all(isapprox.(mmi.(git3.Chemical), git3.MZ1; rtol = 20e-6))
         @test all(isapprox.(mz.(git3.Chemical), git3.MZ1; rtol = 20e-6))
+        @test ischemicalequal(git3.Chemical[2], git3.Chemical[2])
+        @test ischemicalequal(git3.Chemical[1], git3.Chemical[1].parent)
+        @test ischemicalequal(MSC.Groupedisotopomers(git3.Chemical[1].parent, 1, "[13C]", [["D" => 1]], [1.0]), Isotopomers(git3.Chemical[1].parent, ["D" => 1]))
     end
     @testset "ChemicalTransition, ChemicalLoss, and ChemicalGain" begin 
         # chemicaltransition
@@ -232,6 +252,8 @@ end
         @test chemicalformula(gainno) == chemicalformula(chemicalelements(gainno))
         # other attr 
         # chemicalstructure  
+        @test !ischemicalequal(gainno, clossserine)
+        @test !ischemicalequal(cp1, clossserine)
         @test ischemicalequal(chemicalentity(cp2), chemicalentity(cp3))
         @test ischemicalequal(analyzedchemical(cp2), analyzedchemical(cp3))
         @test ischemicalequal(detectedchemical(cp2), detectedchemical(cp3))
@@ -272,5 +294,14 @@ end
         @test ri"(-∞, ∞)" * (-10) / 2 + 10 - 5 == ri"(-∞, ∞)"
         @test ri"(-5, 5]" * Inf64 == ri"(-5, 5]" / 0
         @test ri"(-5, 5]" + Inf64 == ri"(-5, 5]" - Inf64
+        @test MSC.lastcolnum(["MZ1", "Abundance2", "MZ3", "MZ2", "Abundance1", "Abundance3"], "MZ") == :MZ3
+        @test MSC.ithcolnum(["MZ1", "Abundance2", "MZ3", "MZ2", "Abundance1", "Abundance3"], "MZ", 1) == :MZ1
+        @test MSC.allcolnum(["MZ1", "Abundance2", "MZ3", "MZ2", "Abundance1", "Abundance3"], "Abundance") == [:Abundance1, :Abundance2, :Abundance3]
+        @test MSC.normalize_abundance([1, 2, 3, 4], 1, :raw) == [1, 2, 3, 4]
+        @test MSC.normalize_abundance([1, 2, 3, 4], 1, :total) == [1, 2, 3, 4]
+        @test MSC.normalize_abundance([1, 2, 3, 4], 1, :input) == [1, 2, 3, 4] ./ 1
+        @test all(isapprox.(MSC.normalize_abundance([1, 2, 3, 4], 1, :max), [1, 2, 3, 4] ./ 4))
+        @test all(isapprox.(MSC.normalize_abundance([1, 2, 3, 4], 1, :list), [1, 2, 3, 4] ./ 10))
+        @test match_chemical(AdductIon.([Chemical("Fructose", "C6H12O6"), Chemical("Glucose", "C6H12O6"), Chemical("Galactose", "C6H12O6")], Protonation()), exp1).LibID == [1, 2, 3]
     end
 end
