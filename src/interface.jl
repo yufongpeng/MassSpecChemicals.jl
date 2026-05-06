@@ -10,7 +10,9 @@
 ==(x::AdductIon, y::AdductIon) = x.core == y.core && x.adduct == y.adduct
 ==(x::ComposedAdduct, y::ComposedAdduct) = sort(x.adducts; by = adductformula) == sort(y.adducts; by = adductformula)
 
-const abundance_rounding_digits = 4
+const ABUNDANCE_ROUNDING_DIGITS = 4
+abundance_rounding_digits() = ABUNDANCE_ROUNDING_DIGITS
+
 function hash(x::Chemical, h::UInt) 
     h = hash(x.name, h) 
     h = hash(sum(hash, x.elements; init = zero(h)), h)
@@ -30,7 +32,7 @@ function hash(x::Isobars, h::UInt)
     h = hash(map(first, axes(x.abundance)), h)
     h = hash(map(last, axes(x.abundance)), h)
     for a in x.abundance
-        h = hash(round(a; digits = abundance_rounding_digits), h)
+        h = hash(round(a; digits = abundance_rounding_digits()), h)
     end
     h
 end
@@ -54,7 +56,7 @@ function hash(x::Groupedisotopomers, h::UInt)
     h = hash(map(first, axes(x.abundance)), h)
     h = hash(map(last, axes(x.abundance)), h)
     for a in x.abundance
-        h = hash(round(a; digits = abundance_rounding_digits), h)
+        h = hash(round(a; digits = abundance_rounding_digits()), h)
     end
     h
 end

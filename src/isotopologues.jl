@@ -99,6 +99,12 @@ function Isotopologues(ct::ChemicalTransition;
         element_product = dictionary_elements(filter(x -> haskey(elements_isotopes(), first(x)) && last(x) != 0, elements_product))
         isotope_product = dictionary_elements(filter(x -> !haskey(elements_isotopes(), first(x)) && last(x) != 0, elements_product))
     end
+    for (k, v) in pairs(element_product)
+        get(element_precursor, k, 0) < v && throw(ArgumentError("Product can only contain elements restricted by precursor."))
+    end
+    for (k, v) in pairs(isotope_product)
+        get(isotope_precursor, k, 0) < v && throw(ArgumentError("Product can only contain isotopes restricted by precursor."))
+    end
     net_charge = charge(product)
     element_residual = loss_elements(element_precursor, element_product)
     abundance = vectorize(abundance)
@@ -452,13 +458,13 @@ function group_isotopologues(mztable::Table; isotope = "[13C]")
     colmz = allcolnum(sp, "MZ")
     colab = allcolnum(sp, "Abundance")
     transitions = chemicaltransition.(mztable.Chemical)
-    gt = map(gid) do v 
-        uid = [[findfirst(x -> x == t, c) for t in unique(c)] for c in zip(transitions[v]...)]
-        (; [c => mean(getproperty(mztable, c)[v[i]], weights(getproperty(mztable, d)[v[i]])) for (i, c, d) in zip(uid, colmz, colab)]..., [c => sum(getproperty(mztable, c)[v[i]]) for (i, c) in zip(uid, colab)]...)
-    end
     # gt = map(gid) do v 
-    #     (; [c => mean(getproperty(mztable, c)[v], weights(getproperty(mztable, d)[v])) for ( c, d) in zip(colmz, colab)]..., [c => sum(getproperty(mztable, c)[v]) for c in colab]...)
+    #     uid = [[findfirst(x -> x == t, c) for t in unique(c)] for c in zip(transitions[v]...)]
+    #     (; [c => mean(getproperty(mztable, c)[v[i]], weights(getproperty(mztable, d)[v[i]])) for (i, c, d) in zip(uid, colmz, colab)]..., [c => sum(getproperty(mztable, c)[v[i]]) for (i, c) in zip(uid, colab)]...)
     # end
+    gt = map(gid) do v 
+        (; [c => mean(getproperty(mztable, c)[v], weights(getproperty(mztable, d)[v])) for (c, d) in zip(colmz, colab)]..., [c => sum(getproperty(mztable, c)[v]) for c in colab]...)
+    end
     chemcial_parent_state = collect(keys(gt))
     chemical_isotopes = [collect(zip([isotopomersisotopes.(x) for x in transitions[id]]...)) for id in gid]
     chemical_abundance = [[getproperty(mztable, a)[id] for a in colab] for id in gid]
@@ -514,40 +520,87 @@ function isotopicabundance(elements::Union{<: Vector{<: Pair}, <: Dictionaries.P
     for (e, ns) in pairs(element_dict)
         abundance = get.(Ref(elements_abundunce()), elements_isotopes()[e], 1)
         any(==(1), abundance) && continue
-        n = sum(ns)
-        id = sortperm(ns; rev = true)
-        ns = ns[id]
-        abundance = abundance[id]
-        nspop1 = popfirst!(ns)
         f = try 
-            factorial(n, nspop1)
+            multinomial(ns...)
         catch 
-            factorial(big(n), nspop1)
+            multinomial(big.(ns)...)
         end
-        abundance_sum *= f * popfirst!(abundance) ^ nspop1
-        isempty(abundance) && continue
-        # take care if big number
-        abundance_sum *= mapreduce(*, ns, abundance) do x, y
-            y ^ x / factorial(x)
+        abundance_sum *= f * mapreduce(*, ns, abundance) do x, y
+            y ^ x 
         end
+        # fi = try 
+        #     floor(Int, f ^ (1 / length(ns)))
+        # catch
+        #     floor(BigInt, f ^ (1 / length(ns)))
+        # end
+        # i = 0
+        # while i < length(ns)
+        #     i += 1 
+        #     if i == lastindex(ns)
+        #         abundance_sum *= f * mapreduce(*, ns[i], abundance[i]) do x, y
+        #             y ^ x 
+        #         end
+        #         break 
+        #     end
+        #     fj = fi
+        #     while true
+        #         if fj >= f 
+        #             abundance_sum *= f * mapreduce(*, ns[i:end], abundance[i:end]) do x, y
+        #                 y ^ x 
+        #             end
+        #             i = length(ns)
+        #             break
+        #         end
+        #         fp, r = divrem(f, fj)
+        #         if r == 0 
+        #             f = fp
+        #             abundance_sum *= fj * abundance[i] ^ ns[i]
+        #             break
+        #         end
+        #         fj += 1 
+        #     end
+        # end
+        # n = sum(ns)
+        # id = sortperm(ns; rev = true)
+        # ns = ns[id]
+        # abundance = abundance[id]
+        # nspop1 = popfirst!(ns)
+        # f = try 
+        #     factorial(n, nspop1)
+        # catch
+        #     factorial(big(n), nspop1)
+        # end
+        # abundance_sum *= f * popfirst!(abundance) ^ nspop1
+        # isempty(abundance) && continue
+        # # take care if big number
+        # abundance_sum *= mapreduce(*, ns, abundance) do x, y
+        #     y ^ x / factorial(x)
+        # end
     end
     Float64(abundance_sum)
 end
 
 # ==========================================================================================================================
 # Internal
+const MIN_ABUNDANCE = 1e-6
+min_abundance() = MIN_ABUNDANCE
+
 _isotopologues_elements(x::AbstractString, abundance, abtype, threshold, net_charge; table = true, normalize = true) = 
     _isotopologues_elements(chemicalelements(x), abundance, abtype, threshold, net_charge; table, normalize)
 function _isotopologues_elements(input_element::Vector, abundance, abtype, threshold, net_charge; table = true, normalize = true)
     # record elements change
     element_dictionary = Dictionary{String, Int}()
+    max_dictionary = Dictionary{String, Int}()
     isotope_dictionary = Dictionary{String, Int}()
     fix_dictionary = Dictionary{String, Int}()
     first_element_dictionary = Dictionary{String, Int}()
+    # estimate max elements composition
     for (e, n) in input_element
         if haskey(elements_isotopes(), e)
             get!(element_dictionary, e, 0)
             element_dictionary[e] += n
+            get!(max_dictionary, e, 0)
+            max_dictionary[e] += n
             get!(first_element_dictionary, e, 0)
             first_element_dictionary[e] += n
         elseif first(elements_isotopes()[get(elements_parents(), e, e)]) == e 
@@ -578,10 +631,47 @@ function _isotopologues_elements(input_element::Vector, abundance, abtype, thres
     end
     sort!(element_isotope_pair; by = x -> elements_abundunce()[last(x)], rev = true)
     first_proportion = isotopicabundance(input_element; ignore_isotopes = true)
-    abundance_cutoff = minimum(makecrit_value(crit(threshold), abundance)) * first_proportion
+    base_abundance_cutoff = minimum(makecrit_value(crit(threshold), abundance))
+    abundance_cutoff = base_abundance_cutoff * first_proportion
+    if first_proportion < min_abundance()
+        elementonly_dictionary = copy(max_dictionary)
+        for (e, x) in element_isotope_pair
+            n = floor(Int, elementonly_dictionary[e] * elements_abundunce()[x])
+            max_dictionary[e] -= n 
+            set!(max_dictionary, x, n)
+        end
+        max_proportion = isotopicabundance(max_dictionary)
+        if abtype == :input && abundance_cutoff / max_proportion < min_abundance() 
+            throw(ArgumentError("Isotopic abundance of unput chemical is too small; try use `abtype` other than `:input` or larger threshold`"))
+        elseif abtype != :input 
+            abundance_cutoff = base_abundance_cutoff * max_proportion
+            first_element_dictionary = Dictionary{String, Int}()
+            element_dictionary = Dictionary{String, Int}()
+            for (e, x) in element_isotope_pair
+                findfirst_dictionary = copy(max_dictionary)
+                n = findfirst_dictionary[x]
+                findfirst_dictionary[e] += n
+                findfirst_dictionary[x] -= n
+                while findfirst_dictionary[x] <= n
+                    if isotopicabundance(findfirst_dictionary) > abundance_cutoff
+                        set!(first_element_dictionary, x, findfirst_dictionary[x])
+                        get!(isotope_dictionary, x, 0)
+                        isotope_dictionary[x] += findfirst_dictionary[x]
+                        get!(first_element_dictionary, e, max_dictionary[e] + get(fix_dictionary, e, 0))
+                        first_element_dictionary[e] += n - findfirst_dictionary[x]
+                        set!(element_dictionary, e, first_element_dictionary[e])
+                        break
+                    else
+                        findfirst_dictionary[e] -= 1
+                        findfirst_dictionary[x] += 1
+                    end
+                end 
+            end
+            first_proportion = isotopicabundance(first_element_dictionary)
+        end
+    end
     # serve abundance as sums
-    element_chemical, abundance_chemical = rec_addisotopes!([first_element_dictionary], [abundance * first_proportion], element_dictionary, isotope_dictionary, isotope_dictionary, element_isotope_pair, 1, abundance * first_proportion, abundance_cutoff)
-    # Normalize after resolution check?
+    element_chemical, abundance_chemical = rec_addisotopes!([first_element_dictionary], [abundance * first_proportion], element_dictionary, isotope_dictionary, fix_dictionary, element_isotope_pair, 1, abundance * first_proportion, abundance_cutoff)
     abundance_chemical_normalize = normalize_abundance(abundance_chemical, abundance, abtype, [:max, :input, :list, :total])
     mass_chemical = map(mmi, element_chemical, repeat([net_charge], length(element_chemical)))
     id = sortperm(mass_chemical)
@@ -595,12 +685,20 @@ end
 
 function _isotopologues_elements_ms2(it1, isotope_precursor, element_product, isotope_product, element_residual, abundance, abtype, threshold, net_charge; normalize = true, table = true)
     msfix = mmi(isotope_product, net_charge)
-    data = map(it1) do r 
-        element_product_is, mass_product_is, proportion_product_is = isotopes_proportion(loss_elements(r.Element, isotope_precursor), element_product, element_residual, msfix, net_charge)
-        id = sortperm(mass_product_is)
-        (; Element = gain_elements.(Ref(isotope_product), element_product_is[id]), 
-           Mass = mass_product_is[id], 
-           Abundance = r.Abundance .* proportion_product_is[id])
+    if isempty(element_product)
+        data = map(it1) do r 
+            (; Element = [isotope_product], 
+            Mass = [msfix], 
+            Abundance = [r.Abundance])
+        end
+    else
+        data = map(it1) do r 
+            element_product_is, mass_product_is, proportion_product_is = isotopes_proportion(loss_elements(r.Element, isotope_precursor), element_product, element_residual, msfix, net_charge)
+            id = sortperm(mass_product_is)
+            (; Element = gain_elements.(Ref(isotope_product), element_product_is[id]), 
+            Mass = mass_product_is[id], 
+            Abundance = r.Abundance .* proportion_product_is[id])
+        end
     end
     element_product = vcat((getproperty(x, :Element) for x in data)...)
     mass_product = vcat((getproperty(x, :Mass) for x in data)...)
@@ -608,7 +706,7 @@ function _isotopologues_elements_ms2(it1, isotope_precursor, element_product, is
     id_pair = vcat(([i for _ in eachindex(getproperty(x, :Abundance))] for (i, x) in enumerate(data))...)
     abundance_pair_normalize = normalize_abundance(abundance_pair, abundance, abtype, [:max, :input, :list, :total])
     # spectrum specific threshold ?
-    abundance_cutoff = minimum(makecrit_value(crit(threshold), maximum(abundance_pair_normalize)))
+    abundance_cutoff = isempty(abundance_pair_normalize) ? 0 : minimum(makecrit_value(crit(threshold), maximum(abundance_pair_normalize)))
     id = findall(>=(abundance_cutoff), abundance_pair_normalize)
     id_pair = id_pair[id]
     element_product = element_product[id]
@@ -617,22 +715,32 @@ function _isotopologues_elements_ms2(it1, isotope_precursor, element_product, is
     table ? Table(; ID = id_pair, Element = element_product, Mass = mass_product, Abundance = abundance_pair) : element_product
 end
 
-function rec_addisotopes!(element_vec::Vector, abundance_vec::Vector, element_dictionary::Dictionary, isotope_dictionary::Dictionary, fix_dictionary::Dictionary, element_isotope_pair::Vector, isotope_position::Int, prev_abundance, threshold)
+function rec_addisotopes!(element_vec::Vector, 
+                            abundance_vec::Vector, 
+                            element_dictionary::Dictionary, 
+                            isotope_dictionary::Dictionary, 
+                            fix_dictionary::Dictionary, 
+                            element_isotope_pair::Vector, 
+                            isotope_position::Int, 
+                            prev_abundance, threshold)
     new_isotope_position = -1
     for (e, i) in @views element_isotope_pair[isotope_position:end]
         ne = get(element_dictionary, e, 0)
         new_isotope_position += 1
         if ne > get(fix_dictionary, e, 0)
-            new_element_dictionary = deepcopy(element_dictionary)
-            new_isotope_dictionary = deepcopy(isotope_dictionary)
+            new_element_dictionary = copy(element_dictionary)
+            new_isotope_dictionary = copy(isotope_dictionary)
             new_element_dictionary[e] -= 1
             get!(new_isotope_dictionary, i, 0)
             abundance = update_abundance(prev_abundance, e, i, element_dictionary[e] - get(fix_dictionary, e, 0), new_isotope_dictionary[i] - get(fix_dictionary, i, 0), 1)
             new_isotope_dictionary[i] += 1
-            abundance < threshold && break
-            push!(element_vec, gain_elements(new_element_dictionary, new_isotope_dictionary))
-            push!(abundance_vec, abundance)
-            rec_addisotopes!(element_vec, abundance_vec, new_element_dictionary, new_isotope_dictionary, fix_dictionary, element_isotope_pair, isotope_position + new_isotope_position, abundance, threshold)
+            if abundance >= threshold  
+                push!(element_vec, gain_elements(new_element_dictionary, new_isotope_dictionary))
+                push!(abundance_vec, abundance)
+            end
+            if abundance >= threshold || abundance >= prev_abundance
+                rec_addisotopes!(element_vec, abundance_vec, new_element_dictionary, new_isotope_dictionary, fix_dictionary, element_isotope_pair, isotope_position + new_isotope_position, abundance, threshold)
+            end
         end
     end
     element_vec, abundance_vec
@@ -643,15 +751,20 @@ function update_abundance(prev_abundance, old_element, new_element, nold, nnew, 
     y = get(elements_abundunce(), new_element, 1)
     (x == 1 || y == 1) && return prev_abundance
     # take care of large numbers
-    prev_abundance * factorial(nold, nold - delta) / factorial(nnew + delta, nnew) * (y / x) ^ delta
+    f = try 
+        factorial(nold, nold - delta) / factorial(nnew + delta, nnew)
+    catch 
+        factorial(big(nold), nold - delta) / factorial(big(nnew + delta), nnew)
+    end
+    prev_abundance * f * (y / x) ^ delta
 end
 
 # Distribute isotopes: setdiff without deleting overlapped/calculate 1 fragment * n
 function isotopes_proportion(element_precursor_dictionary::Dictionary, element_product_dictionary::Dictionary, element_residual_dictionary::Dictionary, msfix, net_charge)
     first_isotope_product_dictionary = Dictionary{String, Int}()
     first_isotope_residual_dictionary = Dictionary{String, Int}()
-    first_element_product_dictionary = deepcopy(element_product_dictionary)
-    first_element_residual_dictionary = deepcopy(element_residual_dictionary)
+    first_element_product_dictionary = copy(element_product_dictionary)
+    first_element_residual_dictionary = copy(element_residual_dictionary)
     # element => isoptope pairs
     # remove first
     element_isotope_pair = mapreduce(vcat, collect(keys(element_product_dictionary))) do e
@@ -713,14 +826,14 @@ function distribute_isotopes!(element_precursor_dictionary::Dictionary, element_
             any(x -> <(x...), zip(nisotopes_vec, nisotopes_residual_vec)) && continue 
             delta = nisotopes_vec .- nisotopes_residual_vec
             for isotope_residual in isotope_residual_vec
-                push!(new_isotope_residual_vec, deepcopy(isotope_residual))
+                push!(new_isotope_residual_vec, copy(isotope_residual))
                 for (x, isotope) in zip(nisotopes_residual_vec, isotopes)
                     get!(last(new_isotope_residual_vec), isotope, 0)
                     last(new_isotope_residual_vec)[isotope] += x
                 end
             end
             for isotope_product in isotope_product_vec
-                push!(new_isotope_product_vec, deepcopy(isotope_product))
+                push!(new_isotope_product_vec, copy(isotope_product))
                 for (d, isotope) in zip(delta, isotopes)
                     get!(last(new_isotope_product_vec), isotope, 0)
                     last(new_isotope_product_vec)[isotope] += d
@@ -729,14 +842,14 @@ function distribute_isotopes!(element_precursor_dictionary::Dictionary, element_
         end
         for element_product in element_product_vec
             for _ in eachindex(new_isotope_product_vec)
-                push!(new_element_product_vec, deepcopy(element_product))
+                push!(new_element_product_vec, copy(element_product))
                 get!(last(new_element_product_vec), e, 0)
                 last(new_element_product_vec)[e] -= nisotopes_total - get(last(element_residual_vec), e, 0) - get(last(isotope_residual_vec), e, 0)
             end
         end
         for element_residual in element_residual_vec
             for _ in eachindex(new_isotope_product_vec)
-                push!(new_element_residual_vec, deepcopy(element_residual))
+                push!(new_element_residual_vec, copy(element_residual))
                 get!(last(new_element_residual_vec), e, 0)
                 last(new_element_residual_vec)[e] = 0
             end
@@ -755,37 +868,38 @@ function initial_proportion(element_product::Dictionary, isotope_product::Dictio
     isotope_total = gain_elements(isotope_product, isotope_residual)
     # Take care of large numbers
     for e in keys(element_total)
-        n = 0
-        for i in ISOTOPES[e]
-            m = get(isotope_total, i, 0)
-            n += m
-            p *= factorial(m)
+        v = [get(isotope_total, i, 0) for i in elements_isotopes()[e]]
+        push!(v, get(element_total, e, 0))
+        f = try 
+            multinomial(v...)
+        catch
+            multinomial(big.(v)...)
         end
-        p /= factorial(n + get(element_total, e, 0), get(element_total, e, 0))
+        p /= f
     end
     for e in keys(element_product)
-        n = 0
-        for i in ISOTOPES[e]
-            m = get(isotope_product, i, 0)
-            n += m
-            p /= factorial(m)
+        v = [get(isotope_product, i, 0) for i in elements_isotopes()[e]]
+        push!(v, get(element_product, e, 0))
+        f = try 
+            multinomial(v...)
+        catch
+            multinomial(big.(v)...)
         end
-        p *= factorial(n + get(element_product, e, 0), get(element_product, e, 0))
+        p *= f
     end 
     for e in keys(element_residual)
-        n = 0
-        for i in ISOTOPES[e]
-            m = get(isotope_residual, i, 0)
-            n += m
-            p /= factorial(m)
-
+        v = [get(isotope_residual, i, 0) for i in elements_isotopes()[e]]
+        push!(v, get(element_residual, e, 0))
+        f = try 
+            multinomial(v...)
+        catch
+            multinomial(big.(v)...)
         end
-        p *= factorial(n + get(element_residual, e, 0), get(element_residual, e, 0))
+        p *= f
     end 
     p
 end
 
-# ab as proportion
 function rec_moveisotopes!(element_vec::Vector, abundance_vec::Vector, element_product_dictionary::Dictionary, isotope_product_dictionary::Dictionary, element_residual_dictionary::Dictionary, isotope_residual_dictionary::Dictionary, element_isotope_pair::Vector, isotope_position::Int, prev_proportion)
     new_isotope_position = -1
     for (e, i) in @views element_isotope_pair[isotope_position:end]
@@ -793,10 +907,10 @@ function rec_moveisotopes!(element_vec::Vector, abundance_vec::Vector, element_p
         nr = get(isotope_residual_dictionary, i, 0)
         new_isotope_position += 1
         if np > 0 && nr > 0
-            new_element_product_dictionary = deepcopy(element_product_dictionary)
-            new_isotope_product_dictionary = deepcopy(isotope_product_dictionary)
-            new_element_residual_dictionary = deepcopy(element_residual_dictionary)
-            new_isotope_residual_dictionary = deepcopy(isotope_residual_dictionary)
+            new_element_product_dictionary = copy(element_product_dictionary)
+            new_isotope_product_dictionary = copy(isotope_product_dictionary)
+            new_element_residual_dictionary = copy(element_residual_dictionary)
+            new_isotope_residual_dictionary = copy(isotope_residual_dictionary)
             new_element_product_dictionary[e] -= 1
             new_isotope_residual_dictionary[i] -= 1
             get!(new_isotope_product_dictionary, i, 0)
@@ -813,4 +927,11 @@ function rec_moveisotopes!(element_vec::Vector, abundance_vec::Vector, element_p
     element_vec, abundance_vec
 end
 
-update_proportion(prev_proportion, nold, nnew, delta) = prev_proportion * factorial(nold, nold - delta) / factorial(nnew + delta, nnew)
+function update_proportion(prev_proportion, nold, nnew, delta) 
+    f = try 
+        factorial(nold, nold - delta) / factorial(nnew + delta, nnew)
+    catch 
+        factorial(big(nold), nold - delta) / factorial(big(nnew + delta), nnew)
+    end
+    prev_proportion * f
+end

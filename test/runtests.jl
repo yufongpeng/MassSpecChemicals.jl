@@ -6,6 +6,7 @@ using Test
 
 include("generic.jl")
 include("customized.jl")
+include("large.jl")
 include("gq1.jl")
 include("coeluting.jl")
 include("utils.jl")
@@ -171,6 +172,7 @@ end
             factorial(d2["C"] + d2["[13C]"], d2["C"]) / factorial(d2["[13C]"]) * 
             factorial(d1["O"] + d1["[17O]"] - d2["O"] - get(d2, "[17O]", 0), d1["O"] - d2["O"]) / factorial(d1["[17O]"] - get(d2, "[17O]", 0))
         )
+        @test isapprox(itl.Abundance1[begin], isotopicabundance(itl.Chemical[begin]))
         # TaandemIsotopologues
     end
     @testset "Spectrum" begin 

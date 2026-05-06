@@ -217,6 +217,7 @@ normalize_abundance(abvector, abundance, abtype, available_abtype = [:max, :inpu
 normalize_abundance!(abvector, abundance, abtype, available_abtype = [:max, :input, :list, :raw, :total]) = 
     _normalize_abundance!(abvector, abundance, abtype, available_abtype)
 function _normalize_abundance!(abvector, abundance, abtype, available_abtype = [:max, :input, :list, :raw, :total]; conversion = false)
+    isempty(abvector) && return abvector
     abtype in available_abtype || throw(ArgumentError("$abtype is not valid; please select from $available_abtype."))
     fn = abtypeop(Val(abtype))
     isnothing(fn) && return abvector
