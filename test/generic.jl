@@ -1,5 +1,5 @@
 cglc = Chemical("Glucose", ["C" => 6, "H" => 12, "O" => 6]; retentiontime = 1.5, abbreviation = "Glc", SMILES = "")
-cgld = parse_chemical("Glucose-d6"; formula = "C6H6D6O6", retentiontime = 1.5, abbreviation = "Glc[D6]", SMILES = "")
+cgld = Chemical("Glucose_d6", "C6H6D6O6"; retentiontime = 1.5, abbreviation = "Glc[D6]", SMILES = "")
 cps = Chemical("PS 18:0/20:4(5Z,8Z,11Z,14Z)", "C44H78NO10P"; retentiontime = 7.8)
 cpsi1 = Chemical("PS[D3,13C3] 18:0/20:4(5Z,8Z,11Z,14Z)", "C41[13C]3H75D3NO10P"; retentiontime = 7.8)
 cpsi2 = Chemical("PS 18:0[D5]/20:4(5Z,8Z,11Z,14Z)", "C44H73D5NO10P"; retentiontime = 7.8)
@@ -15,7 +15,7 @@ dimh = Adduct(2, "+H", 1)
 icglcall = [AdductIon(cglc, k) for k in keys(MSC.ADDUCT_NAME)]
 
 icglc = [AdductIon(cglc, Protonation())]
-icgld = [AdductIon("Glucose-d6", "[M+H]+"; formula = "C6H6D6O6", retentiontime = 1.5), AdductIon("Glucose-d6", Protonation(); formula = "C6H6D6O6", retentiontime = 1.5), AdductIon(cgld, Protonation())]
+icgld = [parse_chemical(AdductIonParser(ChemicalParser()), "[Glucose_d6+H]+"; formula = "C6H6D6O6", retentiontime = 1.5), AdductIon(parse_chemical(ChemicalParser(; formula = "C6H6D6O6"), "Glucose_d6"; retentiontime = 1.5), Protonation()), AdductIon(cgld, Protonation())]
 icps = [AdductIon(cps, lossserine), AdductIon(cps, dimh)]
 icpsi1 = [AdductIon(cpsi1, lossserine), AdductIon(cpsi1, dimh)]
 icpsi2 = [AdductIon(cpsi2, lossserine), AdductIon(cpsi2, dimh)]

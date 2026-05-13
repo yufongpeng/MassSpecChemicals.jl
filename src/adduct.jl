@@ -79,7 +79,7 @@ adducts_abbr() = ADDUCT_ABBR
 """
     set_addabbr!(abbr::AbstractString, fm::AbstractString)
 
-Set `abbr` to be an abbreviation of adduct formula `fm`. 
+Set `abbr` to be an abbreviation of adduct formula `fm` for default `AdductParser`. 
 """
 function set_addabbr!(abbr::AbstractString, fm::AbstractString)
     rabbr = Regex(string("(?<=[+-])", abbr, "(?=[+-\\]])"))
@@ -94,18 +94,19 @@ end
 """
     set_adduct!(nm::AbstractString, adduct::AbstractAdduct)
 
-Set `nm` to be `adduct` for parsing adduct.
+Set `nm` to be `adduct` for default `AdductParser`.
 
 For custumized adduct type, this function is required to make `nm` parsed into `adduct` by `parse_adduct`. 
 """
 set_adduct!(nm::AbstractString, adduct::AbstractAdduct) = push!(adducts_name(), nm => adduct)
 
 """
-    parse_adduct(::AbstractString) -> AbstractAdduct 
+    parse_adduct([adductparser::AbstractAdductParser,] adduct::AbstractString) -> AbstractAdduct 
 
-Parse string into `AbstractAdduct`. This function searches string in `ELEMENTS[:NAME]` first, then destructs the input string and constructs a `PosAdduct` or `NegAdduct`.
+Parse string into `AbstractAdduct` using `adductparser`. The default `AdductParser` searches string in `adducts_name()` first, then destructs the input string and constructs a `PosAdduct` or `NegAdduct`.
 """
-parse_adduct(adduct::AbstractString) = get(adducts_name(), string(adduct), _parse_adduct(adduct))
+parse_adduct(adduct::AbstractString) = parse_adduct(AdductParser(), adduct)
+parse_adduct(::AdductParser, adduct::AbstractString) = get(adducts_name(), string(adduct), _parse_adduct(adduct))
 function _parse_adduct(adduct::AbstractString)
     adduct = replace(adduct, adducts_abbr()...)
     ion, charge = split(adduct, "]")
@@ -122,3 +123,4 @@ function _parse_adduct(adduct::AbstractString)
     Adduct(nm, ion, charge) 
 end
 parse_adduct(adduct::AbstractAdduct) = adduct
+parse_adduct(::AbstractAdductParser, adduct::AbstractAdduct) = adduct

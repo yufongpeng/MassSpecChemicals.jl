@@ -1,47 +1,154 @@
 """
-    parse_chemical(name; kwargs...)
-    parse_chemical(::Type{Chemical}, name::AbstractString; kwargs...)
+    parse_chemical([parser::AbstractChemicalParser,] name::AbstractString...; kwargs...) 
+    parse_chemical([parser::AbstractChemicalParser,] chemical::AbstractChemical...; kwargs...) -> AbstractChemical
+    parse_chemical([parser::AbstractChemicalParser,] chemicals::AbstractVector; kwargs...) 
+    parse_chemical([parser::AbstractChemicalParser,] pair::Pair kwargs...) 
 
-Parse chemical name and construct a chemical object. The default type is `Chemical`. `kwargs` are properties.
+Parse chemical name and construct a chemical object using `parser`. The default parser is `ChemicalTransitionParser()`.
 """
-parse_chemical(name; kwargs...) = parse_chemical(Chemical, name; kwargs...)
-function parse_chemical(::Type{Chemical}, name::AbstractString; kwargs...) 
-    ks = Dict{Symbol, Any}(kwargs)
-    f = get!(ks, :elements, [])
-    delete!(ks, :elements)
-    if isempty(f) 
-        f = get!(ks, :formula, "")
-        delete!(ks, :formula)
-        f = chemicalelements(f)
+parse_chemical(name...; kwargs...) = parse_chemical(ChemicalTransitionParser(), name...; kwargs...)
+function parse_chemical(chemicalparser::ChemicalParser, name::AbstractString; kwargs...) 
+    property = copy(chemicalparser.property)
+    ks = first.(property)
+    for (k, v) in kwargs
+        i = findfirst(==(k), ks)
+        if isnothing(i) && !isnothing(v)
+            push!(property, k => v)
+            push!(ks, k)
+        elseif isnothing(i)
+            continue
+        else
+            property[i] = k => v 
+        end
     end
-    Chemical(name, f; ks...)
+    filter!(x -> !isnothing(last(x)), property)
+    i = findfirst(==(:formula), first.(property))
+    if isnothing(i)
+        i = findfirst(==(:elements), first.(property))
+        isnothing(i) && throw(ArgumentError("No formula or elements are given"))
+    end 
+    fe = last(property[i])
+    deleteat!(property, i)
+    Chemical(name, chemicalelements(fe), property)
 end
 
-function parse_chemical(::Type{FormulaChemical}, name::AbstractString; charge = 0, kwargs...) 
+function parse_chemical(chemicalparser::FormulaChemicalParser, name::AbstractString; kwargs...) 
+    property = copy(chemicalparser.property)
+    ks = first.(property)
+    for (k, v) in kwargs
+        i = findfirst(==(k), ks)
+        if isnothing(i) && !isnothing(v)
+            push!(property, k => v)
+            push!(ks, k)
+        elseif isnothing(i)
+            continue
+        else
+            property[i] = k => v 
+        end
+    end
+    filter!(x -> !isnothing(last(x)), property)
+    FormulaChemical(chemicalelements(name), property)
+end
+
+function parse_chemical(adductionparser::AdductIonParser, name::AbstractString; charge = nothing, kwargs...) 
+    charge = isnothing(charge) ? adductionparser.charge : charge
     m = match(r"^\[(\d*)(.*)\](\d*[+-])*$", name)
     if isnothing(m) 
         n, f = match(r"^(\d*)(.*)$", name) 
         c = nothing
     else
         n, f, c = m 
+        isnothing(c) && (charge = 0) 
     end
     n = isempty(n) ? 0 : parse(Int, n)
-    if isnothing(c)
-        if abs(charge) == 0 
-            FormulaChemical(string(n, f); charge)
-        else 
-            nm = n > 1 ? n : ""
-            lm = abs(charge) > 1 ? abs(charge) : ""
-            a = charge > 0 ? string("[", nm, "M]", lm , "+") : string("[", nm, "M]", lm, "-")
-            AdductIon(FormulaChemical(f), a)
-        end
-    else
+    if isnothing(c) && abs(charge) == 0 
+        parse_chemical(adductionparser.chemicalparser, string(n, f); charge, kwargs...)
+    elseif isnothing(c)
+        nm = n > 1 ? n : ""
+        lm = abs(charge) > 1 ? abs(charge) : ""
+        a = charge > 0 ? string("[", nm, "M]", lm , "+") : string("[", nm, "M]", lm, "-")
+        AdductIon(parse_chemical(adductionparser.chemicalparser, f; charge = nothing, kwargs...), parse_adduct(adductionparser.adductparser, a))
+    else 
         plusa = split(f, "+"; limit = 2)
         minusa = split(popfirst!(plusa), "-"; limit = 2)
         m = popfirst!(minusa)
         a = string("[", n > 1 ? n : "", "M", isempty(minusa) ? "" : string("-", first(minusa)), isempty(plusa) ? "" : string("+", first(plusa)), "]", c)
-        AdductIon(FormulaChemical(m), a)
+        AdductIon(parse_chemical(adductionparser.chemicalparser, m; charge = nothing, kwargs...), parse_adduct(adductionparser.adductparser, a))
     end
+end
+
+function parse_chemical(chemicalparser::ChemicalGainLossParser, name::AbstractString; precursorcharge = nothing, kwargs...)
+    precursorcharge = isnothing(precursorcharge) ? chemicalparser.charge : precursorcharge
+    if startswith(name, "-") 
+        loss = chemicalparser.loss
+        if precursorcharge == 0 
+            loss = 0
+        else
+            while (precursorcharge - loss) * precursorcharge <= 0 
+                loss -= sign(precursorcharge)
+            end
+        end
+        ChemicalLoss(parse_chemical(chemicalparser.chemicalparser, name[begin + 1:end]; charge = loss))
+    elseif startswith(name, "+")
+        gain = chemicalparser.gain
+        if precursorcharge == 0 
+            gain = 0
+        else
+            while (precursorcharge + gain) * precursorcharge <= 0 
+                gain += sign(precursorcharge)
+            end
+        end
+        ChemicalGain(parse_chemical(chemicalparser.chemicalparser, name[begin + 1:end]; charge = gain))
+    else
+        charge = min(abs(precursorcharge), abs(chemicalparser.charge)) * sign(precursorcharge)
+        parse_chemical(chemicalparser.chemicalparser, name; charge)
+    end
+end
+
+parse_chemical(::AbstractChemicalParser, cc::AbstractChemical...; kwargs...) = ChemicalSeries(cc...)
+
+parse_chemical(::AbstractChemicalParser, cc::AbstractChemical, precursorcharge::Union{Int, Nothing}; kwargs...) = (cc, detectedcharge(cc; precursorcharge))
+parse_chemical(::AbstractChemicalParser, cc::ChemicalTransition, precursorcharge::Union{Int, Nothing}; kwargs...) = (cc.transition, detectedcharge(cc))
+function parse_chemical(chemicalparser::AbstractChemicalParser, name::AbstractString, precursorcharge::Union{Int, Nothing}; kwargs...) 
+    chemical = parse_chemical(chemicalparser, name; precursorcharge, kwargs...)
+    chemical, detectedcharge(chemical; precursorcharge)
+end
+
+parse_chemical(chemicalparser::ChemicalTransitionParser, name::AbstractString...; kwargs...) = parse_chemical(chemicalparser, collect(name); kwargs...)
+parse_chemical(chemicalparser::ChemicalTransitionParser, name::AbstractString; kwargs...) = parse_chemical(chemicalparser, split(name, r"\s*->\s*"); kwargs...)
+function parse_chemical(chemicalparser::ChemicalTransitionParser, name::AbstractVector; kwargs...) 
+    trans = Any[]
+    precursorcharge = nothing
+    for nm in name
+        c, precursorcharge = parse_chemical(chemicalparser.chemicalparser, nm, precursorcharge; kwargs...)
+        push!(trans, c)
+    end
+    ChemicalSeries(trans...)
+end
+
+function parse_chemical(chemicalparser::ChemicalTransitionParser, name::Pair; kwargs...) 
+    pre, precursorcharge = parse_chemical(chemicalparser, first(name), nothing; kwargs...)
+    ChemicalSeries(first(pre_parse_chemical(chemicalparser, pre, last(name), precursorcharge; kwargs...)))
+end
+
+function pre_parse_chemical(chemicalparser::ChemicalTransitionParser, pre, name, precursorcharge; kwargs...)
+    pre = vectorize(pre) 
+    post, precursorcharge = parse_chemical(chemicalparser.chemicalparser, name, detectedcharge(last(pre); precursorcharge); kwargs...)
+    vcat(pre, post), precursorcharge
+end
+
+function pre_parse_chemical(chemicalparser::ChemicalTransitionParser, pre, name::Pair, precursorcharge; kwargs...) 
+    pre, precursorcharge = pre_parse_chemical(chemicalparser, pre, first(name), precursorcharge; kwargs...)
+    pre_parse_chemical(chemicalparser, pre, last(name), precursorcharge; kwargs...)
+end
+
+function pre_parse_chemical(chemicalparser::ChemicalTransitionParser, pre, name::ChemicalTransition, precursorcharge; kwargs...) 
+    post = Any[]
+    for nm in chemicaltransition(name)
+        c, precursorcharge = parse_chemical(chemicalparser.chemicalparser, nm, precursorcharge; kwargs...)
+        push!(post, c)
+    end
+    vcat(pre, post...), precursorcharge
 end
 
 decorator(loss::ChemicalLoss) = "Loss_"

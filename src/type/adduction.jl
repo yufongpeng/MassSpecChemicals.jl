@@ -33,8 +33,8 @@ struct AdductIon{S <: AbstractChemical, T <: AbstractAdduct} <: AbstractAdductIo
     adduct::T
 end
 
-AdductIon(name::AbstractString, a::AbstractString; kwargs...) = AdductIon(parse_chemical(name; kwargs...), parse_adduct(a))
-AdductIon(name::AbstractString, a::AbstractAdduct; kwargs...) = AdductIon(parse_chemical(name; kwargs...), a)
-AdductIon(::Type{S}, name::AbstractString, a::AbstractString; kwargs...) where S = AdductIon(parse_chemical(S, name; kwargs...), parse_adduct(a))
-AdductIon(::Type{S}, name::AbstractString, a::AbstractAdduct; kwargs...) where S = AdductIon(parse_chemical(S, name; kwargs...), a)
+# AdductIon(name::AbstractString, a::AbstractString; kwargs...) = AdductIon(parse_chemical(name; kwargs...), parse_adduct(a))
+# AdductIon(name::AbstractString, a::AbstractAdduct; kwargs...) = AdductIon(parse_chemical(name; kwargs...), a)
+# AdductIon(::Type{S}, name::AbstractString, a::AbstractString; kwargs...) where S = AdductIon(parse_chemical(S, name; kwargs...), parse_adduct(a))
+# AdductIon(::Type{S}, name::AbstractString, a::AbstractAdduct; kwargs...) where S = AdductIon(parse_chemical(S, name; kwargs...), a)
 AdductIon(cc::AbstractChemical, a::AbstractString) = AdductIon(cc, parse_adduct(a))

@@ -178,8 +178,8 @@ function _SelectedIonMonitor(transitions, mztable::Table, colmz::Symbol, colab::
 end
 
 """
-    Fragmentation(product_table, precursor_table; threshold) -> Table
-    Fragmentation(product_table, spectrum; threshold) -> Table
+    Fragmentation(product_table, precursor_table; threading = nothing, threshold = rcrit(1e-4)) -> Table
+    Fragmentation(product_table, spectrum; threading = nothing, threshold = rcrit(1e-4)) -> Table
 
 Fragmentation of `precursor_table.Chemical` or `spectrum.table.Chemical` into `product_table.Product`.
 
@@ -194,8 +194,9 @@ Fragmentation of `precursor_table.Chemical` or `spectrum.table.Chemical` into `p
     * `MZ1`, `MZ2`, ..., `MZn`. The last column will be utilized.
 * `spectrum::Spectrum`: `spectrum.table` is utilized as `precursortable`.
 * `threshold` can be a number or criteria, representing the lower limit of abundance (absolute and/or relative to maximal value of each spectrum). 
+* `threading`: force to use multiple threads (`true`) or single thread (`false`); `nothing` lets the program determine. 
 """
-function Fragmentation(producttable::Table, mztable::Table; threshold = rcrit(1e-4))
+function Fragmentation(producttable::Table, mztable::Table; threading = nothing, threshold = rcrit(1e-4))
     # group -> precursor_table, elements_precursor
     if !in(:ID, propertynames(producttable)) && in(:Chemical, propertynames(producttable))
         producttable = match_chemical(mztable, producttable; colexp = :Chemical, collib = :Chemical)
@@ -231,16 +232,39 @@ function Fragmentation(producttable::Table, mztable::Table; threshold = rcrit(1e
     id = producttable.ID
     mztable = filter(x -> x.ID in id, mztable)
     gmztable = group(getproperty(:ID), mztable)
-    vcat(map(gmztable) do precursor_table 
-        pid = findfirst(==(first(precursor_table.ID)), id)
-        TandemIsotopologues(chemicalparent(first(precursor_table.Chemical)); 
-            threshold,
-            precursor_table,
-            product = producttable.Product[pid],
-            proportion = producttable.Proportion[pid],
-            transmission = sum(producttable.Proportion[pid])
-            )
-    end...)
+    rn = min(length(gmztable), Threads.nthreads())
+    if isnothing(threading)
+        threading = mean(mmi ∘ first ∘ getproperty(:Chemical), gmztable) ^ (msstage(first(mztable.Chemical))) * sqrt(-log2(min(1, minimum(makecrit_value(crit(threshold), 1))))) * (rn - 1) > 100000
+    end
+    if threading
+        vcat(map(gmztable) do precursor_table 
+            pid = findfirst(==(first(precursor_table.ID)), id)
+            TandemIsotopologues(chemicalparent(first(precursor_table.Chemical)); 
+                threshold,
+                precursor_table,
+                product = producttable.Product[pid],
+                proportion = producttable.Proportion[pid],
+                transmission = sum(producttable.Proportion[pid])
+                )
+        end...)
+    else
+        t = Vector{Table}(undef, length(gmztable))
+        ks = collect(keys(gmztable))
+        Threads.@threads for i in eachindex(t)
+            precursor_table = gmztable[ks[i]]
+            pid = findfirst(==(first(precursor_table.ID)), id)
+            t[i] = TandemIsotopologues(chemicalparent(first(precursor_table.Chemical)); 
+                threshold,
+                precursor_table,
+                product = producttable.Product[pid],
+                proportion = producttable.Proportion[pid],
+                transmission = sum(producttable.Proportion[pid])
+                )
+        end
+        Table(; (map(propertynames(t[1])) do p
+            p => ChainedVector(getproperty.(t, p))
+        end)...)
+    end
 end
 Fragmentation(producttable::Table, spec::Spectrum; threshold = rcrit(1e-4)) = Fragmentation(producttable, spec.table; threshold)
 

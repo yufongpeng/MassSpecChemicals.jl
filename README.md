@@ -75,16 +75,16 @@ Charged chemicals with specific adduct or molecule loss that formed in MS (adduc
     ChemicalGain(chemical::AbstractChemical)
     ```
 
-Users can create chemical(s) with strings and pairs by `ChemicalSeries`.
+Users can parse strings and pairs by `parse_chemical`.
 
 ```julia
-ChemicalSeries("[H3O]+") # H3O with 1 positive charge
-ChemicalSeries("[H2O+H]+") # Protonated H2O 
-ChemicalSeries("[C6H12O6+H]+" => "[H2O+H]+") # Protonated C6H12O6 framented to Protonated H2O 
-ChemicalSeries("[C6H12O6+H]+" => "-H2O") # Protonated C6H12O6 and neutral loss H2O
-ChemicalSeries("[C6H12O6+2H]2+" => "-[H2O+H]+") # DiProtonated C6H12O6 and loss Protonated H2O 
-ChemicalSeries("C6H14O6" => "-H3O"; charge = 2, loss = 1) # C6H14O6 (charge = 2) and loss H3O (charge = 1)
-ChemicalSeries("[C6H12O6+2H]2+" => ChemicalLoss(Chemical("Water", "H2O"))) # mixing with other chemical type 
+parse_chemical("[H3O]+") # H3O with 1 positive charge
+parse_chemical("[H2O+H]+") # Protonated H2O 
+parse_chemical("[C6H12O6+H]+ -> [H2O+H]+") # Protonated C6H12O6 framented to Protonated H2O 
+parse_chemical("[C6H12O6+H]+" => "-H2O") # Protonated C6H12O6 and neutral loss H2O
+parse_chemical("[C6H12O6+2H]2+" => "-[H2O+H]+") # DiProtonated C6H12O6 and loss Protonated H2O 
+parse_chemical(ChemicalTransitionParser(ChemicalGainLossParser(; charge = 2, loss = 1)), "C6H14O6" => "-H3O") # C6H14O6 (charge = 2) and loss H3O (charge = 1)
+parse_chemical("[C6H12O6+2H]2+" => ChemicalLoss(Chemical("Water", "H2O"))) # mixing with other chemical type 
 ```
 
 # Elements
@@ -317,14 +317,14 @@ There are three related functions
 
 Isotopologues table can be aggregated using `group_isotopologues`.
 ## Mass Spectrometer 
-There are five functions to handle ions in mass spectrometer. 
+There are five functions to simulate ions in mass spectrometer. 
 1. `Isolation`: isolating target ion(s) with specific m/z values and resolution to enter the next MS stage. 
 2. `AllIons`: allow all Ions within m/z range entering the next MS stage. 
 3. `Fragmentation`: create a table of fragments with given fragmentation patterns. 
-4. `MSScan`: perform MS scan using given mass analyzer. This function creates `Spectrum` objects, which be visualized by `plot_spectrum` and `plot_spectrum!`. Peak lists can be extracted with function `peak_table`. 
+4. `MSScan`: perform MS scan using given mass analyzer. This function creates `Spectrum` objects, which can be visualized by `plot_spectrum` and `plot_spectrum!`. Peak lists can be extracted with function `peak_table`. 
 5. `SelectedIonMonitor`: perform selected ion monitoring for target transition(s). Peak lists can be extracted with function `peak_table`. 
 
-Common mass analyzer are defined.
+The following common mass analyzer are defined.
 1. `Quadrupole`
 2. `QuadrupoleIon` or `QIT`
 3. `LinearIonTrap` or `LIT`
@@ -332,7 +332,7 @@ Common mass analyzer are defined.
 5. `Orbitrap`
 6. `FourierTransformIonCyclotronResonance` or `FTICR`
 
-Default settings related to resolution, and isolation window are defined. To create generic mass analyzer, use `MSAnalyzer`.
+Default settings related to resolution, and isolation window are also defined for each analyzer. To create generic mass analyzer, use `MSAnalyzer`.
 ## Co-eluting isobars
 The function `CoelutingIsobars` creates an object `CoelutingIsobars` with a vector of elution function-criteria pair, a vector of ms analyzer-criteria pair, and a target chemical table.
 

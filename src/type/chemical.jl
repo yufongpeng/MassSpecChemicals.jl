@@ -60,8 +60,12 @@ struct ChemicalTransition{T} <: AbstractChemical
     transition::Vector{T}
 end
 
+_ChemicalTransition(ct::AbstractVector, product::AbstractChemical) = push!(ct, product)
 _ChemicalTransition(ct::ChemicalTransition, product::AbstractChemical) = push!(copy(ct.transition), product)
+_ChemicalTransition(ct::AbstractVector, product::ChemicalTransition) = vcat(ct, product.transition)
+_ChemicalTransition(ct::AbstractVector, product::AbstractVector) = vcat(ct, product)
 _ChemicalTransition(ct::ChemicalTransition, product::ChemicalTransition) = vcat(ct.transition, product.transition)
+_ChemicalTransition(ct::ChemicalTransition, product::AbstractVector) = vcat(ct.transition, product)
 _ChemicalTransition(cc::AbstractChemical, product::AbstractChemical) = [cc, product]
 _ChemicalTransition(cc::AbstractChemical, product::ChemicalTransition) = vcat(cc, product.transition)
 
@@ -195,15 +199,10 @@ end
 
 """
     ChemicalSeries(chemical::AbstractChemical)
-    ChemicalSeries(formula::AbstractString; charge = 0, gain = 0, loss = 0)
-    ChemicalSeries(pair::Pair; charge = 0, gain = 0, loss = 0)
+    ChemicalSeries(pair::Pair)
+    ChemicalSeries(chemicals::AbstractVector)
 
-Transform input into valid chemical structure. 
-
-* `formula` is parsed into `FormulaChemical`. 
-If it has adduct ion like structure, i.e. `"[formula+adduct]x+"` or `"[formula+adduct]x-"`, `FormulaChemical` will be wrapped by `AdductIon` with adduct (optional) if the charge is nonzero.
-It is further wrapped as chemical gain or loss if starting with `"+"` or `"-"`. 
-* `pair` can be a series of precursor-product pair. Individual chemical is splated before parsing. 
+Transform chemical into valid chemical structure. Multiple chemicals are converted into `ChemicalTransition`.
 """
 ChemicalSeries(cc::AbstractChemical) = cc
 ChemicalSeries(cc::ChemicalTransition) = ChemicalTransition(_ChemicalSeries(cc))
@@ -214,45 +213,14 @@ function _ChemicalSeries(cc::ChemicalTransition, v = AbstractChemical[])
     end
     v 
 end
-ChemicalSeries(ct, product...) = ChemicalTransition(ct, product...) 
-ChemicalSeries(v::AbstractVector; charge = 0, gain = 0, loss = 0) = length(v) < 2 ? ChemicalSeries(first(v)) : ChemicalTransition(v)
-ChemicalSeries(formula; charge = 0, gain = 0, loss = 0) = Formula2Chemical(formula, charge; gain, loss)
-
-function Formula2Chemical(formula::Pair, net_charge = 0; default_charge = net_charge, gain = 0, loss = 0) 
-    pre = Formula2Chemical(first(formula), net_charge; default_charge, gain, loss)
-    ChemicalSeries(PostFormula2Chemical(pre, last(formula), detectedcharge(pre); default_charge, gain, loss))
-end
-
-Formula2Chemical(chemical::AbstractChemical, net_charge = 0; default_charge = net_charge, gain = 0, loss = 0) = chemical
-Formula2Chemical(chemical::ChemicalTransition, net_charge = 0; default_charge = net_charge, gain = 0, loss = 0) = chemical.transition
-function Formula2Chemical(formula::AbstractString, net_charge = 0; default_charge = net_charge, gain = 0, loss = 0) 
-    if startswith(formula, "-") 
-        if net_charge == 0 
-            loss = 0
-        else
-            while (net_charge - loss) * net_charge <= 0 
-                loss -= sign(net_charge)
-            end
-        end
-        ChemicalLoss(parse_chemical(FormulaChemical, formula[begin + 1:end]; charge = loss))
-    elseif startswith(formula, "+")
-        if net_charge == 0 
-            gain = 0
-        else
-            while (net_charge + gain) * net_charge <= 0 
-                gain += sign(net_charge)
-            end
-        end
-        ChemicalGain(parse_chemical(FormulaChemical, formula[begin + 1:end]; charge = gain))
-    else
-        charge = min(abs(net_charge), abs(default_charge)) * sign(net_charge)
-        parse_chemical(FormulaChemical, formula; charge)
+function _ChemicalSeries(cc::AbstractVector, v = AbstractChemical[]) 
+    for c in cc
+        _ChemicalSeries(c, v)
     end
+    v 
 end
-PostFormula2Chemical(pre, chemical::AbstractChemical, net_charge = 0; default_charge = net_charge, gain = 0, loss = 0) = vcat(vectorize(pre), Formula2Chemical(chemical, net_charge; default_charge, gain, loss))
 
-function PostFormula2Chemical(pre, formula::Pair, net_charge = 0; default_charge = net_charge, gain = 0, loss = 0) 
-    pre = PostFormula2Chemical(pre, first(formula), net_charge; default_charge, gain, loss)
-    PostFormula2Chemical(pre, last(formula), detectedcharge(pre); default_charge, gain, loss)
-end
-PostFormula2Chemical(pre, formula, net_charge = 0; default_charge = net_charge, gain = 0, loss = 0) = vcat(vectorize(pre), Formula2Chemical(formula, net_charge; default_charge, gain, loss))
+ChemicalSeries(ct, product...) = ChemicalTransition(ct, product...) 
+ChemicalSeries(v::AbstractVector) = length(v) < 2 ? ChemicalSeries(first(v)) : ChemicalTransition(_ChemicalSeries(v))
+ChemicalSeries(v::Pair) = ChemicalTransition(_ChemicalSeries(v))
+_ChemicalSeries(v::Pair) = vcat(_ChemicalSeries(first(v)), _ChemicalSeries(last(v)))

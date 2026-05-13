@@ -59,6 +59,7 @@ export
 
     # Parser
     parse_chemical, parse_adduct, 
+    ChemicalParser, FormulaChemicalParser, AdductIonParser, AdductParser, ChemicalGainLossParser, ChemicalTransitionParser, 
 
     # Attributes
     chemicalformula, chemicalelements, chemicalname, chemicalabbr, chemicalsmiles, ioncore, ionadduct, kmer, charge, ncharge, retentiontime,

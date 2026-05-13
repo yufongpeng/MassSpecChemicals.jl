@@ -1,22 +1,23 @@
 """
     Isotopologues(chemical; abundance = 1, abtype = :max, threshold = rcrit(1e-4))
-    Isotopologues(formula; charge = 1, abundance = 1, abtype = :max, threshold = rcrit(1e-4))
+    Isotopologues(formula_name; chemicalparser, abundance = 1, abtype = :max, threshold = rcrit(1e-4))
     Isotopologues(chemicaltransition; abundance = 1, abtype = :max, threshold = rcrit(1e-4), transmission = 1) 
-    Isotopologues(formulapair; charge = 1, loss = 0, gain = 0, abundance = 1, abtype = :max, threshold = rcrit(1e-4), transmission = 1) 
-    Isotopologues(tbl; threshold = rcrit(1e-4), kwargs...)
+    Isotopologues(formula_name_pair; chemicalparser, abundance = 1, abtype = :max, threshold = rcrit(1e-4), transmission = 1) 
+    Isotopologues(tbl; threading = nothing, chemicalparser, threshold = rcrit(1e-4), kwargs...)
     Isotopologues(chemicals; kwargs...)
 
 A `Table` of isotopologues of 
 * `chemical::AbstractChemical`: a single chemical entity.
-* `formula::AbstractString`: a chemical formula.
+* `formula_name::AbstractString`: a chemical formula or name.
 * `chemicaltransition::ChemicalTransition`: MS/MS transition.
-* `formulapair::Pair`: MS/MS transition of `formula`s, 
+* `formula_name_pair::Pair`: MS/MS transition of formulas or names.
 * `tbl::Table`: multiple chemicals in column `Chemical` with abundance in column `Abundance1`, `Abundance2`, ... (optional). 
 * `chemicals::Vector`: multiple chemicals.
 
 Only isotopic abundance of parent elements are considered, and isotopes are viewed as intentionally labeled elements. 
 
 # Keyword Arguments
+* `chemicalparser::AbstractChemicalParser`: parser for `formula_name` or `formula_name_pair`. The default parser is `ChemicalTransitionParser(ChemicalGainLossParser(; charge = 1, loss = 0, gain = 0))`.
 * `abundance` sets the abundance of the isotope specified by `abtype`. It can be a vector when the input is MS/MS transition.
 * `abtype`
     * `:max`: the most abundant isotopologue.
@@ -24,10 +25,8 @@ Only isotopic abundance of parent elements are considered, and isotopes are view
     * `:list`: sum of listed isotopologues.
     * `:total`: sum of total isotopologues.
 * `threshold` can be a number or criteria, representing the lower limit of abundance (absolute and/or relative to maximal value of each spectrum). 
-* `transmission`: transmission rate of precursor to product. It is utlized when no abundance is available for precursors. It can also be column `Transmission` in `tbl`.
-* `charge` specifys charge for chemicals without intrinsic charge (pure formula). 
-* `loss` specifys charge for chemical losses without intrinsic charge (pure formula). 
-* `gain` specifys charge for chemical gains without intrinsic charge (pure formula). 
+* `transmission`: transmission rate of precursor to product. It is utlized when no abundance is available for precursors. It can also be column `Transmission` in `tbl`. 
+* `threading`: force to use multiple threads (`true`) or single thread (`false`); `nothing` lets the program determine. 
 
 For MS/MS transition, product can be chemical loss or gain (`ChemicalLoss`, `ChemicalGain` or formula starting with `-` or `+`).
 
@@ -39,6 +38,7 @@ For MS/MS transition, product can be chemical loss or gain (`ChemicalLoss`, `Che
 
 """
 function Isotopologues(input_chemical::AbstractChemical; 
+        chemicalparser = ChemicalTransitionParser(),
         precursor_info = nothing,
         id = (1, ), 
         abundance = 1, 
@@ -59,14 +59,14 @@ function Isotopologues(input_chemical::AbstractChemical;
 end
 
 Isotopologues(input_chemical::AbstractString; 
+        chemicalparser = ChemicalTransitionParser(ChemicalGainLossParser(; charge = 1, loss = 0, gain = 0)),
         precursor_info = nothing,
         id = (1, ), 
-        charge = 1, 
         abundance = 1, 
         abtype = :max, 
         threshold = rcrit(1e-4),
         transmission = 1) = 
-    Isotopologues(ChemicalSeries(input_chemical; charge); precursor_info, id, abundance, abtype, threshold, transmission)
+    Isotopologues(parse_chemical(chemicalparser, input_chemical); precursor_info, id, abundance, abtype, threshold, transmission)
 
 # Isotopologues(formula::Tuple{<: AbstractString, Int}; 
 #         id = (1, ), 
@@ -77,6 +77,7 @@ Isotopologues(input_chemical::AbstractString;
 #     Isotopologues(ChemicalSeries(formula); id, abundance, abtype, threshold, proportion)
 
 function Isotopologues(ct::ChemicalTransition; 
+        chemicalparser = ChemicalTransitionParser(ChemicalGainLossParser(; charge = 1, loss = 0, gain = 0)),
         precursor_table = nothing, 
         id = ntuple(i -> 1, msstage(ct)), 
         precursor_info = nothing, 
@@ -146,33 +147,25 @@ function Isotopologues(ct::ChemicalTransition;
 end
 
 function Isotopologues(input_chemical::Pair; 
+        chemicalparser = ChemicalTransitionParser(ChemicalGainLossParser(; charge = 1, loss = 0, gain = 0)),
         precursor_table = nothing, 
         id = nothing, 
-        charge = 1, 
-        loss = 0, 
-        gain = 0, 
         precursor_info = nothing, 
         abundance = 1, 
         abtype = :max, 
         threshold = rcrit(1e-4),
         transmission = 1
     ) 
-    ct = ChemicalSeries(input_chemical; charge, loss, gain)
+    ct = parse_chemical(chemicalparser, input_chemical)
     Isotopologues(ct; precursor_table, id = isnothing(id) ? ntuple(i -> 1, msstage(ct)) : id, precursor_info, abundance, abtype, threshold, transmission)
 end
 
-function Isotopologues(mztable::Table; threshold = rcrit(1e-4), kwargs...)
+function Isotopologues(mztable::Table; threading = nothing, chemicalparser = ChemicalTransitionParser(ChemicalGainLossParser(; charge = 1, loss = 0, gain = 0)), threshold = rcrit(1e-4), kwargs...)
     :Chemical in propertynames(mztable) || throw(ArgumentError("No column `Chemical` in input table."))
-    mztable = Table(mztable; Chemical = ChemicalSeries.(mztable.Chemical; kwargs...))
+    mztable = Table(mztable; Chemical = parse_chemical.(Ref(chemicalparser), mztable.Chemical; kwargs...))
     allequal(msstage, mztable.Chemical) || throw(ArgumentError("Chemicals have to be in the same MS stage."))
     kwargs = Dict(kwargs...)
     vec_key = Symbol[]
-    if :charge in keys(kwargs)
-        delete!(kwargs, :charge)
-    end
-    if :loss in keys(kwargs)
-        delete!(kwargs, :loss)
-    end
     colab = allcolnum(string.(propertynames(mztable)), "Abundance"; error = false)
     if !isempty(colab)
         mztable = Table(mztable; abundance = collect.(getproperties(mztable, colab)))
@@ -196,7 +189,11 @@ function Isotopologues(mztable::Table; threshold = rcrit(1e-4), kwargs...)
         msn = msstage(first(mztable.Chemical)) - 1
         mztable = Table(mztable; ID = [(i, ntuple(j -> 1, msn)...) for i in eachindex(mztable)])
     end
-    if length(mztable) < Threads.nthreads()
+    rn = min(length(mztable), Threads.nthreads())
+    if isnothing(threading)
+        threading = mean(mmi, mztable.Chemical) ^ (msstage(first(mztable.Chemical))) * sqrt(-log2(min(1, minimum(makecrit_value(crit(threshold), 1))))) * (rn - 1) > 100000 
+    end
+    if threading
         tbl = Table(vcat((Isotopologues(r.Chemical; id = r.ID, [k => getproperty(r, k) for k in vec_key]..., threshold, kwargs...) for r in mztable)...))
     else
         t = Vector{Table}(undef, length(mztable))
@@ -220,24 +217,25 @@ Isotopologues(::Isotopomers; kwargs...) = throw(ArgumentError("`Isotopomers` is 
 Isotopologues(::ChemicalLoss; kwargs...) = throw(ArgumentError("`ChemicalLoss` is not supported by `Isotopologues.`"))
 
 """
-    TandemIsotopologues(chemical; product = nothing, proportion = nothing, abundance = 1, abtype = :max, threshold = rcrit(1e-4))
-    TandemIsotopologues(formula; charge = 1, product = nothing, proportion = nothing, abundance = 1, abtype = :max, threshold = rcrit(1e-4))
-    TandemIsotopologues(chemicaltransition; product = nothing, proportion = nothing, abundance = 1, abtype = :max, threshold = rcrit(1e-4)) 
-    TandemIsotopologues(formulapair; charge = 1, loss = 0, gain = 0, product = nothing, proportion = nothing, abundance = 1, abtype = :max, threshold = rcrit(1e-4)) 
-    TandemIsotopologues(tbl; threshold = rcrit(1e-4), kwargs...)
+    TandemIsotopologues(chemical; chemicalparser, product = nothing, proportion = nothing, abundance = 1, abtype = :max, threshold = rcrit(1e-4))
+    TandemIsotopologues(formula_name; chemicalparser, product = nothing, proportion = nothing, abundance = 1, abtype = :max, threshold = rcrit(1e-4))
+    TandemIsotopologues(chemicaltransition; chemicalparser, product = nothing, proportion = nothing, abundance = 1, abtype = :max, threshold = rcrit(1e-4)) 
+    TandemIsotopologues(formula_name_pair; chemicalparser, product = nothing, proportion = nothing, abundance = 1, abtype = :max, threshold = rcrit(1e-4)) 
+    TandemIsotopologues(tbl; threading = nothing, chemicalparser, threshold = rcrit(1e-4), kwargs...)
     TandemIsotopologues(chemicals; kwargs...)
 
 A `Table` of isotopologues of the following chemicals and their products. 
 * `chemical::AbstractChemical`: a single chemical entity.
-* `formula::AbstractString`: a chemical formula.
+* `formula_name::AbstractString`: a chemical formula or name.
 * `chemicaltransition::ChemicalTransition`: MS/MS transition.
-* `formulapair::Pair`: MS/MS transition of `formula`s, 
+* `formula_name_pair::Pair`: MS/MS transition of formulas or names. 
 * `tbl::Table`: multiple chemicals in column `Chemical` with abundance in column `Abundance1`, `Abundance2`, ... (optional). 
 * `chemicals::Vector`: multiple chemicals.
 
 Only isotopic abundance of parent elements are considered, and isotopes are viewed as intentionally labeled elements. 
 
 # Keyword Arguments
+* `chemicalparser::AbstractChemicalParser`: parser for `formula_name`, `formula_name_pair` or `product`. The default parser is `ChemicalTransitionParser(ChemicalGainLossParser(; charge = 1, loss = 0, gain = 0))`.
 * `abundance` sets the abundance of the precursor isotope specified by `abtype`. It can be a vector when the input is MS/MS transition.
 * `abtype`
     * `:max`: the most abundant isotopologue.
@@ -248,9 +246,7 @@ Only isotopic abundance of parent elements are considered, and isotopes are view
 * `product::Vector`: product chemicals. It can also be column `Product` in `tbl`.
 * `transmission`: transmission rate of between MS/MS transition. It is utlized when no abundance is available. It can also be column `Transmission` in `tbl`.
 * `proportion::Vector`: proportion of fragmentation relative to precursor. It can also be column `Proportion` in `tbl`.
-* `charge` specifys charge for chemicals without intrinsic charge (pure formula). 
-* `loss` specifys charge for chemical losses without intrinsic charge (pure formula). 
-* `gain` specifys charge for chemical gains without intrinsic charge (pure formula). 
+* `threading`: force to use multiple threads (`true`) or single thread (`false`); `nothing` lets the program determine. 
 
 For MS/MS precursor-product pairs, product can be neutral loss or ion loss (`ChemicalLoss` or formula starting with `-`).
 
@@ -262,9 +258,7 @@ For MS/MS precursor-product pairs, product can be neutral loss or ion loss (`Che
 
 """
 function TandemIsotopologues(input_chemical::AbstractChemical; 
-            charge = 1, 
-            loss = 0, 
-            gain = 0, 
+            chemicalparser = ChemicalTransitionParser(ChemicalGainLossParser(; charge = 1, loss = 0, gain = 0)),
             abundance = 1, 
             transmission = 1, 
             abtype = :max, 
@@ -275,7 +269,7 @@ function TandemIsotopologues(input_chemical::AbstractChemical;
             proportion = nothing
         )
     isnothing(product) && throw(ArgumentError("Require keyword argument `product`."))
-    product = ChemicalSeries.(product; charge, loss, gain)
+    product = parse_chemical.(Ref(chemicalparser), product)
     all(x -> msstage(x) < 2, product) || throw(ArgumentError("Products should not be MS/MS pairs."))
     proportion = if isnothing(proportion) 
         [1/length(product) for x in eachindex(product)]
@@ -332,9 +326,7 @@ function TandemIsotopologues(input_chemical::AbstractChemical;
 end
 
 TandemIsotopologues(input_chemical::Pair; 
-            charge = 1, 
-            loss = 0, 
-            gain = 0, 
+            chemicalparser = ChemicalTransitionParser(ChemicalGainLossParser(; charge = 1, loss = 0, gain = 0)),
             abundance = 1, 
             transmission = 1, 
             abtype = :max, 
@@ -343,12 +335,10 @@ TandemIsotopologues(input_chemical::Pair;
             precursor_table = nothing, 
             product = nothing, 
             proportion = nothing
-        ) = TandemIsotopologues(ChemicalSeries(input_chemical; charge, loss, gain); charge, loss, gain, abundance, transmission, abtype, threshold, id, precursor_table, product, proportion)
+        ) = TandemIsotopologues(parse_chemical(chemicalparser, input_chemical); chemicalparser, abundance, transmission, abtype, threshold, id, precursor_table, product, proportion)
 
 TandemIsotopologues(input_chemical::AbstractString; 
-            charge = 1, 
-            loss = 0, 
-            gain = 0, 
+            chemicalparser = ChemicalTransitionParser(ChemicalGainLossParser(; charge = 1, loss = 0, gain = 0)),
             abundance = 1, 
             transmission = 1, 
             abtype = :max, 
@@ -357,11 +347,11 @@ TandemIsotopologues(input_chemical::AbstractString;
             precursor_table = nothing, 
             product = nothing, 
             proportion = nothing
-        ) = TandemIsotopologues(ChemicalSeries(input_chemical; charge, loss, gain); charge, loss, gain, abundance, transmission, abtype, threshold, id, precursor_table, product, proportion)
+        ) = TandemIsotopologues(parse_chemical(chemicalparser, input_chemical); chemicalparser, abundance, transmission, abtype, threshold, id, precursor_table, product, proportion)
 
-function TandemIsotopologues(mztable::Table; threshold = rcrit(1e-4), kwargs...)
+function TandemIsotopologues(mztable::Table; threading = nothing, chemicalparser = ChemicalTransitionParser(ChemicalGainLossParser(; charge = 1, loss = 0, gain = 0)), threshold = rcrit(1e-4), kwargs...)
     :Chemical in propertynames(mztable) || throw(ArgumentError("No column `Chemical in input table.`"))
-    mztable = Table(mztable; Chemical = ChemicalSeries.(mztable.Chemical; kwargs...))
+    mztable = Table(mztable; Chemical = parse_chemical.(Ref(chemicalparser), mztable.Chemical; kwargs...))
     allequal(msstage, mztable.Chemical) || throw(ArgumentError("Chemicals have to be in the same MS stage."))
     kwargs = Dict(kwargs...)
     vec_key = Symbol[]
@@ -415,7 +405,11 @@ function TandemIsotopologues(mztable::Table; threshold = rcrit(1e-4), kwargs...)
         msn = msstage(first(mztable.Chemical)) - 1
         mztable = Table(mztable; ID = [(i, ntuple(j -> 1, msn)...) for i in eachindex(mztable)])
     end
-    if length(mztable) < Threads.nthreads()
+    rn = min(length(mztable), Threads.nthreads())
+    if isnothing(threading)
+        threading = mean(mmi, mztable.Chemical) ^ (msstage(first(mztable.Chemical)) + 1) * sqrt(-log2(min(1, minimum(makecrit_value(crit(threshold), 1))))) * (rn - 1) > 100000
+    end
+    if threading
         tbl = Table(vcat((TandemIsotopologues(r.Chemical; id = r.ID, [k => getproperty(r, k) for k in vec_key]..., threshold, kwargs...) for r in mztable)...))
     else
         t = Vector{Table}(undef, length(mztable))
