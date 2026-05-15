@@ -86,7 +86,7 @@ macro ri_str(expr)
         "(]"    => intersect(IntervalSet(1.0..1.0), IntervalSet(0.0..0.0))
         "{}"    => intersect(IntervalSet(1.0..1.0), IntervalSet(0.0..0.0))
         "⊘"     => intersect(IntervalSet(1.0..1.0), IntervalSet(0.0..0.0))
-        _       => IntervalSet(parse(Interval{Float64}, replace(expr, "∞" => "Inf")))
+        _       => IntervalSet(parse(Interval{float(Int)}, replace(expr, "∞" => "Inf")))
     end
 end
 
@@ -103,7 +103,7 @@ function zero_center_interval(val; LB = Closed, RB = Closed)
         LB = Open 
         RB = Open 
     end
-    IntervalSet(Interval{Float64, LB, RB}(lb, ub))
+    IntervalSet(Interval{float(Int), LB, RB}(lb, ub))
 end
 
 zero_center_interval(val::Missing; LB = Closed, RB = Closed) = missing

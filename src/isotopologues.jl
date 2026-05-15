@@ -25,7 +25,7 @@ Only isotopic abundance of parent elements are considered, and isotopes are view
     * `:list`: sum of listed isotopologues.
     * `:total`: sum of total isotopologues.
 * `threshold` can be a number or criteria, representing the lower limit of abundance (absolute and/or relative to maximal value of each spectrum). 
-* `transmission`: transmission rate of precursor to product. It is utlized when no abundance is available for precursors. It can also be column `Transmission` in `tbl`. 
+* `transmission`: transmission rate of between MS/MS transition. It is utlized when all elements of `abundance` are used out. It can also be column `Transmission` in `tbl`.
 * `threading`: force to use multiple threads (`true`) or single thread (`false`); `nothing` lets the program determine. 
 
 For MS/MS transition, product can be chemical loss or gain (`ChemicalLoss`, `ChemicalGain` or formula starting with `-` or `+`).
@@ -113,13 +113,14 @@ function Isotopologues(ct::ChemicalTransition;
     precursor_info = isempty(precursor_info) ? nothing : precursor_info
     if isnothing(precursor_table)
         preab = isempty(abundance) ? [ab / transmission] : abundance
+        lab = last(preab)
         precursor_table = Isotopologues(ChemicalTransition(chemicaltransition(ct)[begin:end - 1]); id = id[begin:end - 1], precursor_info, abundance = preab, abtype, threshold, transmission)
-        transmission = ab / last(preab)
+        transmission = ab / lab
     end
     nms = length(id)
     colab = Symbol(string("Abundance", nms - 1))
     itp = Table(; Element = [dictionary_elements(detectedisotopes(x)) for x in precursor_table.Chemical], Abundance = getproperty(precursor_table, colab) .* transmission)
-    it = _isotopologues_elements_ms2(itp, isotope_precursor, element_product, isotope_product, element_residual, ab, abtype, threshold, net_charge)
+    it = _isotopologues_elements_ms2(itp, element_product, isotope_product, element_residual, ab, abtype, threshold, net_charge)
     mass = it.Mass ./ max(1, abs(net_charge))
     if raw_product isa ChemicalLoss
         precursors_element = detectedelements.(precursor_table.Chemical)
@@ -194,8 +195,6 @@ function Isotopologues(mztable::Table; threading = nothing, chemicalparser = Che
         threading = mean(mmi, mztable.Chemical) ^ (msstage(first(mztable.Chemical))) * sqrt(-log2(min(1, minimum(makecrit_value(crit(threshold), 1))))) * (rn - 1) > 100000 
     end
     if threading
-        tbl = Table(vcat((Isotopologues(r.Chemical; id = r.ID, [k => getproperty(r, k) for k in vec_key]..., threshold, kwargs...) for r in mztable)...))
-    else
         t = Vector{Table}(undef, length(mztable))
         Threads.@threads for i in eachindex(t)
             t[i] = Isotopologues(mztable.Chemical[i]; id = mztable.ID[i], [k => getproperty(mztable, k)[i] for k in vec_key]..., threshold, kwargs...)
@@ -203,6 +202,9 @@ function Isotopologues(mztable::Table; threading = nothing, chemicalparser = Che
         tbl = Table(; (map(propertynames(t[1])) do p
             p => ChainedVector(getproperty.(t, p))
         end)...)
+    else
+        tbl = Table(vcat((Isotopologues(r.Chemical; id = r.ID, [k => getproperty(r, k) for k in vec_key]..., threshold, kwargs...) for r in mztable)...))
+
     end
     # spectrum specific threshold ?
     ab = getproperty(tbl, lastcolnum(string.(propertynames(tbl)), "Abundance"))
@@ -244,7 +246,7 @@ Only isotopic abundance of parent elements are considered, and isotopes are view
     * `:total`: sum of total isotopologues.
 * `threshold` can be a number or criteria, representing the lower limit of abundance (absolute and/or relative to maximal value of each spectrum). 
 * `product::Vector`: product chemicals. It can also be column `Product` in `tbl`.
-* `transmission`: transmission rate of between MS/MS transition. It is utlized when no abundance is available. It can also be column `Transmission` in `tbl`.
+* `transmission`: transmission rate of between precursors (MS/MS transition). It is utlized when all elements of `abundance` are used out. It can also be column `Transmission` in `tbl`.
 * `proportion::Vector`: proportion of fragmentation relative to precursor. It can also be column `Proportion` in `tbl`.
 * `threading`: force to use multiple threads (`true`) or single thread (`false`); `nothing` lets the program determine. 
 
@@ -276,50 +278,67 @@ function TandemIsotopologues(input_chemical::AbstractChemical;
     else
         vectorize(proportion, length(product))
     end
-    abundance = vectorize(abundance)
-    sump = sum(proportion)
-    abundance = map(proportion) do p 
-        pa = p / sump
-        v = abundance .* pa
-        push!(v, last(v) * sump)
-    end
+    # abundance = vectorize(abundance, length(product))
+    # sump = sum(proportion)
+    # abundance = map(proportion) do p 
+    #     pa = p / sump
+    #     v = abundance .* pa
+    #     push!(v, last(v) * sump)
+    # end
     if !isnothing(precursor_table)
         precursor_table = Table(precursor_table)
-        colab = allcolnum(string.(propertynames(Table(precursor_table))), "Abundance")
-        if !isempty(colab)
-            precursor_tables = map(proportion) do p 
-                pa = p / sump
-                Table(precursor_table; [c => getproperty(precursor_table, c) .* pa for c in colab]...)
-            end
-        end
+        # colab = allcolnum(string.(propertynames(Table(precursor_table))), "Abundance")
+        # if !isempty(colab)
+        #     precursor_tables = map(proportion) do p 
+        #         pa = p / sump
+        #         Table(precursor_table; [c => getproperty(precursor_table, c) .* pa for c in colab]...)
+        #     end
+        # end
     end
     id = if isnothing(id) 
-        isnothing(precursor_table) ? msstage(input_chemical) : first(precursor_table.ID)
+        isnothing(precursor_table) ? ntuple(x -> 1, msstage(input_chemical)) : first(precursor_table.ID)
     else
         id 
     end
     precursor_info = precursor_data(input_chemical)
     if isnothing(precursor_table)
-        tbl = vcat((Isotopologues(ChemicalTransition(input_chemical, product[i]); 
+        tbls = [Isotopologues(ChemicalTransition(input_chemical, product[i]); 
             id = (id..., i),
             precursor_table, 
-            abundance = abundance[i],
+            abundance = abundance * transmission,
             transmission, 
-            abtype, 
+            abtype = isnothing(abtypeop(Val(abtype))) ? abtype : :input, # all transition normalize to the input
             threshold, 
-            precursor_info) for i in eachindex(product))...) 
+            precursor_info) for i in eachindex(product)]
+        colab = lastcolnum(string.(propertynames(first(tbls))), "Abundance")
+        for i in eachindex(product)
+            getproperty(tbls[i], colab) .*= proportion[i] / transmission
+        end
+        tbl = vcat(tbls...) 
+        if !isnothing(abtypeop(Val(abtype)))
+            colabs = allcolnum(string.(propertynames(first(tbls))), "Abundance")
+            normalizer = first(getproperty(tbl, colabs[end-1])) / abtypeop(Val(abtype))(getproperty(tbl, colabs[end-1]))
+            for col in colabs
+                getproperty(tbl, col) .*= normalizer
+            end
+        end
     else
-        tbl = vcat((Isotopologues(ChemicalTransition(input_chemical, product[i]); 
+        tbls = [Isotopologues(ChemicalTransition(input_chemical, product[i]); 
             id = (id..., i),
-            precursor_table = precursor_tables[i], 
-            abundance = abundance[i],
-            transmission, 
+            precursor_table, 
+            abundance,
+            transmission = 1, 
             abtype = :total, 
             threshold, 
-            precursor_info) for i in eachindex(product))...) 
+            precursor_info) for i in eachindex(product)]
+        colab = lastcolnum(string.(propertynames(first(tbls))), "Abundance")
+        for i in eachindex(product)
+            getproperty(tbls[i], colab) .*= proportion[i]
+        end
+        tbl = vcat(tbls...) 
     end
     # spectrum specific threshold ?
-    ab = getproperty(tbl, Symbol(string("Abundance", length(id) + 1)))
+    ab = getproperty(tbl, colab)
     abundance_cutoff = minimum(makecrit_value(crit(threshold), maximum(ab)))
     id = findall(>=(abundance_cutoff), ab)
     tbl[id]
@@ -410,8 +429,6 @@ function TandemIsotopologues(mztable::Table; threading = nothing, chemicalparser
         threading = mean(mmi, mztable.Chemical) ^ (msstage(first(mztable.Chemical)) + 1) * sqrt(-log2(min(1, minimum(makecrit_value(crit(threshold), 1))))) * (rn - 1) > 100000
     end
     if threading
-        tbl = Table(vcat((TandemIsotopologues(r.Chemical; id = r.ID, [k => getproperty(r, k) for k in vec_key]..., threshold, kwargs...) for r in mztable)...))
-    else
         t = Vector{Table}(undef, length(mztable))
         Threads.@threads for i in eachindex(t)
             t[i] = TandemIsotopologues(mztable.Chemical[i]; id = mztable.ID[i], [k => getproperty(mztable, k)[i] for k in vec_key]..., threshold, kwargs...)
@@ -419,6 +436,8 @@ function TandemIsotopologues(mztable::Table; threading = nothing, chemicalparser
         tbl = Table(; (map(propertynames(t[1])) do p
             p => ChainedVector(getproperty.(t, p))
         end)...)
+    else
+        tbl = Table(vcat((TandemIsotopologues(r.Chemical; id = r.ID, [k => getproperty(r, k) for k in vec_key]..., threshold, kwargs...) for r in mztable)...))
     end
     colab = propertynames(tbl)[findlast(x -> startswith(x, "Abundance"), string.(propertynames(tbl)))]
     ab = getproperty(tbl, colab)
@@ -446,29 +465,49 @@ Group isotopologues by isotopomer state based on `isotope`.
 * `isotope::String`: minor isotope.
 """
 function group_isotopologues(mztable::Table; isotope = "[13C]")
-    gf = gf_parent_isotope(isotope)
-    gid = groupfind(gf, mztable.Chemical)
     sp = string.(propertynames(mztable))
     colmz = allcolnum(sp, "MZ")
     colab = allcolnum(sp, "Abundance")
+    gf = gf_parent_isotope(isotope)
     transitions = chemicaltransition.(mztable.Chemical)
+    gid, gt = unique_group_mz_ab(mztable, transitions, colmz, colab, gf)
     # gt = map(gid) do v 
-    #     uid = [[findfirst(x -> x == t, c) for t in unique(c)] for c in zip(transitions[v]...)]
-    #     (; [c => mean(getproperty(mztable, c)[v[i]], weights(getproperty(mztable, d)[v[i]])) for (i, c, d) in zip(uid, colmz, colab)]..., [c => sum(getproperty(mztable, c)[v[i]]) for (i, c) in zip(uid, colab)]...)
+    #     (; [c => mean(getproperty(mztable, c)[v], weights(getproperty(mztable, d)[v])) for (c, d) in zip(colmz, colab)]..., [c => sum(getproperty(mztable, c)[v]) for c in colab]...)
     # end
-    gt = map(gid) do v 
-        (; [c => mean(getproperty(mztable, c)[v], weights(getproperty(mztable, d)[v])) for (c, d) in zip(colmz, colab)]..., [c => sum(getproperty(mztable, c)[v]) for c in colab]...)
-    end
-    chemcial_parent_state = collect(keys(gt))
+    chemcial_parent_state = collect(keys(gid))
     chemical_isotopes = [collect(zip([isotopomersisotopes.(x) for x in transitions[id]]...)) for id in gid]
     chemical_abundance = [[getproperty(mztable, a)[id] for a in colab] for id in gid]
     chemical = [ChemicalSeries([Groupedisotopomers(p..., isotope, collect(i), a) for (p, i, a) in zip(pa, iso, ab)]) for (pa, iso, ab) in zip(chemcial_parent_state, chemical_isotopes, chemical_abundance)]
     Table(Table(; Chemical = chemical), Table(collect(NamedTuple, gt)))
 end
 
+function unique_group_mz_ab(mztable, transitions, colmz, colab, gf = nothing)
+    if isnothing(gf)
+        gfv = [zeros(length(x)) for x in transitions]
+    else
+        gfv = map(gf, transitions)
+    end
+    gids = [groupfind(x -> x[begin:i], gfv) for i in eachindex(first(gfv))]
+    ma = map(enumerate(gids)) do (i, gid)
+        map(gid) do v 
+            c = [x[begin:i] for x in transitions[v]]
+            u = v[[findfirst(x -> x == t, c) for t in unique(c)]]
+            ab = getproperty(mztable, colab[i])[u]
+            mean(getproperty(mztable, colmz[i])[u], weights(ab)), sum(ab)
+        end
+    end
+    gid = last(gids)
+    gt = map(keys(gid)) do k
+        ks = [k[begin:i] for i in eachindex(gids)]
+        ms = [ma[i][ks[i]] for i in eachindex(gids)]
+        (; [c => first(m) for (m, c) in zip(ms, colmz)]..., [c => last(m) for (m, c) in zip(ms, colab)]...)
+    end
+    gid, gt
+end
+
 function gf_parent_isotope(isotope = "[13C]")
     isotope_unit = elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]]
-    x -> [chemicalparent(m) => _isotopomerstate(isotopomersisotopes(m), isotope_unit) for m in chemicaltransition(x)]
+    x -> [chemicalparent(m) => _isotopomerstate(isotopomersisotopes(m), isotope_unit) for m in x]
 end
 
 function precursor_data(input_chemical)
@@ -571,7 +610,7 @@ function isotopicabundance(elements::Union{<: Vector{<: Pair}, <: Dictionaries.P
         #     y ^ x / factorial(x)
         # end
     end
-    Float64(abundance_sum)
+    float(abundance_sum)
 end
 
 # ==========================================================================================================================
@@ -597,8 +636,8 @@ function _isotopologues_elements(input_element::Vector, abundance, abtype, thres
             max_dictionary[e] += n
             get!(first_element_dictionary, e, 0)
             first_element_dictionary[e] += n
-        elseif first(elements_isotopes()[get(elements_parents(), e, e)]) == e 
-            p = get(elements_parents(), e, e)
+        elseif major_isotope(e) == e 
+            p = parent_element(e)
             get!(fix_dictionary, p, 0)
             fix_dictionary[p] += n
             get!(element_dictionary, p, 0)
@@ -606,7 +645,7 @@ function _isotopologues_elements(input_element::Vector, abundance, abtype, thres
             get!(first_element_dictionary, p, 0)
             first_element_dictionary[p] += n
         else 
-            p = get(elements_parents(), e, e)
+            p = parent_element(e)
             get!(fix_dictionary, e, 0)
             fix_dictionary[e] += n
             get!(isotope_dictionary, e, 0)
@@ -629,20 +668,21 @@ function _isotopologues_elements(input_element::Vector, abundance, abtype, thres
     abundance_cutoff = base_abundance_cutoff * first_proportion
     if first_proportion < min_abundance()
         elementonly_dictionary = copy(max_dictionary)
-        for (e, x) in element_isotope_pair
-            n = floor(Int, elementonly_dictionary[e] * elements_abundunce()[x])
+        for (e, m) in pairs(elementonly_dictionary)
+            n = floor(Int, m * (1 - elements_abundunce()[e]))
             max_dictionary[e] -= n 
-            set!(max_dictionary, x, n)
+            set!(max_dictionary, minor_isotope(e), n)
         end
         max_proportion = isotopicabundance(max_dictionary)
         if abtype == :input && abundance_cutoff / max_proportion < min_abundance() 
-            throw(ArgumentError("Isotopic abundance of unput chemical is too small; try use `abtype` other than `:input` or larger threshold`"))
+            throw(ArgumentError("Isotopic abundance of input chemical is too small; try use `abtype` other than `:input` or larger threshold`"))
         elseif abtype != :input 
             abundance_cutoff = base_abundance_cutoff * max_proportion
             first_element_dictionary = Dictionary{String, Int}()
             element_dictionary = Dictionary{String, Int}()
-            for (e, x) in element_isotope_pair
+            for e in keys(elementonly_dictionary)
                 findfirst_dictionary = copy(max_dictionary)
+                x = minor_isotope(e)
                 n = findfirst_dictionary[x]
                 findfirst_dictionary[e] += n
                 findfirst_dictionary[x] -= n
@@ -677,7 +717,7 @@ function _isotopologues_elements(input_element::Vector, abundance, abtype, thres
     table ? Table(; Element = element_chemical, Mass = mass_chemical, Abundance = abundance_chemical) : element_chemical
 end
 
-function _isotopologues_elements_ms2(it1, isotope_precursor, element_product, isotope_product, element_residual, abundance, abtype, threshold, net_charge; normalize = true, table = true)
+function _isotopologues_elements_ms2(it1, element_product, isotope_product, element_residual, abundance, abtype, threshold, net_charge; normalize = true, table = true)
     msfix = mmi(isotope_product, net_charge)
     if isempty(element_product)
         data = map(it1) do r 
@@ -686,8 +726,13 @@ function _isotopologues_elements_ms2(it1, isotope_precursor, element_product, is
             Abundance = [r.Abundance])
         end
     else
-        data = map(it1) do r 
-            element_product_is, mass_product_is, proportion_product_is = isotopes_proportion(loss_elements(r.Element, isotope_precursor), element_product, element_residual, msfix, net_charge)
+        if abtype == :input && !isempty(first(it1.Element))
+            throw(ArgumentError("Isotopic abundance of input chemical is too small; try use `abtype` other than `:input` or larger threshold`"))
+        end
+        base_proportion_cutoff = minimum(makecrit_value(crit(threshold), abundance)) * first(it1.Abundance) / abundance
+        data = map(it1) do r
+            proportion_cutoff = base_proportion_cutoff / r.Abundance
+            element_product_is, mass_product_is, proportion_product_is = isotopes_proportion(r.Element, element_product, element_residual, msfix, proportion_cutoff)
             id = sortperm(mass_product_is)
             (; Element = gain_elements.(Ref(isotope_product), element_product_is[id]), 
             Mass = mass_product_is[id], 
@@ -709,14 +754,17 @@ function _isotopologues_elements_ms2(it1, isotope_precursor, element_product, is
     table ? Table(; ID = id_pair, Element = element_product, Mass = mass_product, Abundance = abundance_pair) : element_product
 end
 
-function rec_addisotopes!(element_vec::Vector, 
-                            abundance_vec::Vector, 
-                            element_dictionary::Dictionary, 
-                            isotope_dictionary::Dictionary, 
-                            fix_dictionary::Dictionary, 
-                            element_isotope_pair::Vector, 
-                            isotope_position::Int, 
-                            prev_abundance, threshold)
+function rec_addisotopes!(
+        element_vec::Vector, 
+        abundance_vec::Vector, 
+        element_dictionary::Dictionary, 
+        isotope_dictionary::Dictionary, 
+        fix_dictionary::Dictionary, 
+        element_isotope_pair::Vector, 
+        isotope_position::Int, 
+        prev_abundance, 
+        threshold
+    )
     new_isotope_position = -1
     for (e, i) in @views element_isotope_pair[isotope_position:end]
         ne = get(element_dictionary, e, 0)
@@ -754,7 +802,7 @@ function update_abundance(prev_abundance, old_element, new_element, nold, nnew, 
 end
 
 # Distribute isotopes: setdiff without deleting overlapped/calculate 1 fragment * n
-function isotopes_proportion(element_precursor_dictionary::Dictionary, element_product_dictionary::Dictionary, element_residual_dictionary::Dictionary, msfix, net_charge)
+function isotopes_proportion(element_precursor_dictionary::Dictionary, element_product_dictionary::Dictionary, element_residual_dictionary::Dictionary, msfix, threshold)
     first_isotope_product_dictionary = Dictionary{String, Int}()
     first_isotope_residual_dictionary = Dictionary{String, Int}()
     first_element_product_dictionary = copy(element_product_dictionary)
@@ -770,17 +818,24 @@ function isotopes_proportion(element_precursor_dictionary::Dictionary, element_p
     sort!(element_isotope_pair; by = x -> elements_abundunce()[last(x)], rev = true)
     element_product_vec, isotope_product_vec, element_residual_vec, isotope_residual_vec = distribute_isotopes!(element_precursor_dictionary, first_element_product_dictionary, first_isotope_product_dictionary, first_element_residual_dictionary, first_isotope_residual_dictionary)
     # initial proportion
-    element_pair = Dictionary[]
-    proportion_pair = Float64[]
-    for (element_product, isotope_product, element_residual, isotope_residual) in zip(element_product_vec, isotope_product_vec, element_residual_vec, isotope_residual_vec)
+    element_pair_vecs = Vector{Vector}(undef, length(element_product_vec))
+    proportion_pair_vecs = Vector{Vector}(undef, length(element_product_vec))
+    element_isotope_pair = map(keys(first(isotope_residual_vec))) do x 
+        parent_element(x) => x
+    end |> collect
+    sort!(element_isotope_pair; by = x -> elements_abundunce()[last(x)], rev = true)
+    common_node = map(x -> -1, first(isotope_residual_vec))
+    for (i, element_product, isotope_product, element_residual, isotope_residual) in zip(eachindex(element_product_vec), element_product_vec, isotope_product_vec, element_residual_vec, isotope_residual_vec)
         proportion = initial_proportion(element_product, isotope_product, element_residual, isotope_residual)
-        element_pair_vec, proportion_pair_vec = rec_moveisotopes!([gain_elements(element_product, isotope_product)], [proportion], element_product, isotope_product, element_residual, isotope_residual, element_isotope_pair, 1, proportion)
-        for (element_pairi, proportion_pairi) in zip(element_pair_vec, proportion_pair_vec) 
-            any(==(element_pairi), element_pair) && continue
-            push!(element_pair, element_pairi)
-            push!(proportion_pair, proportion_pairi)
+        element_pair_vec, proportion_pair_vec = rec_moveisotopes!([gain_elements(element_product, isotope_product)], [proportion], element_product, isotope_product, element_residual, isotope_residual, element_isotope_pair, 1, proportion, threshold, common_node)
+        for (k, v) in pairs(common_node)
+            common_node[k] = max(v, get(isotope_residual, k, 0))
         end
+        element_pair_vecs[i] = element_pair_vec
+        proportion_pair_vecs[i] = proportion_pair_vec
     end
+    element_pair = vcat(element_pair_vecs...)
+    proportion_pair = vcat(proportion_pair_vecs...)
     mass_pair = map(mmi, element_pair) .+ msfix
     id = sortperm(mass_pair)
     element_pair = element_pair[id]
@@ -790,13 +845,13 @@ function isotopes_proportion(element_precursor_dictionary::Dictionary, element_p
 end
 
 function distribute_isotopes!(element_precursor_dictionary::Dictionary, element_product_dictionary::Dictionary, isotope_product_dictionary::Dictionary, element_residual_dictionary::Dictionary, isotope_residual_dictionary::Dictionary)
-    elements = unique(map(e -> get(elements_parents(), e, e), collect(keys(element_precursor_dictionary))))
+    elements = unique(map(parent_element, collect(keys(element_precursor_dictionary))))
     element_product_vec = [element_product_dictionary]
     isotope_product_vec = [isotope_product_dictionary]
     element_residual_vec = [element_residual_dictionary]
     isotope_residual_vec = [isotope_residual_dictionary]
     for e in elements
-        isotopes = filter(i -> i != e && get(element_precursor_dictionary, i, 0) > 0, elements_isotopes()[e])
+        isotopes = reverse(filter(i -> i != e && get(element_precursor_dictionary, i, 0) > 0, elements_isotopes()[e]))
         nisotopes_vec = map(x -> element_precursor_dictionary[x], isotopes)
         nisotopes_total = sum(nisotopes_vec)
         if get(last(element_residual_vec), e, 0) >= nisotopes_total 
@@ -894,28 +949,52 @@ function initial_proportion(element_product::Dictionary, isotope_product::Dictio
     p
 end
 
-function rec_moveisotopes!(element_vec::Vector, abundance_vec::Vector, element_product_dictionary::Dictionary, isotope_product_dictionary::Dictionary, element_residual_dictionary::Dictionary, isotope_residual_dictionary::Dictionary, element_isotope_pair::Vector, isotope_position::Int, prev_proportion)
+function rec_moveisotopes!(
+        element_vec::Vector, 
+        abundance_vec::Vector, 
+        element_product_dictionary::Dictionary, 
+        isotope_product_dictionary::Dictionary, 
+        element_residual_dictionary::Dictionary, 
+        isotope_residual_dictionary::Dictionary, 
+        element_isotope_pair::Vector, 
+        isotope_position::Int, 
+        prev_proportion,
+        threshold,
+        common_node
+    )
     new_isotope_position = -1
     for (e, i) in @views element_isotope_pair[isotope_position:end]
         np = get(element_product_dictionary, e, 0)
         nr = get(isotope_residual_dictionary, i, 0)
         new_isotope_position += 1
         if np > 0 && nr > 0
+            new_isotope_residual_dictionary = copy(isotope_residual_dictionary)
+            new_isotope_residual_dictionary[i] -= 1
+            prune = true
+            for (k, v) in pairs(common_node)
+                if get(new_isotope_residual_dictionary, k, 0) > v
+                    prune = false
+                    break
+                end
+            end
+            prune && continue
             new_element_product_dictionary = copy(element_product_dictionary)
             new_isotope_product_dictionary = copy(isotope_product_dictionary)
             new_element_residual_dictionary = copy(element_residual_dictionary)
-            new_isotope_residual_dictionary = copy(isotope_residual_dictionary)
             new_element_product_dictionary[e] -= 1
-            new_isotope_residual_dictionary[i] -= 1
             get!(new_isotope_product_dictionary, i, 0)
             get!(new_element_residual_dictionary, e, 0)
             proportion = update_proportion(prev_proportion, element_product_dictionary[e], new_isotope_product_dictionary[i], 1)
             proportion = update_proportion(proportion, isotope_residual_dictionary[i], new_element_residual_dictionary[e], 1)
             new_isotope_product_dictionary[i] += 1
             new_element_residual_dictionary[e] += 1
-            push!(element_vec, gain_elements(new_element_product_dictionary, new_isotope_product_dictionary))
-            push!(abundance_vec, proportion)
-            rec_moveisotopes!(element_vec, abundance_vec, new_element_product_dictionary, new_isotope_product_dictionary, new_element_residual_dictionary, new_isotope_residual_dictionary, element_isotope_pair, isotope_position + new_isotope_position, proportion)
+            if proportion >= threshold  
+                push!(element_vec, gain_elements(new_element_product_dictionary, new_isotope_product_dictionary))
+                push!(abundance_vec, proportion)
+            end
+            if proportion >= threshold || proportion >= prev_proportion
+                rec_moveisotopes!(element_vec, abundance_vec, new_element_product_dictionary, new_isotope_product_dictionary, new_element_residual_dictionary, new_isotope_residual_dictionary, element_isotope_pair, isotope_position + new_isotope_position, proportion, threshold, common_node)
+            end
         end
     end
     element_vec, abundance_vec

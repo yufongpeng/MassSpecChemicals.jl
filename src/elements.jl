@@ -135,7 +135,7 @@ const PARENTS = Dict(
     "[13C]"     => "C",
     # "[14C]"   => "C",
     "H"         => "H",
-    "[1H]"       => "H",
+    "[1H]"      => "H",
     "D"         => "H",
     "[2H]"      => "H",
     "O"         => "O",
@@ -347,3 +347,14 @@ function set_element!(element::AbstractString, mass, abundance; minor_name = not
 end
 
 const ME = 0.00054857990924u"g"
+
+parent_element(x::AbstractString) = get(elements_parents(), x, "")
+
+function major_isotope(x::AbstractString) 
+    first(get(elements_isotopes(), parent_element(x), [""]))
+end
+
+function minor_isotope(x::AbstractString, i::Int = 1)
+    x = get(elements_isotopes(), parent_element(x), [""])
+    i < lastindex(x) ? x[i + 1] : "" 
+end

@@ -134,8 +134,8 @@ end
 @deprecate TargetIon Isolation 
 
 """
-    SelectedIonMonitor(transitiontable, mztable; threshold = rcrit(1e-4)) -> Table
-    SelectedIonMonitor(transitiontable, spectrum; threshold = rcrit(1e-4)) -> Table
+    SelectedIonMonitor(transitiontable, mztable; threading = nothing, threshold = rcrit(1e-4)) -> Table
+    SelectedIonMonitor(transitiontable, spectrum; threading = nothing, threshold = rcrit(1e-4)) -> Table
 
 Selected ion monitoring. 
 
@@ -146,8 +146,9 @@ Selected ion monitoring.
     * `MZ1`
 * `spectrum::Spectrum`: `spectrum.table` is utilized as `mztable`.
 * `threshold` can be a number or criteria (absolute and/or relative to maximum), representing the lower limit of abundance. 
+* `threading`: force to use multiple threads (`true`) or single thread (`false`); `nothing` lets the program determine. 
 """
-function SelectedIonMonitor(transitiontable::Table, mztable::Table; threshold = rcrit(1e-4)) 
+function SelectedIonMonitor(transitiontable::Table, mztable::Table; threading = nothing, threshold = rcrit(1e-4)) 
     isempty(mztable) && return transitiontable
     sp = string.(propertynames(mztable))
     colmz = lastcolnum(sp, "MZ")
@@ -155,12 +156,12 @@ function SelectedIonMonitor(transitiontable::Table, mztable::Table; threshold = 
     colab = lastcolnum(sp, "Abundance")
     colab == :Abundance1 || throw(ArgumentError("Require only single Abundance column `Abundance1."))
     transitions = Table(transitiontable; Transition = nothing)
-    tables = _SelectedIonMonitor(columns(transitions), mztable, colmz, colab, threshold)
+    tables = _SelectedIonMonitor(columns(transitions), mztable, colmz, colab, threshold, threading)
     Table(transitiontable; MZTable = tables)
 end
 SelectedIonMonitor(transitiontable::Table, spec::Spectrum; threshold = rcrit(1e-4)) = SelectedIonMonitor(transitiontable, spec.table; threshold)
 
-function _SelectedIonMonitor(transitions, mztable::Table, colmz::Symbol, colab::Symbol, threshold)
+function _SelectedIonMonitor(transitions, mztable::Table, colmz::Symbol, colab::Symbol, threshold, threading)
     length(transitions) % 2 < 1 && throw(ArgumentError("Transitions must have 'analysis-fragmentation-analysis...` pattern."))
     isolation = true 
     mztable = repeat([mztable], length(first(transitions)))
@@ -168,7 +169,7 @@ function _SelectedIonMonitor(transitions, mztable::Table, colmz::Symbol, colab::
         if isolation
             mztable = [_Isolation(trans, mzt, colmz, colab, threshold) for (trans, mzt) in zip(transition, mztable)]
         else
-            mztable = [Fragmentation(trans, mzt; threshold) for (trans, mzt) in zip(transition, mztable)]
+            mztable = [Fragmentation(trans, mzt; threading, threshold) for (trans, mzt) in zip(transition, mztable)]
             colmz = Symbol(string("MZ", parse(Int, string(match(r"\d+", string(colmz)).match)) + 1))
             colab = Symbol(string("Abundance", parse(Int, string(match(r"\d+", string(colab)).match)) + 1))
         end
@@ -234,20 +235,9 @@ function Fragmentation(producttable::Table, mztable::Table; threading = nothing,
     gmztable = group(getproperty(:ID), mztable)
     rn = min(length(gmztable), Threads.nthreads())
     if isnothing(threading)
-        threading = mean(mmi ∘ first ∘ getproperty(:Chemical), gmztable) ^ (msstage(first(mztable.Chemical))) * sqrt(-log2(min(1, minimum(makecrit_value(crit(threshold), 1))))) * (rn - 1) > 100000
+        threading = (mean(mmi ∘ first ∘ getproperty(:Chemical), gmztable)) ^ (msstage(first(mztable.Chemical))) * sqrt(-log2(min(1, minimum(makecrit_value(crit(threshold), 1))))) * (rn - 1) > 100000
     end
     if threading
-        vcat(map(gmztable) do precursor_table 
-            pid = findfirst(==(first(precursor_table.ID)), id)
-            TandemIsotopologues(chemicalparent(first(precursor_table.Chemical)); 
-                threshold,
-                precursor_table,
-                product = producttable.Product[pid],
-                proportion = producttable.Proportion[pid],
-                transmission = sum(producttable.Proportion[pid])
-                )
-        end...)
-    else
         t = Vector{Table}(undef, length(gmztable))
         ks = collect(keys(gmztable))
         Threads.@threads for i in eachindex(t)
@@ -264,6 +254,17 @@ function Fragmentation(producttable::Table, mztable::Table; threading = nothing,
         Table(; (map(propertynames(t[1])) do p
             p => ChainedVector(getproperty.(t, p))
         end)...)
+    else
+        vcat(map(gmztable) do precursor_table 
+            pid = findfirst(==(first(precursor_table.ID)), id)
+            TandemIsotopologues(chemicalparent(first(precursor_table.Chemical)); 
+                threshold,
+                precursor_table,
+                product = producttable.Product[pid],
+                proportion = producttable.Proportion[pid],
+                transmission = sum(producttable.Proportion[pid])
+                )
+        end...)
     end
 end
 Fragmentation(producttable::Table, spec::Spectrum; threshold = rcrit(1e-4)) = Fragmentation(producttable, spec.table; threshold)
@@ -330,8 +331,8 @@ function peak_table(transitiontable::Table; groupedisotopomers = true, isotope =
         if groupedisotopomers
             (; Chemical = isobar, [c => mean(getproperty(mztable, c), weights(getproperty(mztable, d))) for (c, d) in zip(colmz, colab)]..., [c => sum(getproperty(mztable, c)) for c in colab]...)
         else
-            uid = [[findfirst(x -> x == t, c) for t in unique(c)] for c in zip(transitions...)]
-            (; Chemical = isobar, [c => mean(getproperty(mztable, c)[i], weights(getproperty(mztable, d)[i])) for (i, c, d) in zip(uid, colmz, colab)]..., [c => sum(getproperty(mztable, c)[i]) for (i, c) in zip(uid, colab)]...)
+            gid, gt = unique_group_mz_ab(mztable, transitions, colmz, colab)
+            (; Chemical = isobar, first(gt)...)
         end
     end
     if :Transition in propertynames(transitiontable)

@@ -358,7 +358,7 @@ The parent chemical without delocalized isotopes replacement.
 
 # Specific Methods
 * Entity Level
-*`ChemicalTransition`: `ChemicalTransition` of parent chemicals of each transition
+* `ChemicalTransition`: `ChemicalTransition` of parent chemicals of each transition
 """
 chemicalparent(cc::AbstractChemical; kwargs...) = cc
 
