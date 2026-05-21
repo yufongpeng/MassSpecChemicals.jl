@@ -92,10 +92,9 @@ dictionary_elements(elements::Dictionary) = elements
     gain_elements(elements::Vector{<: Pair}, y...) -> Vector{<: Pair}
     gain_elements(elements::Dictionary, y...) -> Dictionary
 
-Add elements in `y` to deepcopied `elements`.
+Add elements in `y` to copied `elements`.
 """
-gain_elements(elements, y...) = gain_elements!(deepcopy(elements), y...)
-gain_elements(elements::Vector, y...) = vcat(elements, y...)
+gain_elements(elements, y...) = gain_elements!(copy(elements), y...)
 
 """
     gain_elements!(elements::Vector{<: Pair}, y...) -> Vector{<: Pair}
@@ -137,9 +136,9 @@ end
     loss_elements(elements::Vector{<: Pair}, y...) -> Vector{<: Pair}
     loss_elements(elements::Dictionary, y...) -> Dictionary
 
-Substract elements in `y` from deepcopied `elements`.
+Substract elements in `y` from copied `elements`.
 """
-loss_elements(elements, y...) = loss_elements!(deepcopy(elements), y...)
+loss_elements(elements, y...) = loss_elements!(copy(elements), y...)
 
 """
     loss_elements!(elements::Vector{<: Pair}, y...) -> Vector{<: Pair}

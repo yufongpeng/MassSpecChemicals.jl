@@ -36,6 +36,17 @@ end
 
 mmi(elements::Dictionary, net_charge = 0) = mmi(pairs(elements), net_charge)
 
+deltammi(elements::Dictionary, net_charge = 0) = deltammi(pairs(elements), net_charge)
+function deltammi(elements::Union{<: Vector{<: Pair}, <: Dictionaries.PairDictionary}, net_charge = 0)
+    weight = 0.0u"g"
+    for (el, n) in elements
+        weight += elements_mass()[string(el)] * n
+        weight -= elements_mass()[parent_element(string(el))] * n
+    end
+    weight -= net_charge * ME
+    ustrip(weight)
+end
+
 function mmi(formula::AbstractString, net_charge = 0)
     # if any prefix number
     n = match(r"^[0-9]+", formula)

@@ -309,11 +309,11 @@ There are three related functions
 
 * `Isotopologues`
 
-    This function computes isotopologues of formula, single chemical, MS/MS precursor-product pairs (formula pairs or `ChemicalPair`) or multiple chemicals. Only isotopic abundance of parent elements are considered, and isotopes are viewed as intentionally labeled elements. Isotopologues can be filtered by abundance threshold. MS/MS product can be neutral loss or chemical loss. 
+    This function computes isotopologues of formula, single chemical, MS/MS precursor-product pairs (formula pairs or `ChemimcalTransition`) or multiple chemicals. Only isotopic abundance of parent elements are considered, and isotopes are viewed as intentionally labeled elements. Isotopologues can be filtered by abundance threshold. MS/MS product can be neutral loss/gain or chemical loss/gain. 
 
 * `TandemIsotopologues`
 
-    This function is similar to `Isotopologues`; it computes isotopologues of given precursor(s) and additionally computes the abundance of fragments with given fragmentation patterns. 
+    This function is similar to `Isotopologues`; it computes isotopologues of given precursor(s) and additionally computes the abundance of fragments with given fragmentation patterns. The key difference is that this function is recursive and abundance is calculated from the begining. It generally performs slightly slower for multiple MS stages and abundance is normalized in the first stage and filtered in all stages.
 
 Isotopologues table can be aggregated using `group_isotopologues`.
 ## Mass Spectrometer 
@@ -339,6 +339,11 @@ The function `CoelutingIsobars` creates an object `CoelutingIsobars` with a vect
 This object can be further aggregated using `isobar_table`.
 
 ## Other Functions
+* `parent_element`: return parent element.
+* `major_isotope`: return major isotope.
+* `minor_isotope`: return minor isotope.
+* `iselement`: whether it is an element.
+* `isisotope`: whether it is an isotope (including element).
 * `ischemicalequal`: whether two chemicals are chemically equivalent.
 * `ischemicalequaltransform`: return an object for comparison with other chemicals by `istransformedadduct`.
 * `istransformedchemicalequal`: whether two chemicals are chemically equivalent after applying `istransformedchemicalequal`.

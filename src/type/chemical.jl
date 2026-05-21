@@ -141,9 +141,9 @@ end
 
 function Isotopomers(parent::AbstractChemical, fullelements::Dictionary)
     dp = dictionary_elements(chemicalelements(parent))
-    dr = deepcopy(fullelements)
+    dr = copy(fullelements)
     for k in keys(fullelements)
-        haskey(elements_isotopes(), k) && (delete!(dr, k); continue)
+        iselement(k) && (delete!(dr, k); continue)
         dr[k] -= get(dp, k, 0) 
     end
     Isotopomers(parent, [k => v for (k, v) in pairs(dr)])

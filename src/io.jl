@@ -60,9 +60,10 @@ function parse_chemical(adductionparser::AdductIonParser, name::AbstractString; 
         n, f, c = m 
         isnothing(c) && (charge = 0) 
     end
-    n = isempty(n) ? 0 : parse(Int, n)
+    n = isempty(n) ? 1 : parse(Int, n)
     if isnothing(c) && abs(charge) == 0 
-        parse_chemical(adductionparser.chemicalparser, string(n, f); charge, kwargs...)
+        nm = n > 1 ? n : ""
+        parse_chemical(adductionparser.chemicalparser, string(nm, f); charge, kwargs...)
     elseif isnothing(c)
         nm = n > 1 ? n : ""
         lm = abs(charge) > 1 ? abs(charge) : ""

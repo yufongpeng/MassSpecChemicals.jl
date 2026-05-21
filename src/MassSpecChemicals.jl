@@ -57,6 +57,9 @@ export
     # Setter 
     set_adduct!, set_addabbr!, set_element!, 
 
+    # Elements 
+    parent_element, major_isotope, minor_isotope, iselement, isisotope, 
+
     # Parser
     parse_chemical, parse_adduct, 
     ChemicalParser, FormulaChemicalParser, AdductIonParser, AdductParser, ChemicalGainLossParser, ChemicalTransitionParser, 
@@ -153,6 +156,7 @@ include("elements.jl")
 include("adduct.jl")
 include("formula_elements.jl")
 include("measure.jl")
+include("isotopologues_internal.jl")
 include("isotopologues.jl")
 include("spectrum.jl")
 include("isobars.jl")
