@@ -15,18 +15,11 @@ function serieschemicaldata(input_chemical)
     v
 end
 
-function chain_chemicals_isotopes(transitions::Vector{<: AbstractChemical}, els::Vector{<: Vector{<: Dictionary}})
+function chain_chemicals_isotopes(transitions::Vector{<: AbstractChemicalsSchema}, els::Vector{<: Vector{<: Dictionary}})
     @inbounds map(els) do el
         ChemicalTransition(map(enumerate(transitions)) do (i, trans)
-            if trans isa ChemicalLoss
-                i == firstindex(transitions) && throw(ArgumentError("`ChemicalLoss` cannot be input chemical."))
-                ChemicalLoss(Isotopomers(trans.chemical, collect(pairs(loss_elements(el[i - 1], el[i])))))
-            elseif trans isa ChemicalGain
-                i == firstindex(transitions) && throw(ArgumentError("`ChemicalGain` cannot be input chemical."))
-                ChemicalGain(Isotopomers(trans.chemical, collect(pairs(el[i]))))
-            else
-                Isotopomers(trans, collect(pairs(el[i])))
-            end
+            (islossscheme(trans) || isgainscheme(trans)) && i == firstindex(transitions) && throw(ArgumentError("$(tyoeof(trans)) cannot be input chemical."))
+            islossscheme(trans) ? isotopomerize(trans, collect(pairs(loss_elements(el[i - 1], el[i])))) : isotopomerize(trans, el[i])
         end
         )
     end
@@ -215,8 +208,7 @@ function swap_elements(product, residual, swap)
     product2 = copy(product)
     for x in union(keys(product), keys(residual))
         if parent_element(x) in swap
-            get!(product2, x ,0)
-            product2[x] += get(residual, x, 0)
+            set!(product2, x, get(residual, x, 0))
         end
     end
     product2
@@ -301,7 +293,7 @@ end
 
 # ==========================================================================================================================
 # Mid level MS2
-function isotopologues_elements_ms2(it1, element_product, element_residual, abundance, abtype, threshold; gain = false, normalize = true, table = true)
+function isotopologues_elements_ms2(it1, element_product, element_residual, abundance, abtype, threshold; gain = false, loss = false, normalize = true, table = true)
     if isempty(element_product)
         data = map(it1) do r 
             (; Element = [element_product], 
@@ -334,7 +326,8 @@ function isotopologues_elements_ms2(it1, element_product, element_residual, abun
             mass_product_is = map(mmi, element_product_is) 
             proportion_product_is .*= r.Abundance
             id = sortperm(mass_product_is)
-            (; Element = element_product_is[id], 
+            el = map(get_isotope_vec, @view element_product_is[id])
+            (; Element = loss ? [collect(pairs(loss_elements(r.Element, x))) for x in el] : el, 
             Mass = mass_product_is[id], 
             Abundance = proportion_product_is[id])
         end
@@ -348,7 +341,7 @@ function isotopologues_elements_ms2(it1, element_product, element_residual, abun
     abundance_cutoff = isempty(abundance_pair_normalize) ? 0 : minimum(makecrit_value(crit(threshold), maximum(abundance_pair_normalize)))
     id = findall(>=(abundance_cutoff), abundance_pair_normalize)
     id_pair = id_pair[id]
-    element_product = map(get_isotope_vec, @view element_product[id])
+    element_product = element_product[id]
     mass_product = mass_product[id]
     mass_product .+= msfix
     abundance_pair = normalize ? abundance_pair_normalize[id] : abundance_pair[id]

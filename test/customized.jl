@@ -33,7 +33,7 @@ function repr_isotope(nD, n13C)
 end
 
 chemicalname(m::T; kwargs...) where {T <: Hexose} = string(m.chirality, "-", string(T), repr_isotope(m))
-function chemicalelements(m::Hexose; kwargs...) 
+chemicalelements(m::Hexose; kwargs...) = 
     [
         "C"     => 6 - m.n13C,
         "[13C]" => m.n13C,
@@ -41,7 +41,6 @@ function chemicalelements(m::Hexose; kwargs...)
         "D"     => m.nD,
         "O"     => 6
     ]
-end
 # function getchemicalattr(m::Hexose, ::Val{:formula}) 
 #     nd = m.nD 
 #     n13c = m.n13C
@@ -129,33 +128,70 @@ chemicaln13C(m::DiacylPS; kwargs...) = +(m.headgroup[2], chemicaln13C(m.fa1; kwa
 chemicalncb(m::DiacylPS; kwargs...) = chemicalncb(m.fa1; kwargs...) + chemicalncb(m.fa2; kwargs...)
 chemicalndb(m::DiacylPS; kwargs...) = chemicalndb(m.fa1; kwargs...) + chemicalndb(m.fa2; kwargs...)
 
-# Interface AbstractAdduct
-struct DeSerine <: AbstractAdduct end
-set_adduct!("[M-Ser]-", DeSerine())
-adductelements(::DeSerine) = ["C" => -3, "H" => -6, "N" => -1, "O" => -2]
-adductformula(::DeSerine) = "-Ser"
-kmer(::DeSerine) = 1
-charge(::DeSerine) = -1
+# Interface AbstractScheme
+struct LossSerine <: AbstractStructuralScheme end
+struct LossProtonSerine <: AbstractStructuralScheme end
+struct Serine{T} <: AbstractChemicalWrapper{T} 
+    chemical::T 
+end
+function Serine(; nD = 0, n13C = 0) 
+    nD == 0 && n13C == 0 && return Serine(Chemical("Serine", "C3H5NO2"; abbreviation = "Ser"))
+    @assert 0 <= n13C < 4
+    nC = 3 - n13C 
+    reprC = nC > 1 ? string("C", nC) : nC > 0 ? "C" : ""
+    repr13C = n13C > 1 ? string("[13C]", n13C) : n13C > 0 ? "[13C]" : ""
+    @assert 0 <= nD < 5
+    nH = 5 - nD 
+    reprH = nH > 1 ? string("H", nH) : nH > 0 ? "H" : ""
+    reprD = nD > 1 ? string("D", nD) : nH > 0 ? "D" : ""
+    nD == 0 && return Serine(Chemical("Serine[13C$(n13C > 1 ? n13C : "")]", "$(reprC)$(repr13C)H5NO2"; abbreviation = "Ser[13C$(n13C > 1 ? n13C : "")]"))
+    n13C == 0 && return Serine(Chemical("Serine[D$(nD > 1 ? nD : ""))]", "C3$(reprH)$(reprD)NO2"; abbreviation = "Ser[D$(nD > 1 ? nD : ""))]"))
+    Serine(Chemical("Serine[D$(nD > 1 ? nD : ""),13C$(n13C > 1 ? n13C : "")]", "$(reprC)$(repr13C)$(reprH)$(reprD)NO2"; abbreviation = "Ser[D$(nD > 1 ? nD : ""),13C$(n13C > 1 ? n13C : "")]"))
+end
+set_scheme!("[-H-Ser]-", LossProtonSerine())
+set_scheme!("[-Ser-H]-", LossProtonSerine())
+set_schabbr!("Ser", Serine())
 
-struct Halfprotonation <: AbstractAdduct end
-set_adduct!("[2M+H]+", Halfprotonation())
-adductelements(::Halfprotonation) = ["H" => 1]
-adductformula(::Halfprotonation) = "+H"
-kmer(::Halfprotonation) = 2
-charge(::Halfprotonation) = 1
+const SES = StructuralElementalScheme
 
-# Interface AbstractIon
-adductisotopes(ion::AdductIon{DiacylPS, DeSerine}) = ["H" => ioncore(ion).headgroup[1], "D" => -ioncore(ion).headgroup[1], "C" => ioncore(ion).headgroup[2], "[13C]" => -ioncore(ion).headgroup[2]]
+completescheme(precursor::DiacylPS, product::LossSerine) = SES(product, ChemicalLoss(Serine(; nD = first(precursor.headgroup), n13C = last(precursor.headgroup))))
+completescheme(precursor::AdductIon{<:DiacylPS, <:SES{<:ElementalScheme{false, <:Proton}}}, product::LossSerine) = SES(product, ChemicalLoss(Serine(; nD = first(ioncore(precursor).headgroup), n13C = last(ioncore(precursor).headgroup))))
+completescheme(precursor::DiacylPS, product::LossProtonSerine) = SES(product, ChemicalLoss(AdductIon(Serine(; nD = first(precursor.headgroup), n13C = last(precursor.headgroup)), ChemicalGain(Proton()))))
+
+adductionscheme(precursor::AdductIon{<:DiacylPS, <:SES{<:ElementalScheme{false, <:Proton}}}, product::SES{LossSerine}) = completescheme(ioncore(precursor), LossProtonSerine())
+adductionscheme(precursor::AdductIon{<:DiacylPS, <:SES{LossSerine}}, product::SES{<:ElementalScheme{false, <:Proton}}) = completescheme(ioncore(precursor), LossProtonSerine())
+
+chemicalname(::LossSerine; n = 1, loss = false, delim = "", kwargs...) = string(delim, loss ? "Gain_" : "Loss_", n > 1 ? n : "", "Serine")
+chemicalname(::LossProtonSerine; n = 1, loss = false, delim = "", kwargs...) = string(delim, loss ? "Gain_" : "Loss_", n > 1 ? n : "", "[Serine+H]+")
+chemicalabbr(::LossSerine; n = 1, loss = false, delim = "", kwargs...) = string(delim, loss ? "+" : "-", n > 1 ? n : "", "Ser")
+chemicalabbr(::LossProtonSerine; n = 1, loss = false, delim = "", kwargs...) = string(delim, loss ? "+" : "-", n > 1 ? n : "", "[Ser+H]+")
+
+struct SN1Acyl <: AbstractStructuralScheme end
+struct SN2Acyl <: AbstractStructuralScheme end
+completescheme(precursor::AdductIon{<:DiacylPS, <:SES{<:ElementalScheme{false, <:Proton}}}, product::SN1Acyl) = SES(product, AdductIon(ioncore(precursor).fa1, ChemicalLoss(Proton())))
+completescheme(precursor::AdductIon{<:DiacylPS, <:SES{<:ElementalScheme{false, <:Proton}}}, product::SN2Acyl) = SES(product, AdductIon(ioncore(precursor).fa2, ChemicalLoss(Proton())))
+completescheme(precursor::AdductIon{<:DiacylPS, <:SES{LossProtonSerine}}, product::SN1Acyl) = SES(product, AdductIon(ioncore(precursor).fa1, ChemicalLoss(Proton())))
+completescheme(precursor::AdductIon{<:DiacylPS, <:SES{LossProtonSerine}}, product::SN2Acyl) = SES(product, AdductIon(ioncore(precursor).fa2, ChemicalLoss(Proton())))
+
+chemicalname(::SN1Acyl; n = 1, kwargs...) = string(n > 1 ? n : "", "Sn1_Acyl")
+chemicalname(::SN2Acyl; n = 1, kwargs...) = string(n > 1 ? n : "", "Sn2_Acyl")
+chemicalabbr(::SN1Acyl; n = 1, kwargs...) = string(n > 1 ? n : "", "Sn1")
+chemicalabbr(::SN2Acyl; n = 1, kwargs...) = string(n > 1 ? n : "", "Sn2")
 
 glc = Glucose("D", 0, 0, 1.5)
 gld = Glucose("D", 6, 0, 1.5)
 ps = DiacylPS((0, 0), FattyAcid(18, 0, 0, 0), FattyAcid(20, 4, 0, 0), 7.8)
 psi1 = DiacylPS((3, 3), FattyAcid(18, 0, 0, 0), FattyAcid(20, 4, 0, 0), 7.8)
 psi2 = DiacylPS((0, 0), FattyAcid(18, 0, 5, 0), FattyAcid(20, 4, 0, 0), 7.8)
-iglc = [AdductIon(glc, Protonation())]
+iglc = [AdductIon(glc, "[M+H]+")]
 igld = [AdductIon(gld, "[M+H]+")]
-ips = [AdductIon(ps, "[M-Ser]-"), AdductIon(ps, "[2M+H]+")]
-ipsi1 = [AdductIon(psi1, "[M-Ser]-"), AdductIon(psi1, "[2M+H]+")]
-ipsi2 = [AdductIon(psi2, "[M-Ser]-"), AdductIon(psi2, "[2M+H]+")]
+ips = [AdductIon(ps, "[M-H-Ser]-"), AdductIon(ps, "[2M+H]+"), AdductIon(ps, "[M-H]-")]
+ipsi1 = [AdductIon(psi1, "[M-H-Ser]-"), AdductIon(psi1, "[2M+H]+"), AdductIon(psi1, "[M-H]-")]
+ipsi2 = [AdductIon(psi2, "[M-H-Ser]-"), AdductIon(psi1, "[2M+H]+"), AdductIon(psi2, "[M-H]-")]
+sp1 = ChemicalSeries(ipsi1[1], SN2Acyl())
+sp2 = ChemicalSeries(ipsi1[3] => LossSerine() => SN2Acyl())
+sp3 = ChemicalSeries(ipsi2[1], SN1Acyl())
+sp4 = ChemicalSeries(ipsi2[3] => LossSerine() => SN1Acyl())
+sp5 = ChemicalSeries(isotopomerize(ipsi1[1], ["[13C]" => 5]) => isotopomerize(completescheme(ipsi1[1], outputchemical(sp1)), ["[13C]" => 5]))
 it3 = Isotopologues(ipsi2[1]; abtype = :total, threshold = crit(1e-3, 1e-3))
 git3 = group_isotopologues(it3)

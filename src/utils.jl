@@ -154,47 +154,68 @@ makecrit_delta(c::Criteria, x) = (zero_center_interval(c.aval) + x, zero_center_
 makecrit_delta(c::Criteria{Missing}, x) = (zero_center_interval(c.rval * x) + x, )
 makecrit_delta(c::Criteria{A, Missing}, x) where A = (zero_center_interval(c.aval) + x, )
 
+_convert(::Type{T}, x::S) where {T, S} = T(x)
+_convert(::Type{T}, x::T) where T = x
+_convert(::Type{T}, x::Tuple) where T = T.(x)
+_convert(::Type{T}, x::NTuple{N, S}) where {T, N, S} = T.(x)
+_convert(::Type{T}, x::AbstractVector{S}) where {T, S} = T.(x)
+_convert(::Type{T}, x::NTuple{N, T}) where {T, N} = x
+_convert(::Type{T}, x::AbstractVector{T}) where T = x
+function _vec_macth(regex, p) 
+    if eltype(p) <: AbstractString 
+        map(p) do x 
+            m = match(regex, x)
+            isnothing(m) ? 0 : parse(Int, first(m.captures))
+        end
+    else
+        map(p) do x 
+            m = match(regex, string(x))
+            isnothing(m) ? 0 : parse(Int, first(m.captures))
+        end
+    end
+end
+
 """
-    lastcolnum(ptnames, col; error = true, init = nothing)
+    lastcolnum([output::Type,] ptnames, col; error = true, init = nothing)
 
 Return the last element from `ptnames` such that it starts with `col` and is followed by a number. 
 """
-function lastcolnum(p, col; error = true, init = nothing)
+lastcolnum(p, col; error = true, init = nothing) = lastcolnum(Symbol, p, col; error, init)
+function lastcolnum(::Type{T}, p, col; error = true, init = nothing) where T
     regex = Regex(string("^", col, "(\\d+\$)"))
-    imatch = map(x -> match(regex, x), p)
-    istage = [isnothing(x) ? 0 : parse(Int, x.captures[1]) for x in imatch]
+    istage = _vec_macth(regex, p)
     stage, icol = findmax(istage)
     stage == 0 && (error ? throw(ArgumentError("No column `$(string(col))...` in table.")) : return init)
-    Symbol(p[icol])
+    _convert(T, p[icol])
 end
 
 """
-    ithcolnum(ptnames, col, i::Int; error = true, init = nothing)
+    ithcolnum([output::Type,] ptnames, col, i::Int; error = true, init = nothing)
 
 Return element from `ptnames` such that it starts with `col` and is followed by the number `i`. 
 """
-function ithcolnum(p, col, i::Int; error = true, init = nothing)
+ithcolnum(p, col, i::Int; error = true, init = nothing) = ithcolnum(Symbol, p, col, i; error, init)
+function ithcolnum(::Type{T}, p, col, i::Int; error = true, init = nothing) where T
     regex = Regex(string("^", col, "(\\d+\$)"))
-    imatch = map(x -> match(regex, x), p)
-    istage = [isnothing(x) ? 0 : parse(Int, x.captures[1]) for x in imatch]
+    istage = _vec_macth(regex, p)
     icol = findfirst(==(i), istage)
     isnothing(icol) && (error ? throw(ArgumentError("No column `$(string(col))$i` in table.")) : return init)
-    Symbol(p[icol])
+    _convert(T, p[icol])
 end
 
 """
-    allcolnum(ptnames, col; error = true, init = [])
+    allcolnum([output::Type,] ptnames, col; error = true, init = [])
 
 Return all elements from `ptnames` such that they start with `col` and is followed by a number. 
 """
-function allcolnum(p, col; error = true, init = [])
+allcolnum(p, col; error = true, init = []) = allcolnum(Symbol, p, col; error, init)
+function allcolnum(::Type{T}, p, col; error = true, init = []) where T
     regex = Regex(string("^", col, "(\\d+\$)"))
-    imatch = map(x -> match(regex, x), p)
-    istage = [isnothing(x) ? 0 : parse(Int, x.captures[1]) for x in imatch]
+    istage = _vec_macth(regex, p)
     icol = findall(>(0), istage)
     isempty(icol) && (error ? throw(ArgumentError("No column `$(string(col))...` in table.")) : return init)
-    id = sortperm(istage[icol])
-    Symbol.(p[icol][id])
+    id = sortperm(collect(istage[icol]))
+    _convert(T, p[icol][id])
 end
 
 abtypeop(::Val{:max}) = maximum
@@ -237,6 +258,6 @@ tuplize(x::Tuple) = x
 tuplize(x) = (x, )
 vectorize(x::AbstractDictionary) = x
 vectorize(x::AbstractVector) = x
-vectorize(x::AbstractVector, n::Int) = n == lastindex(x) ? x : n > lastindex(x) ? vcat(x, repeat([last(x)], n - lastindex(x))) : x[begin:begin + n - 1]
+# vectorize(x::AbstractVector, n::Int) = n == lastindex(x) ? x : n > lastindex(x) ? vcat(x, repeat([last(x)], n - lastindex(x))) : x[begin:begin + n - 1]
 vectorize(x) = [x]
 vectorize(x, n) = repeat([x], n)

@@ -1,4 +1,71 @@
 """
+    Ionization(chemicaltable::Table; adduction = AdductIon, threading = nothing, chemicalparser = ChemicalExpressionParser(), adductparser = AdductParser(), threshold = rcrit(1e-4), kwargs...) -> Table
+
+Ionization of `chemicaltable.Chemical`. The returned table contains isotopologues of adduct ions and can be further processed by other spectrum related function such as `MSScan`, `Isolation`, etc. 
+
+# Keyword Arguments
+* `adduction`: constructor for adduct ion. 
+* `chemicalparser::AbstractChemicalParser`: parser for `string` chemical input. The default parser is `ChemicalTransitionParser(ChemicalExpressionParser())`.
+* `adductparser::AbstractAdductParser`: parser for `string` adduct input. The default parser is `AdductParser()`.
+* `adduct`: adducts being parsed by `adductparser`. The parsed adduct is a named tuple and used as keyword arguments of function `ionize` with argument `adduction` and each chemical. For individualizing adducts, use column `Adduct` in `chemicaltable`.
+* `abundance` sets the abundance of the chemical. It can also be column `Abundance` in `chemicaltable`. 
+* `proportion`: proportion of adduct ion relative to original chemical. For individualizing adducts, use column `Proportion` in `chemicaltable`. The length of each elements should macthes to that of `adduct`.
+* `threshold` can be a number or criteria, representing the lower limit of abundance (absolute and/or relative to maximal value of each spectrum). 
+"""
+function Ionization(mztable::Table; adduction = AdductIon, threading = nothing, chemicalparser = ChemicalExpressionParser(), adductparser = AdductParser(), threshold = rcrit(1e-4), kwargs...)
+    :Chemical in propertynames(mztable) || throw(ArgumentError("No column `Chemical` in input table."))
+    chemical = parse_chemical.(Ref(chemicalparser), mztable.Chemical; kwargs...)
+    kwargs = Dict(kwargs...)
+    if :Adduct in propertynames(mztable)
+        adduct = map(vectorize, mztable.Adduct)
+        delete!(kwargs, :adduct)
+    elseif haskey(kwargs, :adduct)
+        adduct = vectorize(kwargs[:adduct]), length(mztable)
+        delete!(kwargs, :adduct)
+    else
+        throw(ArgumentError("Require adducts information. Use column `Adduct` of the table or keyword arguments `adduct`."))
+    end
+    adduct = map(x -> parse_adduct.(Ref(adductparser), vectorize(x)), adduct)
+    if :Abundance in propertynames(mztable)
+        abundance = mztable.Abundance
+        delete!(kwargs, :abundance)
+    elseif haskey(kwargs, :abundance)
+        abundance = vectorize(kwargs[:abundance], length(mztable))
+        delete!(kwargs, :abundance)
+    end
+    if :Proportion in propertynames(mztable)
+        proportion = mztable.Proportion
+        delete!(kwargs, :proportion)
+    elseif haskey(kwargs, :proportion)
+        proportion = vectorize(kwargs[:proportion], length(mztable))
+        delete!(kwargs, :proportion)
+    end
+    proportion = map(vectorize, proportion)
+    id = vcat(([(i, j) for j in eachindex(adduct[i])] for i in eachindex(mztable))...)
+    rn = min(length(id), Threads.nthreads())
+    if isnothing(threading)
+        threading = mean(mmi, mztable.Chemical) * sqrt(-log2(min(1, minimum(makecrit_value(crit(threshold), 1))))) * (rn - 1) > 100000 
+    end
+    if threading
+        t = Vector{Table}(undef, length(id))
+        Threads.@threads for k in eachindex(t)
+            i, j = t[k]
+            t[k] = Isotopologues(ionize(adduction, chemical[i]; adduct[i][j]...); id = (k, ), abundance = abundance[i] * proportion[i][j], threshold, kwargs...)
+        end
+        tbl = Table(; (map(propertynames(t[1])) do p
+            p => ChainedVector(getproperty.(t, p))
+        end)...)
+    else
+        tbl = Table(vcat((Isotopologues(ionize(adduction, chemical[i]; adduct[i][j]...); id = (k, ), abundance = abundance[i] * proportion[i][j], threshold, kwargs...) for (k, (i, j)) in enumerate(id))...))
+    end
+    colab = lastcolnum(propertynames(tbl), "Abundance"; error = false)
+    ab = getproperty(tbl, colab)
+    abundance_cutoff = minimum(makecrit_value(crit(threshold), maximum(ab)))
+    id = findall(>=(abundance_cutoff), ab)
+    tbl[id]
+end
+
+"""
     MSScan([msanalyzer = TOF(),] mztable; min_bin_fwhm = 50) -> Union{Spectrum, Nothing}
     MSScan([msanalyzer = TOF(),] spectrum; min_bin_fwhm = 50) -> Union{Spectrum, Nothing}
 
@@ -79,7 +146,7 @@ Allow all Ions within m/z range entering the next MS stage.
 * `spectrum::Spectrum`: `spectrum.table` is utilized as `mztable`.
 """
 function AllIons(mz_range, mztable::Table)
-    colmz = lastcolnum(string.(propertynames(mztable)), "MZ")
+    colmz = lastcolnum(propertynames(mztable), "MZ")
     if !isnothing(mz_range)
         lower_mz, upper_mz = mz_range 
         id = findall(x -> lower_mz < x < upper_mz, getproperty(mztable, colmz))
@@ -209,7 +276,7 @@ function Fragmentation(producttable::Table, mztable::Table; threading = nothing,
     :Abundance1 in propertynames(mztable) || throw(ArgumentError("No column `Abundance1`, ..., `Abundacnen` in precursor_table."))
     :MZ1 in propertynames(mztable) || throw(ArgumentError("No column `MZ1`, ..., `MZn` in precursor_table."))
     if isempty(mztable) 
-        lc = lastcolnum(string.(propertynames(mztable)), "MZ")
+        lc = lastcolnum(propertynames(mztable), "MZ")
         (n, ) = match(r"MZ(\d+)", string(lc))
         n = parse(Int, n)
         mspre = map(1:n) do i 
@@ -251,7 +318,7 @@ function Fragmentation(producttable::Table, mztable::Table; threading = nothing,
                 transmission = sum(producttable.Proportion[pid])
                 )
         end
-        Table(; (map(propertynames(t[1])) do p
+        Table(; (map(propertynames(first(t))) do p
             p => ChainedVector(getproperty.(t, p))
         end)...)
     else

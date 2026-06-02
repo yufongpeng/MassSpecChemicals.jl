@@ -455,7 +455,7 @@ struct CoelutingIsobars
 end
 
 function CoelutingIsobars(elution, ms, table::Table; ci_filter = 2, kwargs...) 
-    isobar = Isotopologues(table; kwargs...)
+    isobar = TandemIsotopologues(table; kwargs...)
     target = isobar[[findfirst(x -> ischemicalequal(x, y), isobar.Chemical) for y in table.Chemical]]
     CoelutingIsobars(elution, ms, target, isobar; ci_filter)
 end

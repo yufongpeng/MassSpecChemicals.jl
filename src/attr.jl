@@ -1,7 +1,13 @@
+"""
+    defaultname(chemical::AbstractChemicalsSchema)
+
+Default name of `chemical` if no attribute and specific method is not implemented for `chemicalname`.
+"""
 defaultname(::T) where {T <: AbstractChemical} = string("Chemical::", T)
+defaultname(::T) where {T <: AbstractScheme} = string("Scheme::", T)
 
 """
-    getchemicalproperty(chemical::AbstractChemical, property::Symbol, default = nothing)
+    getchemicalproperty(chemical::AbstractChemicalsSchema, property::Symbol, default = nothing)
 
 Get property from `chemical`. 
 
@@ -11,9 +17,9 @@ For type `Chemical` and properties other than `name`, `elements` and `formula`, 
 
 For type `AbstractAdductIon`, it searches for properties of itself and then the properties of core chemical without specialized methods.
 """
-getchemicalproperty(chemical::AbstractChemical, property::Symbol, default = nothing) = hasproperty(chemical, property) ? getproperty(chemical, property) : default 
+getchemicalproperty(chemical::AbstractChemicalsSchema, property::Symbol, default = nothing) = hasproperty(chemical, property) ? getproperty(chemical, property) : default 
 getchemicalproperty(adduct_ion::AbstractAdductIon, property::Symbol, default) = hasproperty(adduct_ion, property) ? getproperty(adduct_ion, property) : getchemicalproperty(ioncore(adduct_ion), property, default)
-
+getchemicalproperty(chemical::AbstractChemicalWrapper, property::Symbol, default = nothing) = hasproperty(chemical, property) ? getproperty(chemical, property) : hasproperty(chemical.chemical, property) ? getproperty(chemical.chemical, property) : default 
 function getchemicalproperty(chemical::Union{Chemical, FormulaChemical}, property::Symbol, default)
     hasproperty(chemical, property) && return getproperty(chemical, property)
     for (p, v) in chemical.property
@@ -23,13 +29,14 @@ function getchemicalproperty(chemical::Union{Chemical, FormulaChemical}, propert
 end
 
 """
-    chemicalname(chemical::AbstractChemical; verbose = true, kwargs...) -> String
+    chemicalname(chemical::AbstractChemicalsSchema; verbose = true, n = 1, loss = false, bracket = true, kwargs...) -> String
 
-The name of `chemical`. It should be unique for each chemical. 
+The name of `chemical`. It should be unique for each object. 
 
 # Generic Methods
-* `AbstractChemical`: property search
+* `AbstractChemicalsSchema`: property search
 * `AbstractAdductIon`: name composed of name of core chemical and adduct
+* `AbstractChemicalWrapper`: name of field `chemical`
 
 # Specific Methods 
 * Species/Transition Level
@@ -41,32 +48,37 @@ The name of `chemical`. It should be unique for each chemical.
 
 # Keyword arguments
 * `verbose` determines whether includes all names or not for chemical species. If `verbose` is false, only the first (most abundant) chemical is included.
+* `n` determines number of chemical.
+* `loss` determines whether the chemical is part of chemical loss, and sign flips are propagated into this chemical.
+* `bracket` determines whether wrapping the output string with "[...]" and charge.
 """
-chemicalname(chemical::AbstractChemical; kwargs...) = getchemicalproperty(chemical, :name, defaultname(chemical))
-function chemicalname(adduct_ion::AbstractAdductIon; corename = nothing, kwargs...) 
-    r = isnothing(corename) ? chemicalname(ioncore(adduct_ion); kwargs...) : corename
+function chemicalname(chemical::AbstractChemicalsSchema; n = 1, kwargs...) 
+    nm = getchemicalproperty(chemical, :name, defaultname(chemical))
+    n > 1 ? string(n, nm) : nm
+end
+chemicalname(chemical::AbstractChemicalWrapper; n = 1, kwargs...) = chemicalname(chemical.chemical; n, kwargs...)
+function chemicalname(adduct_ion::AbstractAdductIon; loss = false, bracket = true, n = 1, kwargs...) 
+    r = chemicalname(ioncore(adduct_ion); loss = bracket ? false : loss, bracket = false, n, kwargs...)
+    a = chemicalabbr(ionadduct(adduct_ion); loss = bracket ? false : loss, bracket = false, n, kwargs...)
+    n = ncore(adduct_ion)
     if occursin(" ", r)
         r = string("(", r, ")")
     end
-    if isnothing(corename)
-        s = replace(string(ionadduct(adduct_ion)), "M" => r; count = 1)
-        s = replace(s, r"\d*[+-]$" => ""; count = 1)
-    else
-        s = replace(string(ionadduct(adduct_ion)), r"\d*M" => r; count = 1)
-        s = replace(s, r"\d*[+-]$" => ""; count = 1)
+    if n > 1 
+        r = string(n, r)
     end
-    c = charge(adduct_ion)
-    c == 0 ? s : string(s, abs(c) > 1 ? abs(c) : "", c > 0 ? "+" : "-") 
+    bracket ? string("[", r, a, "]", charge_repr(charge(adduct_ion))) : string(r, a)
 end
 
 """
-    chemicalformula(chemical::AbstractChemical; kwargs...) -> String
+    chemicalformula(chemical::AbstractChemicalsSchema; kwargs...) -> String
 
 The formula of chemical entity of `chemical`.
 
 # Generic Methods
-* `AbstractChemical`: property search
+* `AbstractChemicalsSchema`: property search
 * `AbstractAdductIon`: formuala combining core chemical and adduct
+* `AbstractChemicalWrapper`: formula of field `chemical`
 
 # Specific Methods 
 * Entity Level
@@ -81,7 +93,7 @@ The formula of chemical entity of `chemical`.
 # Keyword arguments
 * `unique` determines whether combines the elements to become unique or not when constructing formula from attribute `chemicalelements`. It defaults to false for type `Chemical`.
 """
-function chemicalformula(chemical::AbstractChemical; shallow = false, kwargs...) 
+function chemicalformula(chemical::AbstractChemicalsSchema; shallow = false, kwargs...) 
     result = getchemicalproperty(chemical, :formula, "")
     if isempty(result) && !shallow
         chemicalformula(chemicalelements(chemical; shallow = true); kwargs...)
@@ -92,23 +104,26 @@ end
 
 function chemicalformula(adduct_ion::AbstractAdductIon; kwargs...)
     el = deepcopy(chemicalelements(ioncore(adduct_ion); kwargs...))
-    nm = kmer(adduct_ion)
+    nm = ncore(adduct_ion)
     if nm > 1
         for id in eachindex(el)
             el[id] = first(el[id]) => nm * last(el[id])
         end
     end
-    chemicalformula(gain_elements!(dictionary_elements(el), adductelements(adduct_ion)))
+    chemicalformula(gain_elements!(dictionary_elements(el), chemicalelements(ionadduct(adduct_ion); loss = false, kwargs...)))
 end
 
+chemicalformula(chemical::AbstractChemicalWrapper; kwargs...) = chemicalformula(chemical.chemical; kwargs...)
+
 """
-    chemicalelements(chemical::AbstractChemical; kwargs...) -> Vector{Pair{String, Int}}
+    chemicalelements(chemical::AbstractChemicalsSchema; kwargs...) -> Vector{Pair{String, Int}}
 
 The elements of chemical entity of `chemical`.
 
 # Generic Methods
-* `AbstractChemical`: property search
+* `AbstractChemicalsSchema`: property search
 * `AbstractAdductIon`: elements combining core chemical and adduct
+* `AbstractChemicalWrapper`: chemical entity of field `chemical`
 
 # Specific Methods 
 * Entity Level
@@ -120,7 +135,7 @@ The elements of chemical entity of `chemical`.
 2. Function: `chemicalformula` -> `chemicalelements`
     * `kwargs` for `chemicalelements`. See documents of other methods.
 """
-function chemicalelements(chemical::AbstractChemical; shallow = false, kwargs...) 
+function chemicalelements(chemical::AbstractChemicalsSchema; shallow = false, kwargs...) 
     result = getchemicalproperty(chemical, :elements, Pair{String, Int}[])
     if isempty(result) && !shallow
         chemicalelements(chemicalformula(chemical; shallow = true); kwargs...)
@@ -131,17 +146,19 @@ end
 
 function chemicalelements(adduct_ion::AbstractAdductIon; kwargs...) 
     el = deepcopy(chemicalelements(ioncore(adduct_ion); kwargs...))
-    nm = kmer(adduct_ion)
+    nm = ncore(adduct_ion)
     if nm > 1
         for id in eachindex(el)
             el[id] = first(el[id]) => nm * last(el[id])
         end
     end
-    vcat(el, adductelements(adduct_ion))
+    vcat(el, chemicalelements(ionadduct(adduct_ion); loss = false, kwargs...))
 end
 
+chemicalelements(chemical::AbstractChemicalWrapper; kwargs...) = chemicalelements(chemical.chemical; kwargs...)
+
 """
-    chemicalabbr(chemical::AbstractChemical; verbose = true, kwargs...) -> String
+    chemicalabbr(chemical::AbstractChemicalsSchema; verbose = true, n = 1, loss = false, bracket = true, kwargs...) -> String
 
 The abbreviation of `chemical`. 
 
@@ -149,8 +166,9 @@ The abbreviation of `chemical`.
 * Species
 
 # Generic Methods
-* `AbstractChemical`: property search
+* `AbstractChemicalsSchema`: property search
 * `AbstractAdductIon`: abbreviation composed of abbreviation of core chemical and adduct
+* `AbstractChemicalWrapper`: abbreviation of field `chemical`
 
 # Specific Methods 
 * Species/Transition Level
@@ -162,16 +180,27 @@ The abbreviation of `chemical`.
 
 # Keyword arguments
 * `verbose` determines whether includes all abbreviations or not for chemical species. If `verbose` is false, only the first (most abundant) chemical is included.
+* `n` determines number of chemical.
+* `loss` determines whether the chemical is part of chemical loss, and sign flips are propagated into this chemical.
+* `bracket` determines whether wrapping the output string with "[...]" and charge.
 """
-chemicalabbr(chemical::AbstractChemical; kwargs...) = getchemicalproperty(chemical, :abbreviation, chemicalname(chemical; kwargs...))
-function chemicalabbr(adduct_ion::AbstractAdductIon; kwargs...) 
-    r = chemicalabbr(ioncore(adduct_ion); kwargs...)
+function chemicalabbr(chemical::AbstractChemicalsSchema; n = 1, kwargs...) 
+    abbr = getchemicalproperty(chemical, :abbreviation, "")
+    isempty(abbr) && return chemicalname(chemical; n, kwargs...)
+    string(n > 1 ? n : "", abbr)
+end
+chemicalabbr(chemical::AbstractChemicalWrapper; n = 1, kwargs...) = chemicalabbr(chemical.chemical; n, kwargs...)
+function chemicalabbr(adduct_ion::AbstractAdductIon; loss = false, bracket = true, n = 1, kwargs...) 
+    r = chemicalabbr(ioncore(adduct_ion); loss = bracket ? false : loss, bracket = false, n, kwargs...)
+    a = chemicalabbr(ionadduct(adduct_ion); loss = bracket ? false : loss, bracket = false, n, kwargs...)
+    n = ncore(adduct_ion)
     if occursin(" ", r)
         r = string("(", r, ")")
     end
-    s = replace(string(ionadduct(adduct_ion)), "M" => r, r"\d*[+-]$" => ""; count = 2)
-    c = charge(adduct_ion)
-    c == 0 ? s : string(s, abs(c) > 1 ? abs(c) : "", c > 0 ? "+" : "-") 
+    if n > 1 
+        r = string(n, r)
+    end
+    bracket ? string("[", r, a, "]", charge_repr(charge(adduct_ion))) : string(r, a)
 end
 
 """
@@ -182,6 +211,7 @@ The SMILES of chemical entity of `chemical`.
 # Generic Methods
 * `AbstractChemical`: property search
 * `AbstractAdductIon`: SMILES of the core chemical
+* `AbstractChemicalWrapper`: SMILES of field `chemical`
 
 # Specific Methods 
 * Entity Level
@@ -195,6 +225,7 @@ The SMILES of chemical entity of `chemical`.
 """
 chemicalsmiles(chemical::AbstractChemical; kwargs...) = getchemicalproperty(chemical, :SMILES, "")
 chemicalsmiles(adduct_ion::AbstractAdductIon; kwargs...) = chemicalsmiles(ioncore(adduct_ion); kwargs...) 
+chemicalsmiles(chemical::AbstractChemicalWrapper; kwargs...) = chemicalsmiles(chemical.chemical; kwargs...)
 
 """
     ioncore(adduct_ion::AbstractAdductIon{S, T}; kwargs...) -> Union{S, Nothing}
@@ -233,26 +264,32 @@ The adduct of `adduct_ion`.
 ionadduct(adduct_ion::AbstractAdductIon{S, T}; kwargs...) where {S, T} = getchemicalproperty(adduct_ion, :adduct, nothing)::T
 
 """
-    kmer(adduct_ion::AbstractAdductIon; kwargs...) -> Int
+    ncore(adduct_ion::AbstractAdductIon; kwargs...) -> Int
 
 The number of core chemical. For instance, 2 for "[2M+H]+". 
 
 # Generic Methods
-* `AbstractAdductIon`: `kmer` of `ionadduct`
+* `AbstractAdductIon`: property search
 
 # Specific Methods 
 * Entity Level
+
+# Property Search Workflow
+1. Function: `getchemicalproperty`
+    * property: `:ncore`
+    * default: `1`
 """
-kmer(adduct_ion::AbstractAdductIon; kwargs...) = kmer(ionadduct(adduct_ion))
+ncore(adduct_ion::AbstractAdductIon; kwargs...) = getchemicalproperty(adduct_ion, :ncore, 1)
 
 """
-    charge(chemical::AbstractChemical; kwargs...) -> Int
+    charge(chemical::AbstractChemicalsSchema; kwargs...) -> Int
 
 The charge state of `chemical`; positive for cation and negative for anion. For instance, -2 for dianion, +3 for trication. 
 
 # Generic Methods
-* `AbstractChemical`: property search
+* `AbstractChemicalsSchema`: property search
 * `AbstractAdductIon`: charge of core chemical and adduct
+* `AbstractChemicalWrapper`: charge of field `chemical`
 
 # Specific Methods 
 * Entity Level
@@ -262,21 +299,22 @@ The charge state of `chemical`; positive for cation and negative for anion. For 
     * property: `:charge`
     * default: `0`
 """
-charge(chemical::AbstractChemical; kwargs...) = getchemicalproperty(chemical, :charge, 0)
-charge(adduct_ion::AbstractAdductIon; kwargs...) = kmer(adduct_ion) * charge(ioncore(adduct_ion); kwargs...) + charge(ionadduct(adduct_ion))
+charge(chemical::AbstractChemicalsSchema; kwargs...) = getchemicalproperty(chemical, :charge, 0)
+charge(adduct_ion::AbstractAdductIon; kwargs...) = ncore(adduct_ion) * charge(ioncore(adduct_ion); kwargs...) - charge(ionadduct(adduct_ion))
+charge(chemical::AbstractChemicalWrapper; kwargs...) = charge(chemical.chemical; kwargs...)
 
 """
-    ncharge(chemical::AbstractChemical; kwargs...) -> Int
+    ncharge(chemical::AbstractChemicalsSchema; kwargs...) -> Int
 
 The number of charges of `chemical`.
 
 # Generic Methods
-* `AbstractChemical`: absolute value of charge
+* `AbstractChemicalsSchema`: absolute value of charge
 
 # Specific Methods 
 * Entity Level
 """
-ncharge(chemical::AbstractChemical; kwargs...) = abs(charge(chemical; kwargs...))
+ncharge(chemical::AbstractChemicalsSchema; kwargs...) = abs(charge(chemical; kwargs...))
 
 """
     retentiontime(chemical::AbstractChemical; kwargs...) -> AbstractFloat
@@ -285,6 +323,7 @@ The retention time of `chemical`.
 
 # Generic Methods
 * `AbstractChemical`: property search
+* `AbstractChemicalWrapper`: retention time of field `chemical`
 
 # Specific Methods 
 * Entity Level
@@ -296,9 +335,10 @@ The retention time of `chemical`.
     * default: `NaN`
 """
 retentiontime(chemical::AbstractChemical; kwargs...) = getchemicalproperty(chemical, :retentiontime, NaN)
+retentiontime(chemical::AbstractChemicalWrapper; kwargs...) = retentiontime(chemical.chemical; kwargs...)
 
 """
-    chemicalentity(chemical::AbstractChemical) -> AbstractChemical
+    chemicalentity(chemical::AbstractChemicalsSchema) -> AbstractChemical
 
 The single chemical entity (having a single formula) from a chemical entity (i.e. itself), or chemical species. 
 
@@ -306,15 +346,58 @@ Attributes with Specific Methods marked as `Entity` indicate the `chemicalentity
 
 # Generic Methods
 * `AbstractChemical`: itself
+* `AbstractChemicalWrapper`: wrapped chemical entity of field `chemical`
+* `AbstractScheme`: chemical entity of elemental scheme
 
 # Specific Methods
 * `Isobars`: `chemicalentity(first(chemical.chemicals))`, i.e. the most abundant entity.
-* `ChemicalLoss`: `chemical.chemical`
-* `ChemicalGain`: `chemical.chemical`
 * `ChemicalTransition`: the very begining precursor
 * `Groupedisotopomers`: the most abundant isotopomer
+* `ElementalScheme`: chemical entity of loss or gain chemical
 """
 chemicalentity(chemical::AbstractChemical; kwargs...) = chemical
+chemicalentity(chemical::T; kwargs...) where {T <: AbstractChemicalWrapper} = T.name.wrapper(chemicalentity(chemical.chemical; kwargs...))
+chemicalentity(sch::AbstractScheme; kwargs...) = chemicalentity(elementalscheme(sch); kwargs...)
+
+"""
+    elementalscheme(scheme::AbstractScheme) -> ElementalSchema
+
+The elemental scheme of `scheme`. 
+
+# Generic Methods
+* `AbstractScheme`: property search
+* `AbstractStructuralScheme`: throw error
+
+# Specific Methods
+* `ChemicalSchema`: elemental schema of all schema
+* `IsotopomerizedSchema`: elemental schema of all schema
+
+# Property Search Workflow
+1. Function: `getchemicalproperty`
+    * property: `:elementalscheme`
+    * default: itself
+"""
+elementalscheme(scheme::AbstractScheme) = getchemicalproperty(scheme, :elementalscheme, scheme)
+elementalscheme(scheme::AbstractStructuralScheme) = throw(ArgumentError("Structural scheme requires specific mapping to elemental scheme."))
+
+"""
+    elementalscheme(scheme::AbstractScheme) -> AbstractScheme
+
+The structural scheme of `scheme`. All elemental schema are regarded as structural schema as well.
+
+# Generic Methods
+* `AbstractScheme`: property search
+
+# Specific Methods
+* `ChemicalSchema`: structural schema of all schema
+* `IsotopomerizedSchema`: structural schema of all schema
+
+# Property Search Workflow
+1. Function: `getchemicalproperty`
+    * property: `:structuralscheme`
+    * default: itself
+"""
+structuralscheme(scheme::AbstractScheme) = getchemicalproperty(scheme, :structuralscheme, scheme)
 
 """
     chemicalspecies(chemical::AbstractChemical) -> Vector{<: AbstractChemical}
@@ -349,31 +432,47 @@ Attributes with Specific Methods marked as `Transition` indicate the transition 
 chemicaltransition(chemical::AbstractChemical) = [chemical]
 
 """
-    chemicalparent(chemical::AbstractChemical) -> AbstractChemical
+    chemicalparent(chemical::AbstractChemicalsSchema) -> AbstractChemical
 
 The parent chemical without delocalized isotopes replacement.
 
 # Generic Methods
 * `AbstractChemical`: itself
+* `AbstractChemicalWrapper`: wrapped parent chemical of field `chemical`
+* `AbstractScheme`: itself
+* `AbstractStructuralScheme`: throw error
 
 # Specific Methods
 * Entity Level
 * `ChemicalTransition`: `ChemicalTransition` of parent chemicals of each transition
+* `ElementalScheme`: scheme of chemical parent of chemical entity 
+* `ChemicalSchema`: schema of chemical parent(s) of chemical entity(s)
+* `IsotopomerizedSchema`: schema of chemical parent(s) of chemical entity(s)
 """
 chemicalparent(cc::AbstractChemical; kwargs...) = cc
+chemicalparent(chemical::T; kwargs...) where {T <: AbstractChemicalWrapper} = T.name.wrapper(chemicalparent(chemical.chemical; kwargs...))
+chemicalparent(sch::AbstractScheme; kwargs...) = sch
+chemicalparent(sch::AbstractStructuralScheme; kwargs...) = throw(ArgumentError("`chemicalparent` cannot be defined for structural scheme."))
 
 """
-    isotopomersisotopes(chemical::AbstractChemical) -> Vector{Pair{String, Int}}
+    isotopomersisotopes(chemical::AbstractChemicalsSchema) -> Vector{Pair{String, Int}}
 
 The delocalized isotopes replacement of isotopomers.
 
 # Generic Methods
 * `AbstractChemical`: property search
+* `AbstractChemicalWrapper`: delocalized isotopes replacement of field `chemical`
+* `AbstractScheme`: `Pair{String, Int}[]`
+* `AbstractStructuralScheme`: throw error
+* `AbstractCompleteScheme`: delocalized isotopes replacement of elemental scheme
 
 # Specific Methods 
-* Entity Level
+* Entity Level'
 * `Isotopomers`: `chemical.isotopes`
 * `Groupedisotopomers`: isotopes replacement of the most abundunt isotopomers
+* `ElementalScheme`: delocalized isotopes replacement of chemical entity loss
+* `ChemicalSchema`: all delocalized isotopes replacement of chemical entity loss
+* `IsotopomerizedSchema`: `chemical.isotopes`
 
 # Property Search Workflow
 1. Function: `getchemicalproperty`
@@ -381,19 +480,23 @@ The delocalized isotopes replacement of isotopomers.
     * default: `Pair{String, Int}[]`
 """
 isotopomersisotopes(cc::AbstractChemical; kwargs...) = getchemicalproperty(cc, :isotopomersisotopes, Pair{String, Int}[])
+isotopomersisotopes(chemical::AbstractChemicalWrapper; kwargs...) = isotopomersisotopes(chemical.chemical; kwargs...)
+isotopomersisotopes(sch::AbstractScheme; kwargs...) = Pair{String, Int}[]
+isotopomersisotopes(sch::AbstractStructuralScheme; kwargs...) = throw(ArgumentError("`isotopomersisotopes` cannot be defined for structural scheme."))
+isotopomersisotopes(sch::AbstractCompleteScheme; kwargs...) = isotopomersisotopes(elementalscheme(sch); kwargs...) 
 
 """
-    isotopomerstate(cc::AbstractChemical; isotope = "[13C]") -> Int 
+    isotopomerstate(cc::AbstractChemicalsSchema; isotope = "[13C]") -> Int 
 
 The isotopomers state, i.e. equivalent number of `isotope`. 
 
 # Generic Methods
-* `AbstractChemical`: isotopomers state calculated from `isotopomersisotopes`
+* `AbstractChemicalsSchema`: isotopomers state calculated from `isotopomersisotopes`
 
 # Specific Methods
 * Entity Level
 """
-isotopomerstate(cc::AbstractChemical; isotope = "[13C]") = _isotopomerstate(isotopomersisotopes(cc), elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]])
+isotopomerstate(cc::AbstractChemicalsSchema; isotope = "[13C]") = _isotopomerstate(isotopomersisotopes(cc), elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]])
 
 # truly formed chemical
 """
@@ -403,6 +506,7 @@ The single chemical entity that is directly analyzed in the very begining of ins
 
 # Generic Methods
 * `AbstractChemical`: itself
+* `AbstractScheme`: throw error
 
 # Specific Methods
 * Species Level
@@ -412,6 +516,7 @@ The single chemical entity that is directly analyzed in the very begining of ins
 * `Isobars`: the most abundant analyzed chemical
 """
 analyzedchemical(cc::AbstractChemical; kwargs...) = cc
+analyzedchemical(cc::AbstractScheme; kwargs...) = throw(ArgumentError("Scheme cannot be analyzed directly."))
 
 """
     detectedchemical(chemical::AbstractChemical) -> AbstractChemical
@@ -429,7 +534,11 @@ The single chemical entity that is directly detected in the very ending of instr
 * `Isobars`: the most abundant detected chemical
 """
 detectedchemical(cc::AbstractChemical; kwargs...) = cc
-
+function detectedchemical(sch::AbstractScheme; precursor = nothing, kwargs...) 
+    isnothing(precursor) && throw(ArgumentError("Scheme cannot be directly detected without precursor."))
+    precursor = detectedchemical(precursor; kwargs...)
+    detectedchemical(precursor, sch)
+end
 """
     detectedisotopes(chemical::AbstractChemical) -> Vector{Pair{String, Int}}
 
@@ -565,45 +674,11 @@ The mass to charge ratio (m/z) of charged chemical or chemical with adduct. It i
 * `ChemicalTransition`: m/z of `analyzedchemical`
 """
 mz(charged_cc::AbstractChemical) = charge(charged_cc) == 0 ? NaN : mmi(charged_cc) / ncharge(charged_cc)
-mz(cc::AbstractChemical, adduct) = mz(AdductIon(cc, parse_adduct(adduct)))
+mz(cc::AbstractChemical, adduct) = mz(AdductIon(cc, parse_adduct(adduct; args = true)...))
 function mz(adduct_ion::AbstractAdductIon) 
-    adduct = ionadduct(adduct_ion)
-    (kmer(adduct) * mmi(ioncore(adduct_ion)) + mmi(adductelements(adduct_ion)) - charge(adduct_ion) * ustrip(ME)) / ncharge(adduct_ion)
+    (ncore(adduct_ion) * mmi(ioncore(adduct_ion)) + mmi(chemicalelements(ionadduct(adduct_ion); loss = false)) - charge(adduct_ion) * ustrip(ME)) / ncharge(adduct_ion)
 end
-mz(adduct_ion::AbstractAdductIon, adduct) = mz(AdductIon(ioncore(adduct_ion), parse_adduct(adduct)))
-
-"""
-    adductelements(adduct_ion::AbstractAdductIon) -> Vector{Pair{String, Int}}
-
-The elements changed with adduct of `adduct_ion`. It contains the elements of adduct itself and isotopic labeling related to the adduct for the `adduct_ion` (`adductisotopes(adduct_ion)`). 
-
-# Generic Methods
-* `AbstractAdductIon`: calculated from `adductelements` of core chemical and `adductisotopes` of the adduct ion
-"""
-adductelements(adduct_ion::AbstractAdductIon) = vcat(adductelements(ionadduct(adduct_ion)), adductisotopes(adduct_ion))
-
-"""
-    adductisotopes(adduct_ion::AbstractAdductIon) -> Vector{Pair{String, Int}}
-
-The elements changed when the core chemical has isotopic labeling that is lost in adduct formation. The returned vector is element-number pairs.
-
-For instance, [M-Me]- (`Demethylation`) of Deuterium-labeled phosphatidylcholine (PC) may turn out to be [M-CD3]- rather than [M-CH3]- if Deuteriums are labeled on the methyl group of choline (`DLMC_PC`). In this case, `adductisotopes(::AbstractAdductIon{Demethylation, DLMC_PC})` should return `["H" => 3, "D" => -3]`.
-
-# Generic Methods
-* `AbstractAdductIon`: `Pair{String, Int}[]`
-
-# Specific Methods
-* `AbstractAdductIon{Chemical}`: user can define an additional property `:adductisotopes` for core chemical. The property should be ionadduct-(elements-number pairs) pairs. 
-This function finds this property, and extracts the value of key `ionadduct(adduct_ion)`. If the property or the key does not exist, empty vector is returned. 
-"""
-adductisotopes(adduct_ion::AbstractAdductIon) = Pair{String, Int}[] # ex 1D: ["H" => 1, "D" => -1]
-function adductisotopes(adduct_ion::AbstractAdductIon{Chemical})
-    a = ionadduct(adduct_ion)
-    v = getchemicalproperty(ioncore(adduct_ion), :adductisotopes, Pair{String, Int}[])
-    isempty(v) && return v
-    i = findfirst(x -> first(x) == a, v)
-    isnothing(i) ? Pair{String, Int}[] : convert(Vector{Pair{String, Int}}, last(v[i])) # Force convert to pair as property does not restrict input type
-end
+mz(adduct_ion::AbstractAdductIon, adduct) = mz(AdductIon(ioncore(adduct_ion), parse_adduct(adduct; args = true)...))
 
 # list all propertys
 # add new propertys

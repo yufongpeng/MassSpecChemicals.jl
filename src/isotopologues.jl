@@ -18,7 +18,7 @@ This function is similar to `TandemIsotopologues`; the key difference is that it
 Only isotopic abundance of parent elements are considered, and isotopes are viewed as intentionally labeled elements. 
 
 # Keyword Arguments
-* `chemicalparser::AbstractChemicalParser`: parser for `formula_name` or `formula_name_pair`. The default parser is `ChemicalTransitionParser(ChemicalGainLossParser(; charge = 1, loss = 0, gain = 0))`.
+* `chemicalparser::AbstractChemicalParser`: parser for `formula_name` or `formula_name_pair`. The default parser is `ChemicalTransitionParser(ChemicalExpressionParser(; charge = 1, loss = 0, gain = 0))`.
 * `abundance` sets the abundance of the isotope specified by `abtype`. When the input is MS/MS transition, this sets the abundanc of detected chemical. It can also be column `Abundance` in `tbl`.
 * `abtype`
     * `:max`: the most abundant isotopologue.
@@ -28,7 +28,7 @@ Only isotopic abundance of parent elements are considered, and isotopes are view
 * `threshold` can be a number or criteria, representing the lower limit of abundance (absolute and/or relative to maximal value of each spectrum). 
 * `threading`: force to use multiple threads (`true`) or single thread (`false`); `nothing` lets the program determine. 
 
-For MS/MS transition, product can be chemical loss (`ChemicalLoss` or formula starting with `-`), and chemical gain (`ChemicalGain` or formula starting with `+`) can only used in the last MS stage.
+For MS/MS transition, product can be any scheme, including `<:AbstractStructuralScheme`, `<:AbstractStructuralScheme` or formula starting with `-` or `+` (See `ChemicalExpressionParser` for valid string). Gain scheme can only used in the last MS stage.
 
 !!! note "Special precaution for applying to MS/MS precursor-product pairs"
     Product must come from a single part or mutiple non-overlapping parts of precursor. Isobaric or isomeric products are not considered. For instance, 
@@ -45,7 +45,7 @@ function Isotopologues(input_chemical::AbstractChemical;
         threshold = rcrit(1e-4), 
     ) 
     net_charge = charge(input_chemical)
-    it = isotopologues_elements(chemicalelements(input_chemical), abundance, abtype, threshold)
+    it = isotopologues_elements(chemicalelements(input_chemical), first(abundance), abtype, threshold)
     abs_charge = max(1, abs(net_charge))
     net_charge == 0 ? Table(; 
         ID = [id for _ in eachindex(it)], 
@@ -62,7 +62,7 @@ function Isotopologues(input_chemical::AbstractChemical;
 end
 
 Isotopologues(input_chemical::AbstractString; 
-        chemicalparser = ChemicalTransitionParser(ChemicalGainLossParser(; charge = 1, loss = 0, gain = 0)),
+        chemicalparser = ChemicalTransitionParser(ChemicalExpressionParser(; charge = 1, loss = 0, gain = 0)),
         id = (1, ), 
         abundance = 1, 
         abtype = :max, 
@@ -70,20 +70,21 @@ Isotopologues(input_chemical::AbstractString;
     Isotopologues(parse_chemical(chemicalparser, input_chemical); id, abundance, abtype, threshold)
 
 function Isotopologues(ct::ChemicalTransition; 
-        chemicalparser = ChemicalTransitionParser(ChemicalGainLossParser(; charge = 1, loss = 0, gain = 0)),
+        chemicalparser = ChemicalTransitionParser(ChemicalExpressionParser(; charge = 1, loss = 0, gain = 0)),
         id = ntuple(i -> 1, msstage(ct)), 
         abundance = 1, 
         abtype = :max, 
         threshold = rcrit(1e-4)
     ) 
     msstage(ct) == 1 && return Isotopologues(analyzedchemical(ct); id, abundance, abtype, threshold)
+    abundance = first(abundance)
     trans = chemicaltransition(ct)
     for c in @view trans[begin:end - 1]
-        c isa ChemicalGain && throw(ArgumentError("Chemical gain can only be in the last stage for `Isotopologues`; use `TandemIsotopologues` instead."))
+        isgainscheme(c) && throw(ArgumentError("Chemical gain can only be in the last stage for `Isotopologues`; use `TandemIsotopologues` instead."))
     end
     precursor_info = serieschemicaldata(ct)
     analyzed_info = deepcopy(precursor_info)
-    if last(trans) isa ChemicalGain
+    if isgainscheme(last(trans))
         if length(trans) > 2
             for (pre, post) in @inbounds @views zip(precursor_info[begin:end - 2], precursor_info[begin + 1:end - 1])
                 loss_elements!(last(pre), last(post))
@@ -216,7 +217,7 @@ function Isotopologues(ct::ChemicalTransition;
         mass = mass[idm]
         abv = abv[idm]
     end
-    if last(trans) isa ChemicalGain 
+    if isgainscheme(last(trans)) 
         for m in mass
             m[end] += m[end - 1]
         end
@@ -226,7 +227,7 @@ function Isotopologues(ct::ChemicalTransition;
 end
 
 function Isotopologues(input_chemical::Pair; 
-        chemicalparser = ChemicalTransitionParser(ChemicalGainLossParser(; charge = 1, loss = 0, gain = 0)),
+        chemicalparser = ChemicalTransitionParser(ChemicalExpressionParser(; charge = 1, loss = 0, gain = 0)),
         id = nothing, 
         abundance = 1, 
         abtype = :max, 
@@ -236,13 +237,13 @@ function Isotopologues(input_chemical::Pair;
     Isotopologues(ct; id = isnothing(id) ? ntuple(i -> 1, msstage(ct)) : id, abundance, abtype, threshold)
 end
 
-function Isotopologues(mztable::Table; threading = nothing, chemicalparser = ChemicalTransitionParser(ChemicalGainLossParser(; charge = 1, loss = 0, gain = 0)), threshold = rcrit(1e-4), kwargs...)
+function Isotopologues(mztable::Table; threading = nothing, chemicalparser = ChemicalTransitionParser(ChemicalExpressionParser(; charge = 1, loss = 0, gain = 0)), threshold = rcrit(1e-4), kwargs...)
     :Chemical in propertynames(mztable) || throw(ArgumentError("No column `Chemical` in input table."))
     mztable = Table(mztable; Chemical = parse_chemical.(Ref(chemicalparser), mztable.Chemical; kwargs...))
     allequal(msstage, mztable.Chemical) || throw(ArgumentError("Chemicals have to be in the same MS stage."))
     kwargs = Dict(kwargs...)
     vec_key = Symbol[]
-    colab = allcolnum(string.(propertynames(mztable)), "Abundance"; error = false)
+    colab = allcolnum(propertynames(mztable), "Abundance"; error = false)
     if !isempty(colab)
         mztable = Table(mztable; abundance = collect.(getproperties(mztable, colab)))
         push!(vec_key, :abundance)
@@ -270,10 +271,10 @@ function Isotopologues(mztable::Table; threading = nothing, chemicalparser = Che
         end)...)
     else
         tbl = Table(vcat((Isotopologues(r.Chemical; id = r.ID, [k => getproperty(r, k) for k in vec_key]..., threshold, kwargs...) for r in mztable)...))
-
     end
     # spectrum specific threshold ?
-    ab = getproperty(tbl, :Abundance)
+    colab = lastcolnum(propertynames(tbl), "Abundance"; error = false)
+    ab = getproperty(tbl, colab)
     abundance_cutoff = minimum(makecrit_value(crit(threshold), maximum(ab)))
     id = findall(>=(abundance_cutoff), ab)
     tbl[id]
@@ -282,8 +283,6 @@ end
 Isotopologues(v::Vector; kwargs...) = Isotopologues(Table(; Chemical = v); kwargs...) 
 Isotopologues(::Isobars; kwargs...) = throw(ArgumentError("`Isobars` is not supported by `Isotopologues.`"))
 Isotopologues(::Isotopomers; kwargs...) = throw(ArgumentError("`Isotopomers` is not supported by `Isotopologues.`"))
-Isotopologues(::ChemicalLoss; kwargs...) = throw(ArgumentError("`ChemicalLoss` is not supported by `Isotopologues.`"))
-Isotopologues(::ChemicalGain; kwargs...) = throw(ArgumentError("`ChemicalGain` is not supported by `Isotopologues.`"))
 
 """
     TandemIsotopologues(chemical; chemicalparser, product = nothing, proportion = nothing, abundance = 1, abtype = :max, threshold = rcrit(1e-4))
@@ -305,7 +304,7 @@ This function is similar to `Isotopologues`; the key difference is that it is re
 Only isotopic abundance of parent elements are considered, and isotopes are viewed as intentionally labeled elements. 
 
 # Keyword Arguments
-* `chemicalparser::AbstractChemicalParser`: parser for `formula_name`, `formula_name_pair` or `product`. The default parser is `ChemicalTransitionParser(ChemicalGainLossParser(; charge = 1, loss = 0, gain = 0))`.
+* `chemicalparser::AbstractChemicalParser`: parser for `formula_name`, `formula_name_pair` or `product`. The default parser is `ChemicalTransitionParser(ChemicalExpressionParser(; charge = 1, loss = 0, gain = 0))`.
 * `abundance` sets the abundance of the precursor isotope specified by `abtype`. It can be a vector when the input is MS/MS transition, and abundances are matched to MS stages from the end (the last element matches to the last MS stage). If the length of abundance is smaller, the remaining elemets are filled using `transmission`. 
 Notice that setting abundance does not guarantee the equality abundance of the particular isotopes in each MS stage, but the sum of isotopes derived from the particular input precursor isotopes. 
 It can also be column `Abundance` in `tbl`.
@@ -320,7 +319,7 @@ It can also be column `Abundance` in `tbl`.
 * `proportion::Vector`: proportion of fragmentation relative to precursor. It can also be column `Proportion` in `tbl`.
 * `threading`: force to use multiple threads (`true`) or single thread (`false`); `nothing` lets the program determine. 
 
-For MS/MS precursor-product pairs, product can be neutral loss/gain or ion loss/gain (`ChemicalLoss`, `ChemicalGain or formula starting with `-` or `+`).
+For MS/MS precursor-product pairs, product can be neutral loss/gain or ion loss/gain, including `AbstractElementalScheme`, `AbstractStructuralScheme` and formula starting with `-` or `+` (See `ChemicalExpressionParser` for valid string). 
 
 !!! note "Special precaution for applying to MS/MS precursor-product pairs"
     Product must come from a single part or mutiple non-overlapping parts of precursor. Isobaric or isomeric products are not considered. For instance, 
@@ -332,7 +331,7 @@ For MS/MS precursor-product pairs, product can be neutral loss/gain or ion loss/
     After any chemical gain, the subsequent products are considered randomly fragmented from the gained precursor without considering any structure introduced by chemical gain.
 """
 function TandemIsotopologues(input_chemical::AbstractChemical; 
-            chemicalparser = ChemicalTransitionParser(ChemicalGainLossParser(; charge = 1, loss = 0, gain = 0)),
+            chemicalparser = ChemicalTransitionParser(ChemicalExpressionParser(; charge = 1, loss = 0, gain = 0)),
             abundance = 1, 
             transmission = 1, 
             abtype = :max, 
@@ -363,7 +362,7 @@ function TandemIsotopologues(input_chemical::AbstractChemical;
 end
 
 function _TandemIsotopologues(precursor_table, transition, precursor_info, id, abundance, ip::Int; 
-            chemicalparser = ChemicalTransitionParser(ChemicalGainLossParser(; charge = 1, loss = 0, gain = 0)),
+            chemicalparser = ChemicalTransitionParser(ChemicalExpressionParser(; charge = 1, loss = 0, gain = 0)),
             abtype = :max, 
             threshold = rcrit(1e-4), 
             product = nothing, 
@@ -371,22 +370,21 @@ function _TandemIsotopologues(precursor_table, transition, precursor_info, id, a
             proportion = nothing
         )
     precursor, element_precursor = precursor_info[ip]
-    ab = abundance[ip]
     if !isnothing(product) && !isempty(product)
         product = parse_chemical.(Ref(chemicalparser), product)
         all(x -> msstage(x) < 2, product) || throw(ArgumentError("Products should not be MS/MS pairs."))
         proportion = if isnothing(proportion) 
             [1/length(product) for x in eachindex(product)]
         else
-            vectorize(proportion, length(product))
+            proportion = vectorize(proportion)
         end
-        
+        length(proportion) == length(product) || throw(ArgumentError("The length of `proportion` does not mactch the length of `product`"))
         product_info = if isnothing(product_info) || isempty(product_info)
             map(raw_product -> detectedchemicaldata(raw_product; precursor), product) 
         else
             vectorize(product_info)
         end
-        length(product_info) < length(product) && throw(ArgumentError("The length of `product_info` does not mactch the length of `product`"))
+        length(product_info) == length(product) || throw(ArgumentError("The length of `product_info` does not mactch the length of `product`"))
     end
 
     if isnothing(precursor_table)
@@ -400,8 +398,8 @@ function _TandemIsotopologues(precursor_table, transition, precursor_info, id, a
                                 proportion = nothing)
             colab = Symbol(string("Abundance", ip - 1))
             itp = Table(; Element = [dictionary_elements(detectedisotopes(x)) for x in precursor_table.Chemical], Abundance = getproperty(precursor_table, colab))
-            tbl = _TandemIsotopologues(precursor_table, itp, transition[ip], abundance[ip] / abundance[ip - 1], precursor_info[ip - 1], precursor_info[ip]; id = id = id[begin:ip], abundance = ab, abtype = :total, threshold)
-            colab = lastcolnum(string.(propertynames(tbl)), "Abundance")
+            tbl = _TandemIsotopologues(precursor_table, itp, transition[ip], abundance[ip] / abundance[ip - 1], precursor_info[ip - 1], precursor_info[ip]; id = id = id[begin:ip], abundance = abundance[ip], abtype = :total, threshold)
+            colab = lastcolnum(propertynames(tbl), "Abundance")
             ab = getproperty(tbl, colab)
             abundance_cutoff = minimum(makecrit_value(crit(threshold), maximum(ab)))
             id = findall(>=(abundance_cutoff), ab)
@@ -411,8 +409,8 @@ function _TandemIsotopologues(precursor_table, transition, precursor_info, id, a
     (isnothing(product) || isempty(product)) && return precursor_table
     colab = Symbol(string("Abundance", length(id)))
     itp = Table(; Element = [dictionary_elements(detectedisotopes(x)) for x in precursor_table.Chemical], Abundance = getproperty(precursor_table, colab))
-    tbl = vcat([_TandemIsotopologues(precursor_table, itp, raw_product, prop, precursor_info[ip], prod_info; id = (id..., i), abundance = ab, abtype = :total, threshold, check_product = true) for (i, raw_product, prop, prod_info) in zip(eachindex(product), product, proportion, product_info)]...)
-    colab = lastcolnum(string.(propertynames(tbl)), "Abundance")
+    tbl = vcat([_TandemIsotopologues(precursor_table, itp, raw_product, prop, precursor_info[ip], prod_info; id = (id..., i), abundance = abundance[ip], abtype = :total, threshold, check_product = true) for (i, raw_product, prop, prod_info) in zip(eachindex(product), product, proportion, product_info)]...)
+    colab = lastcolnum(propertynames(tbl), "Abundance")
     ab = getproperty(tbl, colab)
     abundance_cutoff = minimum(makecrit_value(crit(threshold), maximum(ab)))
     id = findall(>=(abundance_cutoff), ab)
@@ -423,27 +421,21 @@ function _TandemIsotopologues(precursor_table, itp, raw_product, proportion, pre
     precursor, element_precursor = precursor_info
     product, element_product = product_info
     nms = length(id)
-    if check_product && !isa(raw_product, ChemicalGain) 
+    if check_product && !isgainscheme(raw_product) 
         for (k, v) in pairs(element_product)
             get(element_precursor, k, 0) < v && throw(ArgumentError("Product can only contain elements restricted by precursor."))
         end
     end
     net_charge = charge(product)
-    if isa(raw_product, ChemicalGain) 
+    if isgainscheme(raw_product) 
         element_residual = chemicalelements(raw_product)
     else
         element_residual = loss_elements(element_precursor, element_product)
     end
-    it = isotopologues_elements_ms2(itp, element_product, element_residual, abundance, abtype, threshold; gain = isa(raw_product, ChemicalGain))
+    it = isotopologues_elements_ms2(itp, element_product, element_residual, abundance, abtype, threshold; gain = isgainscheme(raw_product), loss = islossscheme(raw_product))
     abs_charge = max(1, net_charge)
     mass = net_charge == 0 ? it.Mass : [m / abs_charge + (net_charge < 0) * ustrip(ME) for m in it.Mass]
-    if raw_product isa ChemicalLoss
-        chemical = [ChemicalTransition(precursor_table.Chemical[r.ID], ChemicalLoss(Isotopomers(raw_product.chemical, collect(pairs(loss_elements(itp.Element[r.ID], r.Element)))))) for r in it]
-    elseif raw_product isa ChemicalGain
-        chemical = [ChemicalTransition(precursor_table.Chemical[r.ID], ChemicalGain(Isotopomers(raw_product.chemical, r.Element))) for r in it]
-    else
-        chemical = [ChemicalTransition(precursor_table.Chemical[r.ID], Isotopomers(raw_product, r.Element)) for r in it]
-    end
+    chemical = [ChemicalTransition(precursor_table.Chemical[r.ID], isotopomerize(raw_product, r.Element)) for r in it]
     abpre = map(1:nms - 1) do i 
         s = Symbol(string("Abundance", i))
         s => [getproperty(precursor_table, s)[r.ID] for r in it]
@@ -464,7 +456,7 @@ function _TandemIsotopologues(precursor_table, itp, raw_product, proportion, pre
 end
 
 TandemIsotopologues(input_chemical::Pair; 
-            chemicalparser = ChemicalTransitionParser(ChemicalGainLossParser(; charge = 1, loss = 0, gain = 0)),
+            chemicalparser = ChemicalTransitionParser(ChemicalExpressionParser(; charge = 1, loss = 0, gain = 0)),
             abundance = 1, 
             transmission = 1, 
             abtype = :max, 
@@ -478,7 +470,7 @@ TandemIsotopologues(input_chemical::Pair;
         ) = TandemIsotopologues(parse_chemical(chemicalparser, input_chemical); chemicalparser, abundance, transmission, abtype, threshold, id, precursor_table, precursor_info, product, product_info, proportion)
 
 TandemIsotopologues(input_chemical::AbstractString; 
-            chemicalparser = ChemicalTransitionParser(ChemicalGainLossParser(; charge = 1, loss = 0, gain = 0)),
+            chemicalparser = ChemicalTransitionParser(ChemicalExpressionParser(; charge = 1, loss = 0, gain = 0)),
             abundance = 1, 
             transmission = 1, 
             abtype = :max, 
@@ -491,7 +483,7 @@ TandemIsotopologues(input_chemical::AbstractString;
             proportion = nothing
         ) = TandemIsotopologues(parse_chemical(chemicalparser, input_chemical); chemicalparser, abundance, transmission, abtype, threshold, id, precursor_table, precursor_info, product, product_info, proportion)
 
-function TandemIsotopologues(mztable::Table; threading = nothing, chemicalparser = ChemicalTransitionParser(ChemicalGainLossParser(; charge = 1, loss = 0, gain = 0)), threshold = rcrit(1e-4), kwargs...)
+function TandemIsotopologues(mztable::Table; threading = nothing, chemicalparser = ChemicalTransitionParser(ChemicalExpressionParser(; charge = 1, loss = 0, gain = 0)), threshold = rcrit(1e-4), kwargs...)
     :Chemical in propertynames(mztable) || throw(ArgumentError("No column `Chemical in input table.`"))
     mztable = Table(mztable; Chemical = parse_chemical.(Ref(chemicalparser), mztable.Chemical; kwargs...))
     allequal(msstage, mztable.Chemical) || throw(ArgumentError("Chemicals have to be in the same MS stage."))
@@ -505,11 +497,9 @@ function TandemIsotopologues(mztable::Table; threading = nothing, chemicalparser
         mztable = Table(mztable; product = vectorize(get(kwargs, :product, nothing), length(mztable)))
         push!(vec_key, :product)
         delete!(kwargs, :product)
-    else
-        throw(ArgumentError("Require products information. Use column `Product` of the table or keyword arguments `product`."))
     end
     # all(x -> all(y -> msstage(y) < 2, x), mztable.Product) || throw(ArgumentError("Products should not MS/MS pairs."))
-    colab = allcolnum(string.(propertynames(mztable)), "Abundance"; error = false)
+    colab = allcolnum(propertynames(mztable), "Abundance"; error = false)
     if !isempty(colab)
         mztable = Table(mztable; abundance = collect.(getproperties(mztable, colab)))
         push!(vec_key, :abundance)
@@ -556,7 +546,7 @@ function TandemIsotopologues(mztable::Table; threading = nothing, chemicalparser
     else
         tbl = Table(vcat((TandemIsotopologues(r.Chemical; id = r.ID, [k => getproperty(r, k) for k in vec_key]..., threshold, kwargs...) for r in mztable)...))
     end
-    colab = propertynames(tbl)[findlast(x -> startswith(x, "Abundance"), string.(propertynames(tbl)))]
+    colab = propertynames(tbl)[findlast(x -> startswith(string(x), "Abundance"), propertynames(tbl))]
     ab = getproperty(tbl, colab)
     abundance_cutoff = minimum(makecrit_value(crit(threshold), maximum(ab)))
     id = findall(>=(abundance_cutoff), ab)
@@ -566,8 +556,6 @@ end
 TandemIsotopologues(v::Vector; kwargs...) = TandemIsotopologues(Table(; Chemical = v); kwargs...) 
 TandemIsotopologues(::Isobars; kwargs...) = throw(ArgumentError("`Isobars` is not supported by `TandemIsotopologues`."))
 TandemIsotopologues(::Isotopomers; kwargs...) = throw(ArgumentError("`Isotopomers` is not supported by `TandemIsotopologues`."))
-TandemIsotopologues(::ChemicalLoss; kwargs...) = throw(ArgumentError("`ChemicalLoss` is not supported by `TandemIsotopologues`."))
-TandemIsotopologues(::ChemicalGain; kwargs...) = throw(ArgumentError("`ChemicalGain` is not supported by `TandemIsotopologues`."))
 
 """
     group_isotopologues(mztable::Table; isotope = "[13C]")

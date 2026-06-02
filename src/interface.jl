@@ -5,10 +5,12 @@
 ==(x::Isobars, y::Isobars) = x.chemicals == y.chemicals && all(splat(isapprox), zip(x.abundance, y.abundance))
 ==(x::Isotopomers, y::Isotopomers) = x.parent == y.parent && sort(x.isotopes) == sort(y.isotopes) 
 ==(x::Groupedisotopomers, y::Groupedisotopomers) = x.parent == y.parent && x.state == y.state && x.isotope == y.isotope && all(v -> ==(sort(first(v)), sort(last(v))), zip(sort(x.isotopes), sort(y.isotopes))) && all(splat(isapprox), zip(x.abundance, y.abundance))
-==(x::ChemicalLoss, y::ChemicalLoss) = x.chemical == y.chemical
-==(x::ChemicalGain, y::ChemicalGain) = x.chemical == y.chemical
-==(x::AdductIon, y::AdductIon) = x.core == y.core && x.adduct == y.adduct
-==(x::ComposedAdduct, y::ComposedAdduct) = sort(x.adducts; by = adductformula) == sort(y.adducts; by = adductformula)
+==(x::AdductIon, y::AdductIon) = x.core == y.core && x.adduct == y.adduct && x.ncore == y.ncore
+==(x::T, y::T) where {T <: AbstractChemicalWrapper} = x.chemical == y.chemical
+==(x::ElementalScheme{T}, y::ElementalScheme{T}) where T = x.chemical == y.chemical
+==(x::StructuralElementalScheme, y::StructuralElementalScheme) = x.structuralscheme == y.structuralscheme && x.elementalscheme == y.elementalscheme
+==(x::ChemicalSchema, y::ChemicalSchema) = x.schema == y.schema 
+==(x::IsotopomerizedSchema, y::IsotopomerizedSchema) = x.parent == y.parent && all(v -> ==(sort(first(v)), sort(last(v))), zip(sort(x.isotopes), sort(y.isotopes)))
 
 const ABUNDANCE_ROUNDING_DIGITS = 4
 abundance_rounding_digits() = ABUNDANCE_ROUNDING_DIGITS
@@ -26,7 +28,7 @@ function hash(x::FormulaChemical, h::UInt)
     h = hash(map(last, axes(x.property)), h)
     hash(sum(hash, x.property; init = zero(h)), h)
 end
-hash(x::ChemicalTransition, h::UInt) = hash(x.transition, h)
+hash(x::T, h::UInt) where {T<:ChemicalTransition} = hash(T, hash(x.transition, h))
 function hash(x::Isobars, h::UInt) 
     h = hash(x.chemicals, h)
     h = hash(map(first, axes(x.abundance)), h)
@@ -60,24 +62,47 @@ function hash(x::Groupedisotopomers, h::UInt)
     end
     h
 end
-hash(x::ChemicalLoss, h::UInt) = hash(x.chemical, h)
-hash(x::ChemicalGain, h::UInt) = hash(x.chemical, h)
 function hash(x::AdductIon, h::UInt) 
     h = hash(x.core, h) 
-    hash(x.adduct, h)
+    h = hash(x.adduct, h)
+    hash(x.ncore, h)
 end
-function hash(x::ComposedAdduct, h::UInt) 
-    h = hash(map(first, axes(x.adducts)), h)
-    h = hash(map(last, axes(x.adducts)), h)
-    hash(sum(hash, x.adducts; init = zero(h)), h)
+hash(x::T, h::UInt) where {T<:AbstractChemicalWrapper} = hash(T, hash(x.chemical, h))
+function hash(x::ElementalScheme{T}, h::UInt) where T
+    h = hash(T, h) 
+    hash(x.chemical, h)
 end
+function hash(x::StructuralElementalScheme, h::UInt) 
+    h = hash(x.structuralscheme, h)
+    hash(x.elementalscheme, h)
+end
+hash(x::T, h::UInt) where {T<:ChemicalSchema} = hash(T, hash(x.schema, h)) 
+function hash(x::IsotopomerizedSchema, h::UInt) 
+    h = hash(x.parent, h) 
+    h = hash(map(first, axes(x.isotopes)), h)
+    h = hash(map(last, axes(x.isotopes)), h)
+    hash(sum(hash, x.isotopes; init = zero(h)), h)
+end
+
+copy(x::Chemical) = Chemical(x.name, copy(x.elements), copy(x.property))
+copy(x::FormulaChemical) = FormulaChemical(copy(x.elements), copy(x.property))
+copy(x::ChemicalTransition) = ChemicalTransition(copy(x.transition))
+copy(x::Isobars) = Isobars(copy(x.chemicals), copy(x.abundance))
+copy(x::Isotopomers) = Isotopomers(copy(x.parent), copy(x.isotopes))
+copy(x::Groupedisotopomers) = Groupedisotopomers(copy(x.parent), x.state, x.isotope, [copy(y) for y in x.isotopes], copy(x.abundance))
+copy(x::AdductIon) = AdductIon(copy(x.core), copy(x.adduct), x.ncore) 
+copy(x::T) where {T<:AbstractChemicalWrapper} = T(copy(x.chemical))
+copy(x::ElementalScheme{T}) where T = ElementalScheme(T, copy(x.chemical))
+copy(x::StructuralElementalScheme) = StructuralElementalScheme(copy(x.structuralscheme), copy(x.elementalscheme)) 
+copy(x::ChemicalSchema) = ChemicalSchema(copy(x.schema)) 
+copy(x::IsotopomerizedSchema) = IsotopomerizedSchema(copy(x.parent), copy(x.isotopes)) 
 
 in(cc::AbstractChemical, isobars::Isobars) = any(i -> ischemicalequal(i, cc), isobars)
 length(isobars::Isobars) = length(chemicalspecies(isobars))
 length(cc::AbstractChemical) = 1
 Broadcast.broadcastable(cc::AbstractChemical) = Ref(cc)
 
-Broadcast.broadcastable(x::AbstractAdduct) = Ref(x)
+Broadcast.broadcastable(x::AbstractScheme) = Ref(x)
 
 *(x::Criteria, y::Number) = Criteria(x.aval * y, x.rval * y)
 /(x::Criteria, y::Number) = Criteria(x.aval / y, x.rval / y)

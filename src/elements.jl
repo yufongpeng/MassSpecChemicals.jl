@@ -349,14 +349,14 @@ end
 const ME = 0.00054857990924u"g"
 
 """
-    iselement(x::AbstractString)
+    iselement(x::AbstractString) -> Bool
 
 Determine if `x` is an element.
 """
 iselement(x::AbstractString) = haskey(elements_isotopes(), x)
 
 """
-    isisotope(x::AbstractString)
+    isisotope(x::AbstractString) -> Bool
 
 Determine if `x` is an isotope (including element).
 """
@@ -366,14 +366,14 @@ ismajor(x::AbstractString) = x == major_isotope(x)
 isminor(x::AbstractString) = x == minor_isotope(x)
 
 """
-    parent_element(x::AbstractString)
+    parent_element(x::AbstractString) -> String
 
 Parent elements of isotope `x`.
 """
 parent_element(x::AbstractString) = get(elements_parents(), x, "")
 
 """
-    major_isotope(x::AbstractString)
+    major_isotope(x::AbstractString) -> String
 
 Major isotope of isotope `x`.
 """
@@ -382,7 +382,7 @@ function major_isotope(x::AbstractString)
 end
 
 """
-    minor_isotope(x::AbstractString, i = 1)
+    minor_isotope(x::AbstractString, i = 1) -> String
 
 `i`th minor isotope of isotope `x`.
 """

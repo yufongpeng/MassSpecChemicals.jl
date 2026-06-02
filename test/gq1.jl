@@ -97,8 +97,8 @@ pt = Table(;
     ])
 IGQ1b = AdductIon(GQ1, "[M+2H]2+")
 IGD3 = AdductIon(GD3, "[M+H]+")
-ms0 = Isotopologues(IGQ1b; abtype = :list, abundance = 100000)
-spec1 = @p ms0 |> MSScan
+ms0 = Table(; Chemical = [GQ1, GD3], Adduct = [["[M+2H]2+", "[M+H+Na]2+", "[M+2H-H2O]2+"], ["[M+H]+"]], Proportion = [[1, 0.1, 0.3], [1]], Abundance = [100000, 10000])
+spec1 = @p ms0 |> Ionization(; abtype = :list) |> MSScan
 spec2 = @p spec1 |> Isolation(Quadrupole(1210.588728; fwhm = 1.3, offset = 0.3)) |> Fragmentation(pt) |> MSScan
 spec3 = @p spec2 |> Isolation(Quadrupole(948.3303; fwhm = 1.3, offset = 0.3)) |> Fragmentation(pt) |> MSScan
 
