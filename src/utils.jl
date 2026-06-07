@@ -218,6 +218,47 @@ function allcolnum(::Type{T}, p, col; error = true, init = []) where T
     _convert(T, p[icol][id])
 end
 
+preabtype(::Val{x}) where x = x
+preabtype(::Val{:list}) = :total
+preabundance(::Val{x}, abundance, threshold) where x = abundance
+function preabundance(::Val{:list}, abundance, threshold) 
+    # approximation by [13C] isotope
+    m = minimum(makecrit_value(crit(threshold), abundance))
+    abundance * (2 * abundance - m) / (abundance - m)
+end
+dopostnormalize(::Val{x}) where x = false 
+dopostnormalize(::Val{:list}) = true
+function msmspremaxabundance(vab::Val{x}, abundance, threshold, max_proportion_vec, element_dictionary_vec) where x 
+    preab = preabundance(vab, abundance, threshold)
+    maxab = preab
+    for p in max_proportion_vec
+        maxab *= p 
+    end
+    preab, maxab
+end
+
+function msmspremaxabundance(vab::Val{:max}, abundance, threshold, max_proportion_vec, element_dictionary_vec) 
+    preab = preabundance(vab, abundance, threshold)
+    maxab = preab 
+    for p in max_proportion_vec
+        preab /= p 
+    end
+    preab, maxab
+end
+
+function msmspremaxabundance(vab::Val{:input}, abundance, threshold, max_proportion_vec, element_dictionary_vec) 
+    preab = preabundance(vab, abundance, threshold)
+    maxab = preab 
+    for p in element_dictionary_vec
+        preab /= isotopicabundance(p)
+    end
+    maxab = preab
+    for p in max_proportion_vec
+        maxab *= p 
+    end
+    preab, maxab
+end
+
 abtypeop(::Val{:max}) = maximum
 abtypeop(::Val{:input}) = first
 abtypeop(::Val{:list}) = sum
@@ -256,7 +297,8 @@ end
 
 tuplize(x::Tuple) = x
 tuplize(x) = (x, )
-vectorize(x::AbstractDictionary) = x
+vectorize(x::AbstractDict) = x
+vectorize(x::SplitApplyCombine.Dictionaries.AbstractDictionary) = x
 vectorize(x::AbstractVector) = x
 # vectorize(x::AbstractVector, n::Int) = n == lastindex(x) ? x : n > lastindex(x) ? vcat(x, repeat([last(x)], n - lastindex(x))) : x[begin:begin + n - 1]
 vectorize(x) = [x]

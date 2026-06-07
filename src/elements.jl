@@ -1,62 +1,62 @@
 # AME 2020
-const MASS = Dict(
-    ""          => 0u"g",
-    "C"         => 12u"g",
-    "[12C]"     => 12u"g",
-    "[13C]"     => 13.003354835336u"g",
-    # "[14C]"   => 14.003241989u"g",
-    "H"         => 1.007825031898u"g",
-    "[1H]"      => 1.007825031898u"g",
-    "D"         => 2.014101777844u"g",
-    "[2H]"      => 2.014101777844u"g",
-    "O"         => 15.994914619257u"g",
-    "[16O]"     => 15.994914619257u"g",
-    "[17O]"     => 16.999131755953u"g",
-    "[18O]"     => 17.999159612136u"g",
-    "N"         => 14.003074004251u"g",
-    "[14N]"     => 14.003074004251u"g",
-    "[15N]"     => 15.000108898266u"g",
-    "P"         => 30.973761997677u"g",
-    "[31P]"     => 30.973761997677u"g",
-    "S"         => 31.9720711735u"g",
-    "[32S]"     => 31.9720711735u"g",
-    "[33S]"     => 32.9714589086u"g",
-    "[34S]"     => 33.96786701u"g",
-    "[36S]"     => 35.96708069u"g",
-    "Li"        => 7.016003434u"g",
-    "[7Li]"     => 7.016003434u"g",
-    "[6Li]"     => 6.0151228874u"g",
-    "Na"        => 22.9897692820u"g",
-    "[23Na]"    => 22.9897692820u"g",
-    "K"         => 38.963706485u"g",
-    "[39K]"     => 38.963706485u"g",
-    "[40K]"     => 39.96399817u"g",
-    "[41K]"     => 40.961825256u"g",
-    "F"         => 18.9984031621u"g",
-    "[19F]"     => 18.9984031621u"g",
-    "Cl"        => 34.96885269u"g",
-    "[35Cl]"    => 34.96885269u"g",
-    "[37Cl]"    => 36.96590257u"g",
-    "Ag"        => 106.9050915u"g",
-    "[108Ag]"   => 106.9050915u"g",
-    "[109Ag]"   => 108.9047558u"g",
-    "Se"        => 79.916521761u"g",
-    "[74Se]"    => 73.922475933u"g",
-    # "[75Se]"    => 74.922522870u"g",
-    "[76Se]"    => 75.919213702u"g",
-    "[77Se]"    => 76.919914150u"g",
-    "[78Se]"    => 77.917309244u"g",
-    "[80Se]"    => 79.916521761u"g",
-    "[82Se]"    => 81.916699531u"g"
-    # "Mg"        => 23.98504168u"g",
-    # "[24Mg]"    => 23.98504168u"g",
-    # "[25Mg]"    => 24.985836966u"g",
-    # "[26Mg]"    => 25.982592972u"g"
+const MASS = Dict{String, float(Int)}(
+    ""          => 0.0,
+    "C"         => 12.0,
+    "[12C]"     => 12.0,
+    "[13C]"     => 13.003354835336,
+    # "[14C]"   => 14.003241989,
+    "H"         => 1.007825031898,
+    "[1H]"      => 1.007825031898,
+    "D"         => 2.014101777844,
+    "[2H]"      => 2.014101777844,
+    "O"         => 15.994914619257,
+    "[16O]"     => 15.994914619257,
+    "[17O]"     => 16.999131755953,
+    "[18O]"     => 17.999159612136,
+    "N"         => 14.003074004251,
+    "[14N]"     => 14.003074004251,
+    "[15N]"     => 15.000108898266,
+    "P"         => 30.973761997677,
+    "[31P]"     => 30.973761997677,
+    "S"         => 31.9720711735,
+    "[32S]"     => 31.9720711735,
+    "[33S]"     => 32.9714589086,
+    "[34S]"     => 33.96786701,
+    "[36S]"     => 35.96708069,
+    "Li"        => 7.016003434,
+    "[7Li]"     => 7.016003434,
+    "[6Li]"     => 6.0151228874,
+    "Na"        => 22.9897692820,
+    "[23Na]"    => 22.9897692820,
+    "K"         => 38.963706485,
+    "[39K]"     => 38.963706485,
+    "[40K]"     => 39.96399817,
+    "[41K]"     => 40.961825256,
+    "F"         => 18.9984031621,
+    "[19F]"     => 18.9984031621,
+    "Cl"        => 34.96885269,
+    "[35Cl]"    => 34.96885269,
+    "[37Cl]"    => 36.96590257,
+    "Ag"        => 106.9050915,
+    "[108Ag]"   => 106.9050915,
+    "[109Ag]"   => 108.9047558,
+    "Se"        => 79.916521761,
+    "[74Se]"    => 73.922475933,
+    # "[75Se]"    => 74.922522870,
+    "[76Se]"    => 75.919213702,
+    "[77Se]"    => 76.919914150,
+    "[78Se]"    => 77.917309244,
+    "[80Se]"    => 79.916521761,
+    "[82Se]"    => 81.916699531
+    # "Mg"        => 23.98504168,
+    # "[24Mg]"    => 23.98504168,
+    # "[25Mg]"    => 24.985836966,
+    # "[26Mg]"    => 25.982592972
 )
 
 # CIAAW
-const ABUNDANCE = Dict(
-    ""          => 1,
+const ABUNDANCE = Dict{String, float(Int)}(
+    ""          => 1.0,
     "C"         => 0.989165,
     "[12C]"     => 0.989165,
     "[13C]"     => 0.010835,    # C3: [0.010 674, 0.010 827], C4: [0.010 881, 0.010 958], use mean
@@ -72,8 +72,8 @@ const ABUNDANCE = Dict(
     "N"         => 0.99637,
     "[14N]"     => 0.99637,
     "[15N]"     => 0.00363,     # Plants and animals: [0.003 484, 0.003 776]
-    "P"         => 1,
-    "[31P]"     => 1,
+    "P"         => 1.0,
+    "[31P]"     => 1.0,
     "S"         => 0.9500205, 
     "[32S]"     => 0.9500205, 
     "[33S]"     => 0.00763,     # [0.007 29, 0.007 97]
@@ -82,14 +82,14 @@ const ABUNDANCE = Dict(
     "Li"        => 0.92409,     # LSVEC
     "[7Li]"     => 0.92409,     # LSVEC
     "[6Li]"     => 0.07591, 
-    "Na"        => 1,
-    "[23Na]"    => 1,
+    "Na"        => 1.0,
+    "[23Na]"    => 1.0,
     "K"         => 0.932581,
     "[39K]"     => 0.932581,
     "[40K]"     => 0.000117,
     "[41K]"     => 0.067302,
-    "F"         => 1,
-    "[19F]"     => 1,
+    "F"         => 1.0,
+    "[19F]"     => 1.0,
     "Cl"        => 0.75773,
     "[35Cl]"    => 0.75773,
     "[37Cl]"    => 0.24227,     # SMOC
@@ -98,7 +98,7 @@ const ABUNDANCE = Dict(
     "[109Ag]"   => 0.48161,
     "Se"        => 0.49803,
     "[74Se]"    => 0.008393,
-    # "[75Se]"    => 74.922522870u"g",
+    # "[75Se]"    => 74.922522870,
     "[76Se]"    => 0.09237,
     "[77Se]"    => 0.07607,
     "[78Se]"    => 0.236922,
@@ -110,7 +110,7 @@ const ABUNDANCE = Dict(
     # "[26Mg]"    => 0.11025 # [0.1096, 0.1109]
 )
 
-const ISOTOPES = Dict(
+const ISOTOPES = Dict{String, Vector{String}}(
     ""   => [""],
     "C"  => ["[12C]", "[13C]"],
     "H"  => ["[1H]", "D"],
@@ -128,7 +128,7 @@ const ISOTOPES = Dict(
     # "Mg" => ["[24Mg]", "[26Mg]", "[25Mg]"]
 ) 
 
-const PARENTS = Dict(
+const PARENTS = Dict{String, String}(
     ""          => "",
     "C"         => "C",
     "[12C]"     => "C",
@@ -183,7 +183,7 @@ const PARENTS = Dict(
     # "[26Mg]"    => "Mg"
 )
 
-const DECODES = Dict(
+const DECODES = Dict{String, String}(
     ""          => "",
     "C"         => "C",
     "Citz"      => "[12C]",
@@ -240,14 +240,14 @@ const DECODES = Dict(
 
 elements_doc = """
     elements_mass()
-    elements_abundunce()
+    elements_abundance()
     elements_isotopes()
     elements_parents()
     elements_decodes()
 
 Access constants related to elements. 
 * `elements_mass`: atomic mass.
-* `elements_abundunce`: natrural abundance.
+* `elements_abundance`: natrural abundance.
 * `elements_isotopes`: possible isotopes.
 * `elements_parents`: parent element. 
 * `elements_decodes`: decode encoded string for `parse_compound`.
@@ -302,7 +302,7 @@ One exception is that in `parent` chemical of `Isotopomers`, parent elements are
 elements_mass() = MASS
 
 @doc elements_doc
-elements_abundunce() = ABUNDANCE
+elements_abundance() = ABUNDANCE
 
 @doc elements_doc
 elements_isotopes() = ISOTOPES
@@ -333,12 +333,12 @@ function set_element!(element::AbstractString, mass, abundance; minor_name = not
     elements_parents()[element] = element
     elements_decodes()[element] = element
     elements_mass()[element] = mass[i]
-    elements_abundunce()[element] = abundance[i]
+    elements_abundance()[element] = abundance[i]
     ee = encode_isotopes.(isotopes)
     for (e, i, m, a) in zip(ee, isotopes, mass, abundance) 
         elements_decodes()[e] = i 
         elements_mass()[i] = m 
-        elements_abundunce()[i] = a 
+        elements_abundance()[i] = a 
         elements_parents()[i] = element
     end
     id = sortperm(abundance; rev = true)
@@ -346,7 +346,7 @@ function set_element!(element::AbstractString, mass, abundance; minor_name = not
     MASS
 end
 
-const ME = 0.00054857990924u"g"
+const ME = 0.00054857990924
 
 """
     iselement(x::AbstractString) -> Bool

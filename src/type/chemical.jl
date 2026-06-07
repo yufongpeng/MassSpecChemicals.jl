@@ -131,7 +131,7 @@ Chemicals differed from isotopic replacement location.
 # Constructors
 * `Isotopomers(parent::AbstractChemical, isotopes::Vector{Pair{String, Int}})`
 * `Isotopomers(parent::AbstractChemical, fullformula::String)`
-* `Isotopomers(parent::AbstractChemical, fullelements::Dictionary)`
+* `Isotopomers(parent::AbstractChemical, fullelements::Dict)`
 * `Isotopomers(parent::AbstractChemical, fullelements::Vector{Pair{String, Int}})`
 All minor isotopes are regarded as isotopic replacement in `fullformula` and `fullelements`.
 """
@@ -144,7 +144,7 @@ function Isotopomers(chemical::AbstractChemical, fullformula::String)
     Isotopomers(chemicalparent(chemical), dictionary_elements(chemicalelements(fullformula)))
 end
 
-function Isotopomers(chemical::AbstractChemical, fullelements::Dictionary)
+function Isotopomers(chemical::AbstractChemical, fullelements::Dict)
     parent = chemicalparent(chemical)
     dp = dictionary_elements(chemicalelements(parent))
     dr = copy(fullelements)
@@ -152,7 +152,7 @@ function Isotopomers(chemical::AbstractChemical, fullelements::Dictionary)
         iselement(k) && (delete!(dr, k); continue)
         dr[k] -= get(dp, k, 0) 
     end
-    Isotopomers(parent, [k => v for (k, v) in pairs(dr)])
+    Isotopomers(parent, collect(dr))
 end
 
 """

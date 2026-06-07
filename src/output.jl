@@ -27,7 +27,7 @@ chemicalname(sch::ElementalScheme{true}; n = 1, loss = false, delim = "", kwargs
 chemicalname(sch::ElementalScheme{false}; n = 1, loss = false, delim = "", kwargs...) = string(decorator(sch; loss, delim), chemicalname(chemicalentity(sch); n, loss = !loss, kwargs...))
 chemicalname(sch::IsotopomerizedSchema; n = 1, loss = false, bracket = false, delim = "|", kwargs...) = string(chemicalname(chemicalparent(sch); n, loss, bracket, delim, kwargs...), isotope_repr(sch.isotopes))
 function chemicalname(sch::ChemicalSchema; n = 1, loss = false, bracket = false, delim = "|", kwargs...) 
-    s = join([chemicalname(k; n = n * v, loss, bracket = false, delim, kwargs...) for (k, v) in pairs(sch.schema)], "")
+    s = join([chemicalname(k; n = n * v, loss, bracket = false, delim, kwargs...) for (k, v) in zip(sch.schema, sch.number)], "")
     if startswith(s, delim)
         s = s[begin + 1:end] 
     end
@@ -46,7 +46,7 @@ chemicalabbr(sch::ElementalScheme{true}; n = 1, bracket = true, loss = false, kw
 chemicalabbr(sch::ElementalScheme{false}; n = 1, bracket = true, loss = false, kwargs...) = string(loss ? "+" : "-", chemicalabbr(chemicalentity(sch); n, bracket, loss = !loss, kwargs...))
 chemicalabbr(sch::IsotopomerizedSchema; loss = false, bracket = true, n = 1, kwargs...) = string(chemicalabbr(chemicalparent(sch); n, loss, bracket, kwargs...), isotope_repr(sch.isotopes))
 function chemicalabbr(sch::ChemicalSchema; loss = false, bracket = true, n = 1, kwargs...) 
-    s = join([chemicalabbr(k; n = n * v, loss, bracket = false, kwargs...) for (k, v) in pairs(sch.schema)], "")
+    s = join([chemicalabbr(k; n = n * v, loss, bracket = false, kwargs...) for (k, v) in zip(sch.schema, sch.number)], "")
     bracket ? string("[", s, "]", charge_repr(-charge(sch))) : s 
 end
 

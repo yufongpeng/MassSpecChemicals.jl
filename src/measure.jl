@@ -7,7 +7,7 @@ charge(sch::AbstractCompleteScheme; kwargs...) = charge(elementalscheme(sch); kw
 charge(loss::ElementalScheme{false}; kwargs...) = charge(chemicalentity(loss); kwargs...)
 charge(gain::ElementalScheme{true}; kwargs...) = -charge(chemicalentity(gain); kwargs...)
 charge(x::IsotopomerizedSchema) = charge(x.parent)
-charge(x::ChemicalSchema) = sum(charge(k) * v for (k, v) in pairs(x.schema))
+charge(x::ChemicalSchema) = sum(charge(k) * v for (k, v) in zip(x.schema, x.number))
 
 retentiontime(isobars::Isobars; kwargs...) = _isobar_species_attr(retentiontime, isobars; kwargs...)
 retentiontime(isotopomers::Isotopomers; kwargs...) = retentiontime(chemicalparent(isotopomers); kwargs...)
@@ -26,27 +26,24 @@ _isobar_species_attr(fn, isobars::Isobars{<: ChemicalTransition}, args...; kwarg
 
 Monoisotopic mass of formula, and elements.
 """
-function mmi(elements::Union{<: Vector{<: Pair}, <: Dictionaries.PairDictionary}, net_charge = 0)
+function mmi(elements::Union{<: Vector{<: Pair}, <: Dict}, net_charge = 0)
     # Vector of el => #el
-    weight = 0.0u"g"
+    weight = 0.0
     for (el, n) in elements
-        weight += elements_mass()[string(el)] * n
+        weight += elements_mass()[el] * n
     end
     weight -= net_charge * ME
-    ustrip(weight)
+    weight
 end
 
-mmi(elements::Dictionary, net_charge = 0) = mmi(pairs(elements), net_charge)
-
-deltammi(elements::Dictionary, net_charge = 0) = deltammi(pairs(elements), net_charge)
-function deltammi(elements::Union{<: Vector{<: Pair}, <: Dictionaries.PairDictionary}, net_charge = 0)
-    weight = 0.0u"g"
+function deltammi(elements::Union{<: Vector{<: Pair}, <: Dict}, net_charge = 0)
+    weight = 0.0
     for (el, n) in elements
-        weight += elements_mass()[string(el)] * n
-        weight -= elements_mass()[parent_element(string(el))] * n
+        weight += elements_mass()[el] * n
+        weight -= elements_mass()[parent_element(el)] * n
     end
     weight -= net_charge * ME
-    ustrip(weight)
+    weight
 end
 
 function mmi(formula::AbstractString, net_charge = 0)
@@ -71,23 +68,21 @@ mmi(ct::ChemicalTransition) = mmi(analyzedchemical(ct))
 
 Molar mass of formula, and elements.
 """
-function molarmass(elements::Union{<: Vector{<: Pair}, <: Dictionaries.PairDictionary}, net_charge = 0)
+function molarmass(elements::Union{<: Vector{<: Pair}, <: Dict}, net_charge = 0)
     # Vector of el => #el
-    weight = 0.0u"g"
+    weight = 0.0
     for (el, n) in elements
         if iselement(string(el))
             for i in elements_isotopes()[string(el)]
-                weight += elements_mass()[i] * n * elements_abundunce()[i]
+                weight += elements_mass()[i] * n * elements_abundance()[i]
             end
         else
             weight += elements_mass()[string(el)] * n
         end
     end
     weight -= net_charge * ME
-    ustrip(weight)
+    weight
 end
-
-molarmass(elements::Dictionary, net_charge = 0) = molarmass(pairs(elements), net_charge)
 
 function molarmass(formula::AbstractString, net_charge = 0)
     # if any prefix number

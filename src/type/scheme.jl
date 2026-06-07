@@ -53,10 +53,11 @@ ChemicalLoss(x) = ElementalScheme(false, x)
 Mutiple chemical schema.
 
 # Fields
-* `schema::Dictionary{T, Int}`: scheme => number dictionary
+* `schema::Vector{Pair{T, Int}}`: scheme => number vector. The number v is the times of the scheme in the chemical schema. 
 """
 struct ChemicalSchema{T<:AbstractScheme} <: AbstractScheme
-    schema::Dictionary{T, Int}
+    schema::Vector{T}
+    number::Vector{Int}
 end 
 
 """
@@ -79,20 +80,22 @@ schemetype(::T) where T = T
 
 function ChemicalSchema(scheme::T, schema...) where {T <: AbstractScheme} 
     C = promote_type(T, schemetype.(schema)...)
-    cs = Dictionary{C, Int}([scheme], [1])
+    cs = C[scheme]
+    cn = Int[1]
     for s in schema
-        push_scheme!(cs, s)
+        push_scheme!(cs, cn, s)
     end
-    ChemicalSchema(cs)
+    ChemicalSchema(cs, cn)
 end
 
 function ChemicalSchema(schema::AbstractVector{T}) where {T <: AbstractScheme}
-    cs = Dictionary{T, Int}([first(schema)], [1])
-    length(schema) < 2 && return ChemicalSchema(cs)
+    cs = T[first(schema)]
+    cn = Int[1]
+    length(schema) < 2 && return ChemicalSchema(cs, cn)
     for s in @view schema[2:end]
-        push_scheme!(cs, s)
+        push_scheme!(cs, cn, s)
     end
-    ChemicalSchema(cs)
+    ChemicalSchema(cs, cn)
 end
 
 function ChemicalSchema(scheme::ChemicalSchema{T}, schema...) where {T <: AbstractScheme}
@@ -100,25 +103,36 @@ function ChemicalSchema(scheme::ChemicalSchema{T}, schema...) where {T <: Abstra
     if C == T
         cs = copy(scheme.schema)
     else
-        cs = convert(Dictionary{C, Int}, copy(scheme.schema))
+        cs = convert(Vector{C}, copy(scheme.schema))
     end
+    cn = copy(scheme.number)
     for s in schema
-        push_scheme!(cs, s)
+        push_scheme!(cs, cn, s)
     end
-    ChemicalSchema(cs)
+    ChemicalSchema(cs, cn)
 end
 
-function push_scheme!(cs::Dictionary, scheme::ChemicalSchema)
-    for (k, v) in pairs(scheme.schema)
-        get!(cs, k, 0)
-        cs[k] += v
+function push_scheme!(cs::Vector, cn::Vector, scheme::ChemicalSchema)
+    for (k, v) in zip(scheme.schema, scheme.number)
+        i = findfirst(==(k), cs)
+        if i !== nothing
+            cn[i] += v
+        else
+            push!(cs, k)
+            push!(cn, v)
+        end
     end
     cs
 end
 
-function push_scheme!(cs::Dictionary, scheme::AbstractScheme)
-    get!(cs, scheme, 0)
-    cs[scheme] += 1
+function push_scheme!(cs::Vector, cn::Vector, scheme::AbstractScheme)
+    i = findfirst(==(scheme), cs)
+    if i !== nothing
+        cn[i] += 1
+    else
+        push!(cs, scheme)
+        push!(cn, 1)
+    end
     cs
 end
 

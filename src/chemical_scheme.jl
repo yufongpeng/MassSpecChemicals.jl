@@ -46,12 +46,11 @@ istransformedchemicalequal(x::ChemicalTransition, y::ChemicalTransition) = all(i
 istransformedchemicalequal(x::IsotopomerizedSchema, y::IsotopomerizedSchema) = istransformedchemicalequal(x, y) && isequal(sort!(unique_elements(x.isotopes)), sort!(unique_elements(y.isotopes)))
 function istransformedchemicalequal(x::ChemicalSchema, y::ChemicalSchema) 
     uk = [false for _ in eachindex(y.schema)]
-    kys = collect(keys(y.schema))
-    for (kx, vx) in pairs(x.schema)
+    for (kx, vx) in zip(x.schema, x.number)
         pass = false
-        for (i, ky) in enumerate(kys)
+        for (i, ky) in enumerate(y.schema)
             uk[i] && continue 
-            if ischemicalequal(kx, ky) && vx == y.schema[ky]
+            if ischemicalequal(kx, ky) && vx == y.number[i]
                 pass = true
                 uk[i] = true
                 continue
@@ -87,11 +86,11 @@ ionize(::Type{AdductIon}, chemical; adduct, ncore = 1, kwargs...) = AdductIon(ch
 Add delocalized isotopic replacements `isotopes` to `chemical`.
 """
 isotopomerize(chemical::AbstractChemical, isotopes) = Isotopomers(chemical, isotopes)
-isotopomerize(chemical::Isotopomers, isotopes) = Isotopomers(chemical.parent, collect(pairs(gain_elements(chemical.isotopes, isotopes))))
+isotopomerize(chemical::Isotopomers, isotopes) = Isotopomers(chemical.parent, collect(gain_elements(chemical.isotopes, isotopes)))
 isotopomerize(sch::StructuralElementalScheme, isotopes) = StructuralElementalScheme(structuralscheme(sch), isotopomerize(elementalscheme(sch), isotopes))
 isotopomerize(sch::ElementalScheme{T}, isotopes) where T = ElementalScheme(T, isotopomerize(sch.chemical, isotopes))
 isotopomerize(sch::ChemicalSchema, isotopes) = IsotopomerizedSchema(sch, isotopes)
-isotopomerize(sch::IsotopomerizedSchema, isotopes) = IsotopomerizedSchema(sch.parent, collect(pairs(gain_elements(sch.isotopes, isotopes))))
+isotopomerize(sch::IsotopomerizedSchema, isotopes) = IsotopomerizedSchema(sch.parent, collect(gain_elements(sch.isotopes, isotopes)))
 isotopomerize(sch::T, isotopes) where {T<:AbstractScheme} = throw(ArgumentError("Cannot add isotopes information to $T."))
 
 """
@@ -131,7 +130,7 @@ completescheme(precursor::AbstractChemical, product::AbstractChemical) = Structu
 completescheme(precursor::T, product::S) where {T<:AbstractChemical, S<:AbstractScheme} = throw(ArgumentError("Specific `completescheme(precursor::$T, scheme::$S)` method has to be implemented."))
 completescheme(precursor::AbstractChemical, product::CompleteSchema) = product
 completescheme(precursor::AbstractChemical, product::IsotopomerizedSchema) = IsotopomerizedSchema(completescheme(precursor, product.parent), product.isotopes)
-completescheme(precursor::AbstractChemical, product::ChemicalSchema) = ChemicalSchema(Dictionary(completescheme.(Ref(precursor), keys(product.schema)), values(product.schema)))
+completescheme(precursor::AbstractChemical, product::ChemicalSchema) = ChemicalSchema(completescheme.(Ref(precursor), product.schema), product.number)
 completescheme(precursor::AbstractChemical, product::AbstractElementalScheme) = StructuralElementalScheme(product, copy(product))
 # completescheme(precursor::AbstractChemical, product::ElementalScheme{T}) where T = StructuralElementalScheme(product, ElementalScheme(T, product))
 # structure serach for generics 
@@ -208,9 +207,9 @@ chemicalentity(ct::ChemicalTransition; kwargs...) = first(chemicaltransition(ct)
 chemicalentity(sch::ElementalScheme; kwargs...) = chemicalentity(sch.chemical)
 
 elementalscheme(sch::IsotopomerizedSchema; kwargs...) = IsotopomerizedSchema(elementalscheme(sch.parent; kwargs...), sch.isotopes)
-elementalscheme(sch::ChemicalSchema; kwargs...) = ChemicalSchema(Dictionary(elementalscheme.(keys(sch.schema); kwargs...), values(sch.schema)))
+elementalscheme(sch::ChemicalSchema; kwargs...) = ChemicalSchema(elementalscheme.(sch.schema; kwargs...), sch.number)
 structuralscheme(sch::IsotopomerizedSchema; kwargs...) = IsotopomerizedSchema(structuralscheme(sch.schema; kwargs...), sch.isotopes)
-structuralscheme(sch::ChemicalSchema; kwargs...) = ChemicalSchema(Dictionary(structuralscheme.(keys(sch.schema); kwargs...), values(sch.schema)))
+structuralscheme(sch::ChemicalSchema; kwargs...) = ChemicalSchema(structuralscheme.(sch.schema; kwargs...), sch.number)
 structuralscheme(::Nothing) = nothing 
 elementalscheme(::Nothing) = nothing 
 
@@ -229,8 +228,8 @@ chemicalparent(ct::ChemicalTransition; kwargs...) = ChemicalTransition(chemicalp
 
 chemicalparent(sch::StructuralElementalScheme; kwargs...) = StructuralElementalScheme(structuralscheme(sch), chemicalparent(chemicalentity(sch); kwargs...))
 chemicalparent(sch::ElementalScheme{T}; kwargs...) where T = ElementalScheme(T, chemicalparent(chemicalentity(sch); kwargs...))
-chemicalparent(sch::IsotopomerizedSchema) = sch.parent
-chemicalparent(sch::ChemicalSchema) = ChemicalSchema(Dictionary(chemicalparent.(keys(sch.schema)), values(sch.schema)))
+chemicalparent(sch::IsotopomerizedSchema; kwargs...) = sch.parent
+chemicalparent(sch::ChemicalSchema; kwargs...) = ChemicalSchema(chemicalparent.(sch.schema; kwargs...), sch.number)
 
 isotopomersisotopes(isobars::Isobars; kwargs...) = isotopomersisotopes(chemicalentity(isobars); kwargs...)
 isotopomersisotopes(isotopomers::Isotopomers; kwargs...) = isotopomers.isotopes
@@ -240,7 +239,7 @@ isotopomersisotopes(ct::ChemicalTransition; kwargs...) = isotopomersisotopes(che
 isotopomersisotopes(sch::ElementalScheme{true}; kwargs...) = [k => -v for (k, v) in isotopomersisotopes(chemicalentity(sch); kwargs...)]
 isotopomersisotopes(sch::ElementalScheme{false}; kwargs...) = isotopomersisotopes(chemicalentity(sch); kwargs...) 
 isotopomersisotopes(x::IsotopomerizedSchema) = x.isotopes
-isotopomersisotopes(x::ChemicalSchema) = vcat((repeat(isotopomersisotopes(k), v) for (k, v) in pairs(x.schema))...)
+isotopomersisotopes(x::ChemicalSchema) = vcat((repeat(isotopomersisotopes(k), v) for (k, v) in zip(x.schema, x.number))...)
 
 inputchemical(isobars::Isobars; kwargs...) = Isobars([inputchemical(chemical; kwargs...) for chemical in chemicalspecies(isobars)], isobars.abundance[:, begin])
 inputchemical(ct::ChemicalTransition; kwargs...) = first(chemicaltransition(ct))
@@ -334,7 +333,7 @@ detectedelements(ct::AbstractVector; kwargs...) =
 # structural -> complete, elemental -> complete
 structure_search(chemical, precursor_schema, product_schema::CompleteSchema) = product_schema
 structure_search(chemical, precursor_schema, product_schema::IsotopomerizedSchema) = IsotopomerizedSchema(structure_search(chemical, precursor_schema, product_schema.parent), product_schema.isotopes)
-structure_search(chemical, precursor_schema, product_schema::ChemicalSchema) = ChemicalSchema(Dictionary([structure_search(chemical, precursor_schema, k) for k in keys(product_schema.schema)], values(product_schema.schema)))
+structure_search(chemical, precursor_schema, product_schema::ChemicalSchema) = ChemicalSchema([structure_search(chemical, precursor_schema, k) for k in product_schema.schema], product_schema.number)
 function structure_search(chemical, precursor_schema, product::GenericChemical) 
     product_schema = chemicalscheme_search(product, nothing) 
     isnothing(product_schema) && return StructuralElementalScheme(RandomProductScheme(), product)
@@ -370,8 +369,6 @@ function chemicalscheme_search(chemical, scheme)
     isnothing(i) && return nothing
     last(schema[i])
 end
-
-# completeschemize(sch1::ChemicalSchema, sch2::ChemicalSchema) = ChemicalSchema(Dictionary([completeschemize(k1, k2) for (k1, k2) in zip(keys(sc1.schema), keys(sc2.schema))], values(sch2.schema)))
 
 # complete -> complete
 schema_search(chemical, precursor_schema::Nothing, product_schema::CompleteSchema) = product_schema

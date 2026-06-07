@@ -54,9 +54,9 @@ function Isotopologues(input_chemical::AbstractChemical;
         Abundance1 = it.Abundance
     ) : 
     Table(; 
-        ID = [id for _ in eachindex(it)], 
+        ID = [id for _ in eachindex(it.Element)], 
         Chemical = [Isotopomers(input_chemical, x) for x in it.Element], 
-        MZ1 = [m / abs_charge + (net_charge < 0) * ustrip(ME) for m in it.Mass],  
+        MZ1 = [m / abs_charge + (net_charge < 0) * ME for m in it.Mass],  
         Abundance1 = it.Abundance
     ) 
 end
@@ -77,13 +77,12 @@ function Isotopologues(ct::ChemicalTransition;
         threshold = rcrit(1e-4)
     ) 
     msstage(ct) == 1 && return Isotopologues(analyzedchemical(ct); id, abundance, abtype, threshold)
-    abundance = first(abundance)
+    abundance = float(first(abundance))
     trans = chemicaltransition(ct)
     for c in @view trans[begin:end - 1]
         isgainscheme(c) && throw(ArgumentError("Chemical gain can only be in the last stage for `Isotopologues`; use `TandemIsotopologues` instead."))
     end
     precursor_info = serieschemicaldata(ct)
-    analyzed_info = deepcopy(precursor_info)
     if isgainscheme(last(trans))
         if length(trans) > 2
             for (pre, post) in @inbounds @views zip(precursor_info[begin:end - 2], precursor_info[begin + 1:end - 1])
@@ -96,133 +95,64 @@ function Isotopologues(ct::ChemicalTransition;
             loss_elements!(last(pre), last(post))
         end
     end
-    element_dictionary_vec = Vector{Dictionary}(undef, length(precursor_info))
+    element_dictionary_vec = Vector{Dict}(undef, length(precursor_info))
     msfix_vec = Vector{float(Int)}(undef, length(precursor_info))
     for (i, info) in enumerate(precursor_info)
-        element_dictionary = Dictionary{String, Int}()
-        msfix = 0.0u"g"
-        for (e, n) in pairs(last(info))
+        element_dictionary = Dict{String, Int}()
+        msfix = 0.0
+        for (e, n) in last(info)
             if iselement(e)
-                set!(element_dictionary, e, n)
+                element_dictionary[e] = n
             else
                 msfix += elements_mass()[e] * n
             end
         end
-        msfix_vec[i] = ustrip(msfix)
+        msfix_vec[i] = msfix
         element_dictionary_vec[i] = element_dictionary
     end
     max_dictionary_vec = map(maximal_elements, element_dictionary_vec)
     max_proportion_vec = map(isotopicabundance, max_dictionary_vec)
-    if abtype == :total 
-        preab = abundance 
-        maxab = abundance 
-        for p in max_proportion_vec
-            maxab *= p 
-        end
-    elseif abtype == :list
-        # approximation by [13C] isotope
-        m = minimum(makecrit_value(crit(threshold), abundance))
-        preab = abundance * (2 * abundance - m) / (abundance - m)
-        maxab = preab 
-        for p in max_proportion_vec
-            maxab *= p 
-        end
-        
-    elseif abtype == :max 
-        preab = abundance 
-        maxab = abundance 
-        for p in max_proportion_vec
-            preab /= p 
-        end
-    else
-        preab = abundance 
-        maxab = abundance 
-        for p in element_dictionary_vec
-            preab /= isotopicabundance(p)
-        end
-        maxab = preab
-        for p in max_proportion_vec
-            maxab *= p 
-        end
-    end
+    preab, maxab = msmspremaxabundance(Val(abtype), abundance, threshold, max_proportion_vec, element_dictionary_vec) 
     base_abundance_cutoff = minimum(makecrit_value(crit(threshold), maxab)) / maxab
     tbls = map(zip(element_dictionary_vec, msfix_vec, max_dictionary_vec, max_proportion_vec)) do (element_dictionary, msfix, max_dictionary, max_proportion)
-        isempty(element_dictionary) && return Table(; Element = [dictionary_elements(get_isotope_vec(element_dictionary))], Mass = [mmi(element_dictionary) + msfix], Abundance = [1])
+        isempty(element_dictionary) && return (; Element = [dictionary_elements(get_isotope_vec(element_dictionary))], Mass = [mmi(element_dictionary) + msfix], Abundance = [float(1)])
         proportioon_cutoff = base_abundance_cutoff * max_proportion
-        element_isotope_pair = mapreduce(vcat, collect(keys(element_dictionary))) do e
-            v = map(get(elements_isotopes(), e, e)) do x
-                (e, x)
-            end
-            deleteat!(v, 1)
-        end
-        sort!(element_isotope_pair; by = x -> elements_abundunce()[last(x)], rev = true)
-        element_chemical, abundance_chemical = rec_addminusisotopes!([max_dictionary], [max_proportion], max_dictionary, element_isotope_pair, 1, max_proportion, proportioon_cutoff, true, true)
+        element_isotope_pair = element_isotope_pairs(element_dictionary)
+        element_chemical = [max_dictionary]
+        abundance_chemical = [max_proportion]
+        rec_addminusisotopes!(element_chemical, abundance_chemical, max_dictionary, element_isotope_pair, 1, max_proportion, proportioon_cutoff, true, true)
         # normalize_abundance!(abundance_chemical, abundance, abtype, [:max, :input, :list, :total])
         mass_chemical = map(mmi, element_chemical) .+ msfix
-        aid = sortperm(mass_chemical)
-        element_chemical = map(@view element_chemical[aid]) do x
-            ks = findall(iselement, keys(x))
-            for k in ks 
-                delete!(x, k)
-            end
-            x
-        end
+        aid = sortperm(abundance_chemical; rev = true)
+        element_chemical = map(x -> filter!(!iselement ∘ first, x), element_chemical[aid]) 
         mass_chemical = mass_chemical[aid]
         abundance_chemical = abundance_chemical[aid]
-        Table(; Element = element_chemical, Mass = mass_chemical, Abundance = abundance_chemical) 
+        (; Element = element_chemical, Mass = mass_chemical, Abundance = abundance_chemical) 
     end
-    els = Vector{Dictionary}[]
+    first(tbls).Abundance .*= preab
+    els = Vector{Dict}[]
     abv = float(Int)[]
     mass = Vector{float(Int)}[]
     abundance_cutoff = base_abundance_cutoff * maxab
-    @inbounds for pid in Iterators.product(eachindex.(tbls)...)
-        ab = *(preab, (tbl.Abundance[i] for (tbl, i) in zip(tbls, pid))...)
-        if ab >= abundance_cutoff
-            el = [copy(tbl.Element[i]) for (tbl, i) in zip(tbls, pid)]
-            prev = empty(el[end])
-            push = true
-            for i in Iterators.reverse(eachindex(el))
-                prev = gain_elements!(el[i], prev)
-                for (e, n) in pairs(last(analyzed_info[i]))
-                    iselement(e) || continue
-                    if n < sum(x -> get(prev, x, 0), elements_isotopes()[e]) 
-                        push = false 
-                        break
-                    end
-                end
-                !push && break
-            end
-            if push
-                push!(els, el)
-                push!(abv, ab)
-                push!(mass, reverse(cumsum(tbl.Mass[i] for (tbl, i) in Iterators.reverse(zip(tbls, pid)))))
-            end
-        end
-    end
+    rec_vec_ab!(els, abv, mass, tbls, abundance_cutoff, prod(first(tbl.Abundance) for tbl in tbls), [1 for _ in eachindex(tbls)], 1)
     chemical = chain_chemicals_isotopes(trans, els)
     net_charge = [charge(first(p)) for p in precursor_info]
     abs_charge = max.(1, net_charge)
     colab = Symbol(string("Abundance", length(precursor_info))) 
     colmz = all(==(0), net_charge) ? [Symbol(string("Mass", i)) for i in eachindex(precursor_info)] : [Symbol(string("MZ", i)) for i in eachindex(precursor_info)]
     idm = sortperm(mass)
-    if abtype == :list 
-        normalizer = abundance / sum(abv)
-        abv = abv .* normalizer
-        aid = filter!(x -> >=(abv[x], minimum(makecrit_value(crit(threshold), maximum(abv)))), idm)
-        chemical = chemical[aid]
-        mass = mass[aid]
-        abv = abv[aid]
-    else
-        chemical = chemical[idm]
-        mass = mass[idm]
-        abv = abv[idm]
+    chemical = chemical[idm]
+    mass = mass[idm]
+    abv = abv[idm]
+    if dopostnormalize(Val(abtype))
+        abv = normalize_abundance(abv, abundance, abtype)
     end
     if isgainscheme(last(trans)) 
         for m in mass
             m[end] += m[end - 1]
         end
     end
-    mass = [colmz[i] => net_charge[i] == 0 ? [m[i] for m in mass] : [m[i] / abs_charge[i] + (net_charge[i] < 0) * ustrip(ME) for m in mass] for i in eachindex(precursor_info)]
+    mass = [colmz[i] => net_charge[i] == 0 ? [m[i] for m in mass] : [m[i] / abs_charge[i] + (net_charge[i] < 0) * ME for m in mass] for i in eachindex(precursor_info)]
     Table(; ID = [id for _ in eachindex(chemical)], Chemical = chemical, mass..., (colab => abv, )...) 
 end
 
@@ -392,13 +322,27 @@ function _TandemIsotopologues(precursor_table, transition, precursor_info, id, a
             precursor_table = Isotopologues(precursor; chemicalparser, id = id[begin:begin], abundance = abundance[begin], abtype, threshold)
         else
             precursor_table = _TandemIsotopologues(precursor_table, transition, precursor_info, id, abundance, ip - 1; 
-                                chemicalparser, abtype, threshold, 
+                                chemicalparser, abtype, threshold = threshold, 
                                 product = nothing, 
                                 product_info = nothing, 
                                 proportion = nothing)
             colab = Symbol(string("Abundance", ip - 1))
-            itp = Table(; Element = [dictionary_elements(detectedisotopes(x)) for x in precursor_table.Chemical], Abundance = getproperty(precursor_table, colab))
-            tbl = _TandemIsotopologues(precursor_table, itp, transition[ip], abundance[ip] / abundance[ip - 1], precursor_info[ip - 1], precursor_info[ip]; id = id = id[begin:ip], abundance = abundance[ip], abtype = :total, threshold)
+            element_precursor_dictionary = get_element_dictinonary(last(precursor_info[ip - 1]))
+            el = map(precursor_table.Chemical) do x 
+                first_element_precursor_dictionary = copy(element_precursor_dictionary)
+                for (k, v) in detectedisotopes(x)
+                    p = parent_element(k)
+                    if p != k
+                        get!(first_element_precursor_dictionary, k, 0)
+                        first_element_precursor_dictionary[k] += v
+                        get!(first_element_precursor_dictionary, p, 0)
+                        first_element_precursor_dictionary[p] -= v
+                    end
+                end
+                first_element_precursor_dictionary
+            end
+            itp = (; Element = el, Abundance = getproperty(precursor_table, colab))
+            tbl = __TandemIsotopologues(precursor_table, itp, id[begin:ip], precursor_info[ip - 1], precursor_info[ip], transition[ip], abundance[ip] / abundance[ip - 1], abundance[ip], :total, threshold)
             colab = lastcolnum(propertynames(tbl), "Abundance")
             ab = getproperty(tbl, colab)
             abundance_cutoff = minimum(makecrit_value(crit(threshold), maximum(ab)))
@@ -408,8 +352,22 @@ function _TandemIsotopologues(precursor_table, transition, precursor_info, id, a
     end
     (isnothing(product) || isempty(product)) && return precursor_table
     colab = Symbol(string("Abundance", length(id)))
-    itp = Table(; Element = [dictionary_elements(detectedisotopes(x)) for x in precursor_table.Chemical], Abundance = getproperty(precursor_table, colab))
-    tbl = vcat([_TandemIsotopologues(precursor_table, itp, raw_product, prop, precursor_info[ip], prod_info; id = (id..., i), abundance = abundance[ip], abtype = :total, threshold, check_product = true) for (i, raw_product, prop, prod_info) in zip(eachindex(product), product, proportion, product_info)]...)
+    element_precursor_dictionary = get_element_dictinonary(element_precursor)
+    el = map(precursor_table.Chemical) do x 
+        first_element_precursor_dictionary = copy(element_precursor_dictionary)
+        for (k, v) in detectedisotopes(x)
+            p = parent_element(k)
+            if p != k
+                get!(first_element_precursor_dictionary, k, 0)
+                first_element_precursor_dictionary[k] += v
+                get!(first_element_precursor_dictionary, p, 0)
+                first_element_precursor_dictionary[p] -= v
+            end
+        end
+        first_element_precursor_dictionary
+    end
+    itp = (; Element = el, Abundance = getproperty(precursor_table, colab))
+    tbl = vcat([__TandemIsotopologues(precursor_table, itp, (id..., i), precursor_info[ip], prod_info, raw_product, prop, abundance[ip], :total, threshold; check_product = true) for (i, raw_product, prop, prod_info) in zip(eachindex(product), product, proportion, product_info)]...)
     colab = lastcolnum(propertynames(tbl), "Abundance")
     ab = getproperty(tbl, colab)
     abundance_cutoff = minimum(makecrit_value(crit(threshold), maximum(ab)))
@@ -417,41 +375,41 @@ function _TandemIsotopologues(precursor_table, transition, precursor_info, id, a
     tbl[id]
 end
 
-function _TandemIsotopologues(precursor_table, itp, raw_product, proportion, precursor_info, product_info; id = (1, ), abundance = 1, abtype = :total, threshold = rcrit(1e-4), check_product = false)
+function __TandemIsotopologues(precursor_table, itp, id, precursor_info, product_info, raw_product, proportion, abundance, abtype, threshold; check_product = false)
     precursor, element_precursor = precursor_info
     product, element_product = product_info
     nms = length(id)
     if check_product && !isgainscheme(raw_product) 
-        for (k, v) in pairs(element_product)
+        for (k, v) in element_product
             get(element_precursor, k, 0) < v && throw(ArgumentError("Product can only contain elements restricted by precursor."))
         end
     end
     net_charge = charge(product)
     if isgainscheme(raw_product) 
-        element_residual = chemicalelements(raw_product)
-    else
-        element_residual = loss_elements(element_precursor, element_product)
+        element_precursor = chemicalelements(raw_product)
     end
-    it = isotopologues_elements_ms2(itp, element_product, element_residual, abundance, abtype, threshold; gain = isgainscheme(raw_product), loss = islossscheme(raw_product))
+    # threshold by pre abundance, then * proportion 
+    # or just itp.Abundance * proportion?
+    it = isotopologues_elements_ms2(itp, element_precursor, element_product, abundance, abtype, proportion, threshold; gain = isgainscheme(raw_product), loss = islossscheme(raw_product))
     abs_charge = max(1, net_charge)
-    mass = net_charge == 0 ? it.Mass : [m / abs_charge + (net_charge < 0) * ustrip(ME) for m in it.Mass]
-    chemical = [ChemicalTransition(precursor_table.Chemical[r.ID], isotopomerize(raw_product, r.Element)) for r in it]
+    mass = net_charge == 0 ? it.Mass : [m / abs_charge + (net_charge < 0) * ME for m in it.Mass]
+    chemical = [ChemicalTransition(precursor_table.Chemical[id], isotopomerize(raw_product, element)) for (id, element) in zip(it.ID, it.Element)]
     abpre = map(1:nms - 1) do i 
         s = Symbol(string("Abundance", i))
-        s => [getproperty(precursor_table, s)[r.ID] for r in it]
+        s => [getproperty(precursor_table, s)[id] for id in it.ID]
     end
     if net_charge == 0 
         mspre = map(1:nms - 1) do i 
             s = Symbol(string("Mass", i))
-            s => [getproperty(precursor_table, s)[r.ID] for r in it]
+            s => [getproperty(precursor_table, s)[id] for id in it.ID]
         end
-        Table(; ID = [id for _ in eachindex(chemical)], Chemical = chemical, mspre..., [Symbol(string("Mass", nms)) => mass]..., abpre..., [Symbol(string("Abundance", nms)) => it.Abundance .* proportion]...) 
+        Table(; ID = [id for _ in eachindex(chemical)], Chemical = chemical, mspre..., [Symbol(string("Mass", nms)) => mass]..., abpre..., [Symbol(string("Abundance", nms)) => it.Abundance]...) 
     else
         mspre = map(1:nms - 1) do i 
             s = Symbol(string("MZ", i))
-            s => [getproperty(precursor_table, s)[r.ID] for r in it]
+            s => [getproperty(precursor_table, s)[id] for id in it.ID]
         end
-        Table(; ID = [id for _ in eachindex(chemical)], Chemical = chemical, mspre..., [Symbol(string("MZ", nms)) => mass]..., abpre..., [Symbol(string("Abundance", nms)) => it.Abundance .* proportion]...) 
+        Table(; ID = [id for _ in eachindex(chemical)], Chemical = chemical, mspre..., [Symbol(string("MZ", nms)) => mass]..., abpre..., [Symbol(string("Abundance", nms)) => it.Abundance]...) 
     end
 end
 
@@ -584,7 +542,7 @@ end
 """
     isotopicabundance(chemical::AbstractChemical; ignore_isotopes = false, precise = false)
     isotopicabundance(formula::AbstractString; ignore_isotopes = false, precise = false)
-    isotopicabundance(elements::Union{<: Vector, Dictionary}; ignore_isotopes = false, precise = false)
+    isotopicabundance(elements::Union{<: Vector, Dict}; ignore_isotopes = false, precise = false)
 
 Compute isotopic abundance of `chemical`, `formula`, vector of element-number pairs or dictionary mapping element to number. 
 
@@ -594,13 +552,13 @@ To compute isotopic abundance of chemicals with all isotopes labeled intentional
 isotopicabundance(cc::AbstractChemical; ignore_isotopes = false, precise = false) = isotopicabundance(chemicalformula(cc); ignore_isotopes, precise)
 isotopicabundance(formula::AbstractString; ignore_isotopes = false, precise = false) = isotopicabundance(chemicalelements(formula); ignore_isotopes, precise)
 isotopicabundance(elements::Vector{<: Pair}; ignore_isotopes = false, precise = false) = _isotopicabundance(unique_elements(elements); ignore_isotopes, precise)
-isotopicabundance(elements::Dictionary; ignore_isotopes = false, precise = false) = _isotopicabundance(pairs(elements); ignore_isotopes, precise)
-function _isotopicabundance(elements::Union{<: Vector{<: Pair}, <: Dictionaries.PairDictionary}; ignore_isotopes = false, precise = false)
+isotopicabundance(elements::Dict; ignore_isotopes = false, precise = false) = _isotopicabundance(collect(elements); ignore_isotopes, precise)
+function _isotopicabundance(elements::Vector{<: Pair}; ignore_isotopes = false, precise = false)
     elements = ignore_isotopes ? filter(iselement ∘ first, elements) : elements
     element_dict = groupfind(parent_element ∘ first, elements)
     abundance_sum = 1
     @inbounds for id in element_dict
-        abundance = [get(elements_abundunce(), first(elements[i]), 1) for i in id]
+        abundance = [get(elements_abundance(), first(elements[i]), 1) for i in id]
         any(==(1), abundance) && continue
         ns = [last(elements[i]) for i in id]
         f = precise ? multinomial(big.(ns)...) : try 
@@ -608,9 +566,7 @@ function _isotopicabundance(elements::Union{<: Vector{<: Pair}, <: Dictionaries.
         catch 
             multinomial(big.(ns)...)
         end
-        abundance_sum *= f * mapreduce(*, ns, abundance) do x, y
-            y ^ x 
-        end
+        abundance_sum *= f * prod(y ^ x for (x, y) in zip(ns, abundance))
     end
     precise ? float(abundance_sum) : convert(float(Int), abundance_sum)
 end

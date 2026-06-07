@@ -103,14 +103,14 @@ function chemicalformula(chemical::AbstractChemicalsSchema; shallow = false, kwa
 end
 
 function chemicalformula(adduct_ion::AbstractAdductIon; kwargs...)
-    el = deepcopy(chemicalelements(ioncore(adduct_ion); kwargs...))
+    el = copy(chemicalelements(ioncore(adduct_ion); kwargs...))
     nm = ncore(adduct_ion)
     if nm > 1
         for id in eachindex(el)
             el[id] = first(el[id]) => nm * last(el[id])
         end
     end
-    chemicalformula(gain_elements!(dictionary_elements(el), chemicalelements(ionadduct(adduct_ion); loss = false, kwargs...)))
+    chemicalformula(gain_elements!(dictionary_elements(Dictionary, el), chemicalelements(ionadduct(adduct_ion); loss = false, kwargs...)))
 end
 
 chemicalformula(chemical::AbstractChemicalWrapper; kwargs...) = chemicalformula(chemical.chemical; kwargs...)
@@ -145,7 +145,7 @@ function chemicalelements(chemical::AbstractChemicalsSchema; shallow = false, kw
 end
 
 function chemicalelements(adduct_ion::AbstractAdductIon; kwargs...) 
-    el = deepcopy(chemicalelements(ioncore(adduct_ion); kwargs...))
+    el = copy(chemicalelements(ioncore(adduct_ion); kwargs...))
     nm = ncore(adduct_ion)
     if nm > 1
         for id in eachindex(el)
@@ -676,7 +676,7 @@ The mass to charge ratio (m/z) of charged chemical or chemical with adduct. It i
 mz(charged_cc::AbstractChemical) = charge(charged_cc) == 0 ? NaN : mmi(charged_cc) / ncharge(charged_cc)
 mz(cc::AbstractChemical, adduct) = mz(AdductIon(cc, parse_adduct(adduct; args = true)...))
 function mz(adduct_ion::AbstractAdductIon) 
-    (ncore(adduct_ion) * mmi(ioncore(adduct_ion)) + mmi(chemicalelements(ionadduct(adduct_ion); loss = false)) - charge(adduct_ion) * ustrip(ME)) / ncharge(adduct_ion)
+    (ncore(adduct_ion) * mmi(ioncore(adduct_ion)) + mmi(chemicalelements(ionadduct(adduct_ion); loss = false)) - charge(adduct_ion) * ME) / ncharge(adduct_ion)
 end
 mz(adduct_ion::AbstractAdductIon, adduct) = mz(AdductIon(ioncore(adduct_ion), parse_adduct(adduct; args = true)...))
 
