@@ -38,13 +38,13 @@ Plot a spectrum to an existing figure.
 
 Other keyword arguments can controls the settings of plot.
 """
-plot_spectrum!(mz_range, spectrum::Spectrum; deconvolution = false, abundance = 1, abtype = :max, threshold = rcrit(1e-4), kwargs...) = 
+plot_spectrum!(mz_range, spectrum::Spectrum; deconvolution = false, abundance = 1, abtype = Max(), threshold = rcrit(1e-4), kwargs...) = 
     _plot_spectrum(mz_range, spectrum; fn = plot!, deconvolution, abundance, abtype, threshold, kwargs...)
-plot_spectrum!(mz_range, mztable::Table; abundance = 1, abtype = :max, threshold = rcrit(1e-4), kwargs...) = 
+plot_spectrum!(mz_range, mztable::Table; abundance = 1, abtype = Max(), threshold = rcrit(1e-4), kwargs...) = 
     _plot_spectrum(mz_range, mztable; fn = plot!, abundance, abtype, threshold, kwargs...)
 plot_spectrum!(x; kwargs...) = plot_spectrum!(nothing, x; kwargs...)
 
-function _plot_spectrum(mz_range, spectrum::Spectrum; fn = plot, deconvolution = false, abundance = 1, abtype = :max, threshold = rcrit(1e-4), kwargs...)
+function _plot_spectrum(mz_range, spectrum::Spectrum; fn = plot, deconvolution = false, abundance = 1, abtype = Max(), threshold = rcrit(1e-4), kwargs...)
     ms, ab = plot_spectrum_params(mz_range, spectrum; deconvolution, abundance, abtype, threshold)
     apply_plot_spectrum(ms, ab; fn, kwargs...)
 end
@@ -54,7 +54,7 @@ function apply_plot_spectrum(ms, ab; fn = plot, kwargs...)
     spec_kwargs!(kwargs)
     fn(ms, ab; kwargs...)
 end
-function plot_spectrum_params(mz_range, spectrum::Spectrum; deconvolution = false, abundance = 1, abtype = :max, threshold = rcrit(1e-4), kwargs...)
+function plot_spectrum_params(mz_range, spectrum::Spectrum; deconvolution = false, abundance = 1, abtype = Max(), threshold = rcrit(1e-4), kwargs...)
     deconvolution && return plot_spectrum_params(mz_range, spectrum.table; abundance, abtype, threshold)
     if isnothing(mz_range) 
         range = length(spectrum.spectrum) * spectrum.binsize
@@ -75,7 +75,8 @@ function plot_spectrum_params(mz_range, spectrum::Spectrum; deconvolution = fals
             maximum(@view spectrum.spectrum[i + 1:i + delta])
         end
     end
-    normalize_abundance!(ab, abundance, abtype, [:max, :list, :raw])
+    abtype = abtyped(abtype)
+    normalize_abundance!(ab, abundance, abtype, [Max(), List(), Raw()])
     ab_cutoff = minimum(makecrit_value(crit(threshold), maximum(ab)))
     if isnothing(mz_range) 
         fid = findfirst(>(ab_cutoff), ab)
@@ -89,7 +90,7 @@ function plot_spectrum_params(mz_range, spectrum::Spectrum; deconvolution = fals
     @. spectrum.initial_mass + (mzid * spectrum.binsize), ab
 end
 
-function plot_spectrum_params(mz_range, mztable::Table; fn = plot, abundance = 1, abtype = :max, threshold = rcrit(1e-4))
+function plot_spectrum_params(mz_range, mztable::Table; fn = plot, abundance = 1, abtype = Max(), threshold = rcrit(1e-4))
     sp = string.(propertynames(mztable))
     colmz = lastcolnum(sp, "MZ")
     mz = getproperty(mztable, colmz)
@@ -105,7 +106,8 @@ function plot_spectrum_params(mz_range, mztable::Table; fn = plot, abundance = 1
     id = findall(x -> mz_lower <= x <= mz_upper, mz)
     gmztable = group(getproperty(colmz), mztable[id])
     ab = map(x -> sum(getproperty(x, colab)), gmztable)
-    normalize_abundance!(ab, abundance, abtype, [:max, :list, :raw])
+    abtype = abtyped(abtype)
+    normalize_abundance!(ab, abundance, abtype, [Max(), List(), Raw()])
     ab_cutoff = minimum(makecrit_value(crit(threshold), maximum(ab)))
     mzid = findall(>=(ab_cutoff), ab)
     ab = [ab[i] for i in mzid]

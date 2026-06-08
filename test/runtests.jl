@@ -311,11 +311,11 @@ end
         @test MSC.lastcolnum(["MZ1", "Abundance2", "MZ3", "MZ2", "Abundance1", "Abundance3"], "MZ") == :MZ3
         @test MSC.ithcolnum(["MZ1", "Abundance2", "MZ3", "MZ2", "Abundance1", "Abundance3"], "MZ", 1) == :MZ1
         @test MSC.allcolnum(["MZ1", "Abundance2", "MZ3", "MZ2", "Abundance1", "Abundance3"], "Abundance") == [:Abundance1, :Abundance2, :Abundance3]
-        @test MSC.normalize_abundance([1, 2, 3, 4], 1, :raw) == [1, 2, 3, 4]
-        @test MSC.normalize_abundance([1, 2, 3, 4], 1, :total) == [1, 2, 3, 4]
-        @test MSC.normalize_abundance([1, 2, 3, 4], 1, :input) == [1, 2, 3, 4] ./ 1
-        @test all(isapprox.(MSC.normalize_abundance([1, 2, 3, 4], 1, :max), [1, 2, 3, 4] ./ 4))
-        @test all(isapprox.(MSC.normalize_abundance([1, 2, 3, 4], 1, :list), [1, 2, 3, 4] ./ 10))
+        @test MSC.normalize_abundance([1, 2, 3, 4], 1, MSC.abtyped(:raw)) == [1, 2, 3, 4]
+        @test MSC.normalize_abundance([1, 2, 3, 4], 1, MSC.abtyped(:total)) == [1, 2, 3, 4]
+        @test MSC.normalize_abundance([1, 2, 3, 4], 1, MSC.abtyped(:input)) == [1, 2, 3, 4] ./ 1
+        @test all(isapprox.(MSC.normalize_abundance([1, 2, 3, 4], 1, MSC.abtyped(:max)), [1, 2, 3, 4] ./ 4))
+        @test all(isapprox.(MSC.normalize_abundance([1, 2, 3, 4], 1, MSC.abtyped(:list)), [1, 2, 3, 4] ./ 10))
         @test match_chemical(AdductIon.([Chemical("Fructose", "C6H12O6"), Chemical("Glucose", "C6H12O6"), Chemical("Galactose", "C6H12O6")], "[M+H]+"), exp1).LibID == [1, 2, 3]
     end
 end

@@ -41,7 +41,7 @@ function Isotopologues(input_chemical::AbstractChemical;
         chemicalparser = ChemicalTransitionParser(),
         id = (1, ), 
         abundance = 1, 
-        abtype = :max, 
+        abtype = Max(), 
         threshold = rcrit(1e-4), 
     ) 
     net_charge = charge(input_chemical)
@@ -65,7 +65,7 @@ Isotopologues(input_chemical::AbstractString;
         chemicalparser = ChemicalTransitionParser(ChemicalExpressionParser(; charge = 1, loss = 0, gain = 0)),
         id = (1, ), 
         abundance = 1, 
-        abtype = :max, 
+        abtype = Max(), 
         threshold = rcrit(1e-4)) = 
     Isotopologues(parse_chemical(chemicalparser, input_chemical); id, abundance, abtype, threshold)
 
@@ -73,9 +73,10 @@ function Isotopologues(ct::ChemicalTransition;
         chemicalparser = ChemicalTransitionParser(ChemicalExpressionParser(; charge = 1, loss = 0, gain = 0)),
         id = ntuple(i -> 1, msstage(ct)), 
         abundance = 1, 
-        abtype = :max, 
+        abtype = Max(), 
         threshold = rcrit(1e-4)
     ) 
+    abtype = abtyped(abtype)
     msstage(ct) == 1 && return Isotopologues(analyzedchemical(ct); id, abundance, abtype, threshold)
     abundance = float(first(abundance))
     trans = chemicaltransition(ct)
@@ -112,7 +113,7 @@ function Isotopologues(ct::ChemicalTransition;
     end
     max_dictionary_vec = map(maximal_elements, element_dictionary_vec)
     max_proportion_vec = map(isotopicabundance, max_dictionary_vec)
-    preab, maxab = msmspremaxabundance(Val(abtype), abundance, threshold, max_proportion_vec, element_dictionary_vec) 
+    preab, maxab = msmspremaxabundance(abtype, abundance, threshold, max_proportion_vec, element_dictionary_vec) 
     base_abundance_cutoff = minimum(makecrit_value(crit(threshold), maxab)) / maxab
     tbls = map(zip(element_dictionary_vec, msfix_vec, max_dictionary_vec, max_proportion_vec)) do (element_dictionary, msfix, max_dictionary, max_proportion)
         isempty(element_dictionary) && return (; Element = [dictionary_elements(get_isotope_vec(element_dictionary))], Mass = [mmi(element_dictionary) + msfix], Abundance = [float(1)])
@@ -121,7 +122,7 @@ function Isotopologues(ct::ChemicalTransition;
         element_chemical = [max_dictionary]
         abundance_chemical = [max_proportion]
         rec_addminusisotopes!(element_chemical, abundance_chemical, max_dictionary, element_isotope_pair, 1, max_proportion, proportioon_cutoff, true, true)
-        # normalize_abundance!(abundance_chemical, abundance, abtype, [:max, :input, :list, :total])
+        # normalize_abundance!(abundance_chemical, abundance, abtype, [Max(), Input(), List(), Total()])
         mass_chemical = map(mmi, element_chemical) .+ msfix
         aid = sortperm(abundance_chemical; rev = true)
         element_chemical = map(x -> filter!(!iselement ∘ first, x), element_chemical[aid]) 
@@ -144,7 +145,7 @@ function Isotopologues(ct::ChemicalTransition;
     chemical = chemical[idm]
     mass = mass[idm]
     abv = abv[idm]
-    if dopostnormalize(Val(abtype))
+    if dopostnormalize(abtype)
         abv = normalize_abundance(abv, abundance, abtype)
     end
     if isgainscheme(last(trans)) 
@@ -160,7 +161,7 @@ function Isotopologues(input_chemical::Pair;
         chemicalparser = ChemicalTransitionParser(ChemicalExpressionParser(; charge = 1, loss = 0, gain = 0)),
         id = nothing, 
         abundance = 1, 
-        abtype = :max, 
+        abtype = Max(), 
         threshold = rcrit(1e-4),
     ) 
     ct = parse_chemical(chemicalparser, input_chemical)
@@ -264,7 +265,7 @@ function TandemIsotopologues(input_chemical::AbstractChemical;
             chemicalparser = ChemicalTransitionParser(ChemicalExpressionParser(; charge = 1, loss = 0, gain = 0)),
             abundance = 1, 
             transmission = 1, 
-            abtype = :max, 
+            abtype = Max(), 
             threshold = rcrit(1e-4), 
             id = nothing, 
             precursor_table = nothing, 
@@ -293,7 +294,7 @@ end
 
 function _TandemIsotopologues(precursor_table, transition, precursor_info, id, abundance, ip::Int; 
             chemicalparser = ChemicalTransitionParser(ChemicalExpressionParser(; charge = 1, loss = 0, gain = 0)),
-            abtype = :max, 
+            abtype = Max(), 
             threshold = rcrit(1e-4), 
             product = nothing, 
             product_info = nothing, 
@@ -342,7 +343,7 @@ function _TandemIsotopologues(precursor_table, transition, precursor_info, id, a
                 first_element_precursor_dictionary
             end
             itp = (; Element = el, Abundance = getproperty(precursor_table, colab))
-            tbl = __TandemIsotopologues(precursor_table, itp, id[begin:ip], precursor_info[ip - 1], precursor_info[ip], transition[ip], abundance[ip] / abundance[ip - 1], abundance[ip], :total, threshold)
+            tbl = __TandemIsotopologues(precursor_table, itp, id[begin:ip], precursor_info[ip - 1], precursor_info[ip], transition[ip], abundance[ip] / abundance[ip - 1], abundance[ip], Total(), threshold)
             colab = lastcolnum(propertynames(tbl), "Abundance")
             ab = getproperty(tbl, colab)
             abundance_cutoff = minimum(makecrit_value(crit(threshold), maximum(ab)))
@@ -367,7 +368,7 @@ function _TandemIsotopologues(precursor_table, transition, precursor_info, id, a
         first_element_precursor_dictionary
     end
     itp = (; Element = el, Abundance = getproperty(precursor_table, colab))
-    tbl = vcat([__TandemIsotopologues(precursor_table, itp, (id..., i), precursor_info[ip], prod_info, raw_product, prop, abundance[ip], :total, threshold; check_product = true) for (i, raw_product, prop, prod_info) in zip(eachindex(product), product, proportion, product_info)]...)
+    tbl = vcat([__TandemIsotopologues(precursor_table, itp, (id..., i), precursor_info[ip], prod_info, raw_product, prop, abundance[ip], Total(), threshold; check_product = true) for (i, raw_product, prop, prod_info) in zip(eachindex(product), product, proportion, product_info)]...)
     colab = lastcolnum(propertynames(tbl), "Abundance")
     ab = getproperty(tbl, colab)
     abundance_cutoff = minimum(makecrit_value(crit(threshold), maximum(ab)))
@@ -417,7 +418,7 @@ TandemIsotopologues(input_chemical::Pair;
             chemicalparser = ChemicalTransitionParser(ChemicalExpressionParser(; charge = 1, loss = 0, gain = 0)),
             abundance = 1, 
             transmission = 1, 
-            abtype = :max, 
+            abtype = Max(), 
             threshold = rcrit(1e-4), 
             id = nothing, 
             precursor_table = nothing, 
@@ -431,7 +432,7 @@ TandemIsotopologues(input_chemical::AbstractString;
             chemicalparser = ChemicalTransitionParser(ChemicalExpressionParser(; charge = 1, loss = 0, gain = 0)),
             abundance = 1, 
             transmission = 1, 
-            abtype = :max, 
+            abtype = Max(), 
             threshold = rcrit(1e-4), 
             id = nothing, 
             precursor_table = nothing, 

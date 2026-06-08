@@ -351,8 +351,8 @@ Extract peaks from a spectrum or SIM.
 * `groupedisotopomers`: whether group isotopologues by isotopomer state based on `isotope`.
 * `isotope::String`: minor isotope.
 """
-peak_table(spectrum::Spectrum; alg = LocalMaxima(), abundance = 1, abtype = :max, threshold = rcrit(1e-4)) = peak_table(spectrum.table, spectrum.spectrum, spectrum.initial_mass, spectrum.binsize, spectrum.stepsize; alg, abundance, abtype, threshold)
-function peak_table(mztable::Table, spectrum, initial_mass, binsize, nbin_multiplier; alg = LocalMaxima(), abundance = 1, abtype = :max, threshold = rcrit(1e-4))
+peak_table(spectrum::Spectrum; alg = LocalMaxima(), abundance = 1, abtype = Max(), threshold = rcrit(1e-4)) = peak_table(spectrum.table, spectrum.spectrum, spectrum.initial_mass, spectrum.binsize, spectrum.stepsize; alg, abundance, abtype, threshold)
+function peak_table(mztable::Table, spectrum, initial_mass, binsize, nbin_multiplier; alg = LocalMaxima(), abundance = 1, abtype = Max(), threshold = rcrit(1e-4))
     maxbin = [find_nearest_peak(alg, spectrum, r.Bin_id, r.Convolution) for r in mztable] 
     if nbin_multiplier > 1
         maxbin = map(maxbin) do mbin 
@@ -373,7 +373,8 @@ function peak_table(mztable::Table, spectrum, initial_mass, binsize, nbin_multip
         (; Chemical = Isobars(getproperty(smztable, :Chemical), cab), MZ = initial_mass + (ibin - 1) * binsize, Abundance = spectrum[ibin])
     end
     table = Table([t for t in tuples])
-    normalize_abundance!(table.Abundance, abundance, abtype, [:max, :list, :raw])
+    abtype = abtyped(abtype)
+    normalize_abundance!(table.Abundance, abundance, abtype, [Max(), List(), Raw()])
     abundance_cutoff = minimum(makecrit_value(crit(threshold), maximum(table.Abundance)))
     table[findall(>=(abundance_cutoff), table.Abundance)]
 end

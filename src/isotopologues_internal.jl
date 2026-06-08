@@ -258,18 +258,20 @@ isotopologues_elements(x::AbstractString, abundance, abtype, threshold; normaliz
 isotopologues_elements(input_element::Vector, abundance, abtype, threshold; normalize = true) = 
     isotopologues_elements(get_element_dictinonary_fixmass(input_element)..., abundance, abtype, threshold; normalize)
 function isotopologues_elements(element_dictionary::Dict, msfix, abundance, abtype, threshold; normalize = true)
+    abtype = abtyped(abtype)
     isempty(element_dictionary) && return (; Element = [get_isotope_vec(element_dictionary)], Mass = [mmi(element_dictionary)], Abundance = [abundance]) 
     element_isotope_pair = element_isotope_pairs(element_dictionary)
     first_proportion = isotopicabundance(element_dictionary)
     base_abundance_cutoff = minimum(makecrit_value(crit(threshold), abundance)) / abundance
     abundance_cutoff = base_abundance_cutoff * first_proportion
+    max_dictionary = maximal_elements(element_dictionary)
+    max_proportion = isotopicabundance(max_dictionary)
+    abundance_cutoff = abundance_threshold(abtype, abundance, threshold, first_proportion, max_proportion)
     if first_proportion < min_abundance()
-        max_dictionary = maximal_elements(element_dictionary)
-        max_proportion = isotopicabundance(max_dictionary)
-        if abtype == :input && abundance_cutoff / max_proportion < min_abundance() 
-            throw(ArgumentError("Isotopic abundance of input chemical is too small; try use `abtype` other than `:input` or larger threshold`"))
-        elseif abtype != :input 
-            abundance_cutoff = base_abundance_cutoff * max_proportion
+        if abtype == Input() && abundance_cutoff / max_proportion < min_abundance() 
+            throw(ArgumentError("Isotopic abundance of input chemical is too small; try use `abtype` other than `Input()` or larger threshold`"))
+        end
+        if abtype != Input() 
             element_chemical = [max_dictionary]
             abundance_chemical = [abundance * max_proportion]
             rec_addminusisotopes!(element_chemical, abundance_chemical, max_dictionary, element_isotope_pair, 1, abundance * max_proportion, abundance_cutoff, true, true)
@@ -281,23 +283,16 @@ function isotopologues_elements(element_dictionary::Dict, msfix, abundance, abty
     else
         element_chemical = [element_dictionary]
         abundance_chemical = [abundance * first_proportion]
-        if abtype == :input
-            rec_addisotopes!(element_chemical, abundance_chemical, element_dictionary, element_isotope_pair, 1, abundance * first_proportion, abundance_cutoff)
-        else
-            max_dictionary = maximal_elements(element_dictionary)
-            max_proportion = isotopicabundance(max_dictionary)
-            abundance_cutoff = base_abundance_cutoff * max_proportion
-            rec_addisotopes!(element_chemical, abundance_chemical, element_dictionary, element_isotope_pair, 1, abundance * first_proportion, abundance_cutoff)
-        end
+        rec_addisotopes!(element_chemical, abundance_chemical, element_dictionary, element_isotope_pair, 1, abundance * first_proportion, abundance_cutoff)
     end
-    abundance_chemical_normalize = normalize_abundance(abundance_chemical, preabundance(Val(abtype), abundance, threshold), preabtype(Val(abtype)), [:max, :input, :total])
+    abundance_chemical_normalize = normalize_abundance(abundance_chemical, abundance, preabtype(abtype), [Max(), Input(), Total()])
     mass_chemical = map(mmi, element_chemical) .+ msfix
     id = sortperm(mass_chemical)
     abundance_cutoff = minimum(makecrit_value(crit(threshold), maximum(abundance_chemical_normalize)))
     filter!(x -> >=(abundance_chemical_normalize[x], abundance_cutoff), id)
     element_chemical = map(get_isotope_vec, element_chemical[id]) 
-    if normalize && dopostnormalize(Val(abtype))
-        abundance_chemical = normalize_abundance(abundance_chemical_normalize[id], abundance, abtype, [:max, :input, :list, :total])
+    if normalize && dopostnormalize(abtype)
+        abundance_chemical = normalize_abundance(abundance_chemical_normalize[id], abundance, abtype, [Max(), Input(), List(), Total()])
     elseif normalize 
         abundance_chemical = abundance_chemical_normalize[id]
     else
@@ -315,7 +310,7 @@ function isotopologues_elements_ms2(it1, element_precursor_dictionary, element_p
     elseif gain 
         msfix = mmi(element_product) - mmi(element_precursor_dictionary)
         proportion_cutoff = minimum(makecrit_value(crit(threshold), abundance)) * isotopicabundance(element_precursor_dictionary) / abundance
-        it2 = isotopologues_elements(element_precursor_dictionary, 0, 1, :total, proportion_cutoff)
+        it2 = isotopologues_elements(element_precursor_dictionary, 0, 1, Total(), proportion_cutoff)
         data = map(it1.Abundance) do r
             (; Element = it2.Element, 
             Mass = it2.Mass, 
@@ -345,7 +340,8 @@ function isotopologues_elements_ms2(it1, element_precursor_dictionary, element_p
     mass_product = vcat((getproperty(x, :Mass) for x in data)...)
     abundance_pair = vcat((getproperty(x, :Abundance) for x in data)...)
     id_pair = vcat(([i for _ in eachindex(getproperty(x, :Abundance))] for (i, x) in enumerate(data))...)
-    abundance_pair_normalize = normalize_abundance(abundance_pair, abundance, abtype, [:total])
+    abtype = abtyped(abtype)
+    abundance_pair_normalize = normalize_abundance(abundance_pair, abundance, abtype, [Total()])
     # spectrum specific threshold ?
     abundance_cutoff = isempty(abundance_pair_normalize) ? 0 : minimum(makecrit_value(crit(threshold), maximum(abundance_pair_normalize)))
     id = findall(>=(abundance_cutoff), abundance_pair_normalize)
@@ -372,8 +368,7 @@ function isotopes_proportion(precursor_dictionary::Dict, element_product_diction
     bidir = false
     if first_proportion < min_abundance()
         bidir = true
-        first_proportion, first_element_product_dictionary2 = maximal_proportion_elements(precursor_dictionary, first_element_product_dictionary)
-        first_element_product_dictionary = first_element_product_dictionary2
+        first_proportion, first_element_product_dictionary = maximal_proportion_elements(precursor_dictionary, first_element_product_dictionary)
     end
     first_element_product_dictionary2 = swap_elements(first_element_product_dictionary, precursor_dictionary, swap)
     element_vec = [first_element_product_dictionary2]

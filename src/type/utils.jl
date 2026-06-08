@@ -93,3 +93,10 @@ ppm_error(x, y) = (y - x) / x * 1e6
 Error function of relative difference in ppm (relative to mean); `(y - x) / ((x + y) / 2) * 1e6`.
 """
 ppm_error_mean(x, y) = 2 * (y - x) / (x + y) * 1e6
+
+abstract type AbstractAbundance end 
+struct Input <: AbstractAbundance end
+struct Max <: AbstractAbundance end
+struct List <: AbstractAbundance end 
+struct Total <: AbstractAbundance end 
+struct Raw <: AbstractAbundance end 

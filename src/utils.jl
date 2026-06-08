@@ -218,18 +218,22 @@ function allcolnum(::Type{T}, p, col; error = true, init = []) where T
     _convert(T, p[icol][id])
 end
 
-preabtype(::Val{x}) where x = x
-preabtype(::Val{:list}) = :total
-preabundance(::Val{x}, abundance, threshold) where x = abundance
-function preabundance(::Val{:list}, abundance, threshold) 
-    # approximation by [13C] isotope
-    m = minimum(makecrit_value(crit(threshold), abundance))
-    abundance * (2 * abundance - m) / (abundance - m)
-end
-dopostnormalize(::Val{x}) where x = false 
-dopostnormalize(::Val{:list}) = true
-function msmspremaxabundance(vab::Val{x}, abundance, threshold, max_proportion_vec, element_dictionary_vec) where x 
-    preab = preabundance(vab, abundance, threshold)
+preabtype(x::AbstractAbundance) = x
+preabtype(::List) = Total()
+# preabundance(::AbstractAbundance, abundance, threshold, element_dictionary = nothing) = abundance
+# preabundance(x::List, abundance, threshold, element_dictionary) = preabundance(x, abundance, threshold, sum(last, element_dictionary))
+# preabundance(x::List, abundance, threshold, element_dictionary::AbstractVector) = preabundance(x, abundance, threshold, sum(x -> sum(last, x), element_dictionary))
+# function preabundance(::List, abundance, threshold, n::Int) 
+#     # approximation by [13C] isotope
+#     m = minimum(makecrit_value(crit(threshold), abundance))
+#     p = 0.011
+#     σ = 4p * (1 - p)
+#     2 * abundance / (1 - (m / abundance * n * sqrt(σ * π / 2 * n)) ^ σ)
+# end
+dopostnormalize(::AbstractAbundance) = false 
+dopostnormalize(::List) = true
+function msmspremaxabundance(vab::AbstractAbundance, abundance, threshold, max_proportion_vec, element_dictionary_vec)  
+    preab = abundance
     maxab = preab
     for p in max_proportion_vec
         maxab *= p 
@@ -237,8 +241,8 @@ function msmspremaxabundance(vab::Val{x}, abundance, threshold, max_proportion_v
     preab, maxab
 end
 
-function msmspremaxabundance(vab::Val{:max}, abundance, threshold, max_proportion_vec, element_dictionary_vec) 
-    preab = preabundance(vab, abundance, threshold)
+function msmspremaxabundance(vab::Max, abundance, threshold, max_proportion_vec, element_dictionary_vec) 
+    preab = abundance
     maxab = preab 
     for p in max_proportion_vec
         preab /= p 
@@ -246,8 +250,8 @@ function msmspremaxabundance(vab::Val{:max}, abundance, threshold, max_proportio
     preab, maxab
 end
 
-function msmspremaxabundance(vab::Val{:input}, abundance, threshold, max_proportion_vec, element_dictionary_vec) 
-    preab = preabundance(vab, abundance, threshold)
+function msmspremaxabundance(vab::Input, abundance, threshold, max_proportion_vec, element_dictionary_vec) 
+    preab = abundance
     maxab = preab 
     for p in element_dictionary_vec
         preab /= isotopicabundance(p)
@@ -259,29 +263,51 @@ function msmspremaxabundance(vab::Val{:input}, abundance, threshold, max_proport
     preab, maxab
 end
 
-abtypeop(::Val{:max}) = maximum
-abtypeop(::Val{:input}) = first
-abtypeop(::Val{:list}) = sum
-abtypeop(::Val{:raw}) = nothing
-abtypeop(::Val{:total}) = nothing
+abundance_threshold(::Input, abundance, threshold, first_proportion, max_proportion = first_proportion) = minimum(makecrit_value(crit(threshold), abundance * max_proportion / first_proportion)) / abundance * first_proportion
+abundance_threshold(::Max, abundance, threshold, first_proportion, max_proportion = first_proportion) = minimum(makecrit_value(crit(threshold), abundance)) / abundance * max_proportion
+abundance_threshold(::List, abundance, threshold, first_proportion, max_proportion = first_proportion) = minimum(makecrit_value(crit(threshold), abundance * max_proportion)) / abundance
+abundance_threshold(::Total, abundance, threshold, first_proportion, max_proportion = first_proportion) = minimum(makecrit_value(crit(threshold), abundance * max_proportion)) / abundance
+
+abtypeop(::Max) = maximum
+abtypeop(::Input) = first
+abtypeop(::List) = sum
+abtypeop(::Raw) = nothing
+abtypeop(::Total) = nothing
+
+const abtypedict = [
+    [:input, :max, :list, :total, :raw],
+    [Input(), Max(), List(), Total(), Raw()]
+]
+
+function abtyped(x::Symbol) 
+    i = findfirst(==(x), first(abtypedict))
+    isnothing(i) && throw(ArgumentError("Invalid abundance type."))
+    last(abtypedict)[i]
+end
+function deabtyped(x::AbstractAbundance) 
+    i = findfirst(==(x), last(abtypedict))
+    isnothing(i) && throw(ArgumentError("Invalid abundance type."))
+    first(abtypedict)[i]
+end
+deabtyped(x::Symbol) = x
 
 normab_doc = """
-    normalize_abundance(abvector, abundance, abtype, available_abtype = [:max, :input, :list, :raw, :total])
-    normalize_abundance!(abvector, abundance, abtype, available_abtype = [:max, :input, :list, :raw, :total])
+    normalize_abundance(abvector, abundance, abtype, available_abtype = [Max(), Input, List(), Total(), Raw()])
+    normalize_abundance!(abvector, abundance, abtype, available_abtype = [Max(), Input(), List(), Total(), Raw()])
 
 Normalize raw abundance `abvector` such that the value specified by `abtype` is `abundance`.
 """
 @doc normab_doc
-normalize_abundance(abvector, abundance, abtype, available_abtype = [:max, :input, :list, :raw, :total]) = 
+normalize_abundance(abvector, abundance, abtype, available_abtype = [Max(), Input(), List(), Total(), Raw()]) = 
     _normalize_abundance!(copy(abvector), abundance, abtype, available_abtype; conversion = true)
 
 @doc normab_doc
-normalize_abundance!(abvector, abundance, abtype, available_abtype = [:max, :input, :list, :raw, :total]) = 
+normalize_abundance!(abvector, abundance, abtype, available_abtype = [Max(), Input(), List(), Total(), Raw()]) = 
     _normalize_abundance!(abvector, abundance, abtype, available_abtype)
-function _normalize_abundance!(abvector, abundance, abtype, available_abtype = [:max, :input, :list, :raw, :total]; conversion = false)
+function _normalize_abundance!(abvector, abundance, abtype, available_abtype = [Max(), Input(), List(), Total(), Raw()]; conversion = false)
     isempty(abvector) && return abvector
-    abtype in available_abtype || throw(ArgumentError("$abtype is not valid; please select from $available_abtype."))
-    fn = abtypeop(Val(abtype))
+    abtype in available_abtype || throw(ArgumentError("$abtype is not valid; please select from $(deabtyped.(available_abtype))."))
+    fn = abtypeop(abtype)
     isnothing(fn) && return abvector
     abvector = vectorize(abvector)
     T = eltype(abvector)
