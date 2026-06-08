@@ -125,6 +125,8 @@ Transform `product` into `CompleteSchema` with `precursor`.
 
 For generic chemical types, this function calls `structure_search` which searches the property `:structure` of `ioncore(precursor)` for `ionadduct(precursor)` and `product`. 
 For other chemicals, it returns a complete scheme directly without incorporating any information from `precursor`.
+
+New method should be defined for new structural scheme and new chemical type to generate valid complete scheme.
 """
 completescheme(precursor::AbstractChemical, product::AbstractChemical) = StructuralElementalScheme(RandomProductScheme(), product)
 completescheme(precursor::T, product::S) where {T<:AbstractChemical, S<:AbstractScheme} = throw(ArgumentError("Specific `completescheme(precursor::$T, scheme::$S)` method has to be implemented."))
@@ -164,6 +166,8 @@ Return a new scheme blending `ionadduct(precursor)` and `product_scheme`.
 
 For generic chemical types, this function calls `structure_search` which searches the property `:schema` of `ioncore(precursor)` for `ionadduct(precursor)` and `product`. 
 For other chemicals, it returns a complete scheme directly without incorporating any information from `precursor`.
+
+Defining new method is optional for complete scheme of new structural scheme and new chemical type unless scheme blending is intended to be implemented.
 """
 adductionscheme(precursor::AdductIon, product::CompleteSchema) = ChemicalSchema(ionadduct(precursor), product)
 # schema serach for generics adduction
@@ -182,6 +186,8 @@ adductionscheme(precursor::AdductIon{<:GenericChemical}, product::CompleteSchema
 
 The chemical directly detected in MS. Product of chemical entity is directly returned; `completescheme` is applied to scheme first. 
 By default, `AdductIon` is returned for product generating from scheme, and any chemicals are directly returned. For `AdductIon`, `adductionscheme` is called for blending precursor and product scheme. 
+
+Defining new method is optional unless for using other `AbstractAdductIon` type.
 """
 detectedchemical(precursor::AbstractChemical, product::AbstractChemicalsSchema) = detectedchemical(precursor, completescheme(precursor, product))
 

@@ -76,14 +76,15 @@ Default chemical parser which parses input string into `AbstractChemical`.
 * `scheme::Bool`: whether parse input into a chemical scheme.
 
 The input is parsed recursively.
-First check `entity` and `scheme`, if `scheme` and `enetity`, run step 1 ~ 7; if `scheme`, run only step 1 ~ 5; if `entity`, run only step 6 ~ 7. 
+First check `entity` and `scheme`, if `scheme` and `enetity`, run step 1 ~ 8; if `scheme`, run only step 1 ~ 6; if `entity`, run only step 7 ~ 8. 
 1. Match keys of `scheme_name()` -> `AbstractChemicalScheme`
-2. `"+scheme` -> `"[+scheme]\$(gain)"` -> step 1
-3. `"-scheme` -> `"[-scheme]\$(loss)"` -> step 1
-4. `"+[core+scheme...]n+"`, `"+[core+scheme...]n-"`, `"+[core+scheme...]"` -> step 7 -> `ChemicalGain` with a chemical entity.
-5. `"-[core+scheme...]n+"`, `"-[core+scheme...]n-"`, `"-[core+scheme...]"` -> step 7 -> `ChemicalLoss` with a chemical entity.
-6. `core` -> `"[core]\$(charge)` -> step 7
-7. `"[core+scheme...]n+"`, `"[core+scheme...]n-"`, `"[core+scheme...]"` -> parse `core` with `chemicalparser`; parse the rest part recursively -> a chemical entity
+2. `"+core` -> `"+[core]\$(gain)"` -> step 4
+3. `"-core` -> `"-[core]\$(loss)"` -> step 5
+4. `"+[core+scheme...]n+"`, `"+[core+scheme...]n-"`, `"+[core+scheme...]"` -> step 8 -> `ChemicalGain` of a chemical entity.
+5. `"-[core+scheme...]n+"`, `"-[core+scheme...]n-"`, `"-[core+scheme...]"` -> step 8 -> `ChemicalLoss` of a chemical entity.
+6. `"[scheme...]n+"`, `"[scheme...]n-"`, `"[scheme...]"` -> parse each scheme
+7. `core` -> `"[core]\$(charge)` -> step 8
+8. `"[core+scheme...]n+"`, `"[core+scheme...]n-"`, `"[core+scheme...]"` -> parse `core` with `chemicalparser`; parse the rest part recursively -> a chemical entity
 """
 struct ChemicalExpressionParser{T <: AbstractChemicalParser} <: AbstractChemicalParser
     chemicalparser::T 

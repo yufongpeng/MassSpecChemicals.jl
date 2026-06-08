@@ -136,7 +136,7 @@ function Isotopologues(ct::ChemicalTransition;
     mass = Vector{float(Int)}[]
     abundance_cutoff = base_abundance_cutoff * maxab
     rec_vec_ab!(els, abv, mass, tbls, abundance_cutoff, prod(first(tbl.Abundance) for tbl in tbls), [1 for _ in eachindex(tbls)], 1)
-    chemical = chain_chemicals_isotopes(trans, els)
+    chemical = seriesisotopomerize(trans, els)
     net_charge = [charge(first(p)) for p in precursor_info]
     abs_charge = max.(1, net_charge)
     colab = Symbol(string("Abundance", length(precursor_info))) 
@@ -389,8 +389,6 @@ function __TandemIsotopologues(precursor_table, itp, id, precursor_info, product
     if isgainscheme(raw_product) 
         element_precursor = chemicalelements(raw_product)
     end
-    # threshold by pre abundance, then * proportion 
-    # or just itp.Abundance * proportion?
     it = isotopologues_elements_ms2(itp, element_precursor, element_product, abundance, abtype, proportion, threshold; gain = isgainscheme(raw_product), loss = islossscheme(raw_product))
     abs_charge = max(1, net_charge)
     mass = net_charge == 0 ? it.Mass : [m / abs_charge + (net_charge < 0) * ME for m in it.Mass]

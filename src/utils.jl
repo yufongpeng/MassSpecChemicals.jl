@@ -218,6 +218,11 @@ function allcolnum(::Type{T}, p, col; error = true, init = []) where T
     _convert(T, p[icol][id])
 end
 
+"""
+    preabtype(::AbstractAbundance)
+
+Conversion of abundance type for normalization before maximal value filtering.
+"""
 preabtype(x::AbstractAbundance) = x
 preabtype(::List) = Total()
 # preabundance(::AbstractAbundance, abundance, threshold, element_dictionary = nothing) = abundance
@@ -230,43 +235,59 @@ preabtype(::List) = Total()
 #     σ = 4p * (1 - p)
 #     2 * abundance / (1 - (m / abundance * n * sqrt(σ * π / 2 * n)) ^ σ)
 # end
+"""
+    dopostnormalize(::AbstractAbundance)
+
+Whether apply post filtering normalization.
+"""
 dopostnormalize(::AbstractAbundance) = false 
 dopostnormalize(::List) = true
-function msmspremaxabundance(vab::AbstractAbundance, abundance, threshold, max_proportion_vec, element_dictionary_vec)  
-    preab = abundance
-    maxab = preab
+"""
+    msmstotalmaxabundance(::AbstractAbundance, abundance, threshold, max_proportion_vec, element_dictionary_vec) 
+
+Total abundance and maximxal abundance for MS/MS. 
+"""
+function msmspremaxabundance(::Union{List, Total, Raw}, abundance, threshold, max_proportion_vec, element_dictionary_vec)  
+    total = abundance
+    maxab = total
     for p in max_proportion_vec
         maxab *= p 
     end
-    preab, maxab
+    total, maxab
 end
 
-function msmspremaxabundance(vab::Max, abundance, threshold, max_proportion_vec, element_dictionary_vec) 
-    preab = abundance
-    maxab = preab 
+function msmspremaxabundance(::Max, abundance, threshold, max_proportion_vec, element_dictionary_vec) 
+    total = abundance
+    maxab = total 
     for p in max_proportion_vec
-        preab /= p 
+        total /= p 
     end
-    preab, maxab
+    total, maxab
 end
 
-function msmspremaxabundance(vab::Input, abundance, threshold, max_proportion_vec, element_dictionary_vec) 
-    preab = abundance
-    maxab = preab 
+function msmspremaxabundance(::Input, abundance, threshold, max_proportion_vec, element_dictionary_vec) 
+    total = abundance
+    maxab = total 
     for p in element_dictionary_vec
-        preab /= isotopicabundance(p)
+        total /= isotopicabundance(p)
     end
-    maxab = preab
+    maxab = total
     for p in max_proportion_vec
         maxab *= p 
     end
-    preab, maxab
+    total, maxab
 end
 
+"""
+    abundance_threshold(::AbstractAbundance, abundance, threshold, first_proportion, max_proportion = first_proportion)
+
+Threshold for isotopologues abundance prediction at recursion step.
+"""
 abundance_threshold(::Input, abundance, threshold, first_proportion, max_proportion = first_proportion) = minimum(makecrit_value(crit(threshold), abundance * max_proportion / first_proportion)) / abundance * first_proportion
 abundance_threshold(::Max, abundance, threshold, first_proportion, max_proportion = first_proportion) = minimum(makecrit_value(crit(threshold), abundance)) / abundance * max_proportion
 abundance_threshold(::List, abundance, threshold, first_proportion, max_proportion = first_proportion) = minimum(makecrit_value(crit(threshold), abundance * max_proportion)) / abundance
 abundance_threshold(::Total, abundance, threshold, first_proportion, max_proportion = first_proportion) = minimum(makecrit_value(crit(threshold), abundance * max_proportion)) / abundance
+abundance_threshold(::Raw, abundance, threshold, first_proportion, max_proportion = first_proportion) = minimum(makecrit_value(crit(threshold), abundance * max_proportion)) / abundance
 
 abtypeop(::Max) = maximum
 abtypeop(::Input) = first
@@ -279,11 +300,25 @@ const abtypedict = [
     [Input(), Max(), List(), Total(), Raw()]
 ]
 
+"""
+    abtyped(x::Symbol) -> AbstractAbundance
+    abtyped(x::AbstractAbundance) -> AbstractAbundance
+
+Convert `Symbol` to `AbstractAbundance`.
+"""
 function abtyped(x::Symbol) 
     i = findfirst(==(x), first(abtypedict))
     isnothing(i) && throw(ArgumentError("Invalid abundance type."))
     last(abtypedict)[i]
 end
+abtyped(x::AbstractAbundance) = x
+
+"""
+    deabtyped(x::Symbol) -> Symbol
+    deabtyped(x::AbstractAbundance) -> Symbol
+
+Convert `AbstractAbundance` to `Symbol`.
+"""
 function deabtyped(x::AbstractAbundance) 
     i = findfirst(==(x), last(abtypedict))
     isnothing(i) && throw(ArgumentError("Invalid abundance type."))

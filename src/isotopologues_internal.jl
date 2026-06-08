@@ -1,8 +1,18 @@
+"""
+    detectedchemicaldata(raw_product; precursor)
+
+Detected chemical and dictionary of elements.
+"""
 function detectedchemicaldata(raw_product; precursor)
     prod = detectedchemical(raw_product; precursor)
     prod, dictionary_elements(filter(x -> last(x) != 0, chemicalelements(prod)))
 end
 
+"""
+    serieschemicaldata(raw_product; precursor)
+
+Series detected chemical and dictionaries of elements.
+"""
 function serieschemicaldata(input_chemical)
     precursor = seriesanalyzedchemical(input_chemical)
     v = map(precursor) do p 
@@ -15,7 +25,12 @@ function serieschemicaldata(input_chemical)
     v
 end
 
-function chain_chemicals_isotopes(transitions::Vector{<: AbstractChemicalsSchema}, els::Vector{<: Vector{<: Dict}})
+"""
+    seriesisotopomerize(transitions::Vector{<: AbstractChemicalsSchema}, els::Vector{<: Vector{<: Dict}})
+
+Serial isotomoperize `transitions` with detected isotpic replacements `els`.
+"""
+function seriesisotopomerize(transitions::Vector{<: AbstractChemicalsSchema}, els::Vector{<: Vector{<: Dict}})
     @inbounds map(els) do el
         ChemicalTransition(map(enumerate(transitions)) do (i, trans)
             (islossscheme(trans) || isgainscheme(trans)) && i == firstindex(transitions) && throw(ArgumentError("$(typeof(trans)) cannot be input chemical."))
@@ -25,6 +40,11 @@ function chain_chemicals_isotopes(transitions::Vector{<: AbstractChemicalsSchema
     end
 end
 
+"""
+    maximal_elements(elements::Dict) -> Dict
+
+Dictionary of elements of maximal abundance.
+"""
 function maximal_elements(elements)
     max_dictionary = copy(elements)
     for (e, m) in elements
@@ -39,6 +59,11 @@ function maximal_elements(elements)
     max_dictionary
 end
 
+"""
+    initial_proportion(element_precursor::Dict, element_product::Dict; precise = false) -> AbstractFloat
+
+Proportion of isotopologue `element_product` relative to all possible isotopologues fragmented from `element_precursor`. 
+"""
 function initial_proportion(element_precursor::Dict, element_product::Dict; precise = false)
     any(<(0), values(element_product)) && return 0
     p = 1
@@ -74,6 +99,11 @@ function initial_proportion(element_precursor::Dict, element_product::Dict; prec
     precise ? float(p) : convert(float(Int), p)
 end
 
+"""
+    maximal_proportion(element_precursor::Dict, element_product::Dict; precise = false) -> AbstractFloat
+
+Proportion of maximal isotopologue of `element_product` relative to all possible isotopologues fragmented from `element_precursor`. 
+"""
 function maximal_proportion(element_precursor, element_product; precise = false)
     el = group(parent_element, keys(element_precursor))
     p = 1
@@ -112,6 +142,11 @@ function maximal_proportion(element_precursor, element_product; precise = false)
     precise ? float(p) : convert(float(Int), p)
 end
 
+"""
+    maximal_proportion_elements(element_precursor::Dict, element_product::Dict; precise = false) 
+
+Dictionary of elements and proportion of maximal isotopologue of `element_product` relative to all possible isotopologues fragmented from `element_precursor`. 
+"""
 function maximal_proportion_elements(element_precursor, element_product; precise = false)
     el = group(parent_element, keys(element_precursor))
     p = 1
@@ -158,6 +193,11 @@ function maximal_proportion_elements(element_precursor, element_product; precise
     first_element_product_dictionary
 end
 
+"""
+    unique_group_mz_ab(mztable, transitions, colmz, colab, gf = nothing)
+
+Group `transitions` by `gf`, create maps from group to id, and extract m/z values and abundance from `matable`.
+"""
 function unique_group_mz_ab(mztable, transitions, colmz, colab, gf = nothing)
     if isnothing(gf)
         gfv = [zeros(length(x)) for x in transitions]
@@ -182,6 +222,11 @@ function unique_group_mz_ab(mztable, transitions, colmz, colab, gf = nothing)
     gid, gt
 end
 
+"""
+    gf_parent_isotope(isotope = "[13C]")
+
+Create function for grouping isotopologues by `isotope`.
+"""
 function gf_parent_isotope(isotope = "[13C]")
     isotope_unit = elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]]
     x -> [chemicalparent(m) => _isotopomerstate(isotopomersisotopes(m), isotope_unit) for m in x]
@@ -195,6 +240,11 @@ function _isotopomerstate(isotopes, isotope_unit)
     round(Int, ds / isotope_unit)
 end
 
+"""
+    swap_elements(product, precursor, swap)
+
+Swap elements of `products` and elements of residuals of `precursor` and `product` for eleemnts in `swap`.
+"""
 function swap_elements(product, precursor, swap)
     isempty(swap) && return copy(product)
     product2 = copy(product)
@@ -206,10 +256,20 @@ function swap_elements(product, precursor, swap)
     product2
 end
 
+"""
+    get_isotope_vec(input_element::Vector{Pair{String, Int}})
+    get_isotope_vec(input_element::Dict{String, Int})
+
+Create isotopic replacement vectors.
+"""
 get_isotope_vec(input_element::Vector{Pair{String, Int}}) = filter(x -> !iselement(first(x)), input_element)
 get_isotope_vec(input_element::Dict{String, Int}) = [k => v for (k, v) in input_element if !iselement(k)]
-# get_element_dictinonary(input_element::Dict) = get_element_dictinonary(pairs(input_element))
-# get_element_dictinonary_fixmass(input_element::Dict) = get_element_dictinonary_fixmass(pairs(input_element))
+
+"""
+    get_element_dictinonary(input_element)
+
+Element dictionary without isotopes.
+"""
 function get_element_dictinonary(input_element)
     element_dictionary = Dict{String, Int}()
     for (e, n) in input_element
@@ -221,6 +281,11 @@ function get_element_dictinonary(input_element)
     element_dictionary
 end
 
+"""
+    get_element_dictinonary(input_element)
+
+Element dictionary without isotopes, and mass of isotopes
+"""
 function get_element_dictinonary_fixmass(input_element)
     element_dictionary = Dict{String, Int}()
     msfix = 0.0
@@ -235,6 +300,11 @@ function get_element_dictinonary_fixmass(input_element)
     element_dictionary, msfix
 end
 
+"""
+    element_isotope_pairs(element_dictionary; sort = true)
+
+Elements and isotopes pairs.
+"""
 function element_isotope_pairs(element_dictionary; sort = true)
     element_isotope_pair = vcat(map(collect(keys(element_dictionary))) do e
         v = get(elements_isotopes(), e, nothing)

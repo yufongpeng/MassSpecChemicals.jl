@@ -32,7 +32,9 @@ Charged chemicals with specific adduct or molecule loss that formed in MS (adduc
 2. `AdductIon`: charged chemicals with specific adduct or molecule loss.
 
     ```julia
-    AdductIon(core::AbstractChemical, adduct::AbstractAdduct)
+    AdductIon(core::AbstractChemical, adduct::AbstractScheme, ncore::Int)
+
+    AdductIon(core::AbstractChemical, adduct::AbstractString)
     ```
 3. `ChemicalTransition`: MS/MS transition.
 
@@ -61,18 +63,8 @@ Charged chemicals with specific adduct or molecule loss that formed in MS (adduc
     ```
 6. `Groupedisotopomers`: isotopomers grouped by isotopomer state
     ```julia
-    Groupedisotopomers(parent::AbstractChemical, state::Int, isotope::String, isotopes::Vector{Vector{Pair{String, Int}}}
+    Groupedisotopomers(parent::AbstractChemicalsSchema, state::Int, isotope::String, isotopes::Vector{Vector{Pair{String, Int}}}
     , abundance::Vector)
-    ```
-7. `ChemicalLoss`: chemical loss from a precursor.
-
-    ```julia
-    ChemicalLoss(chemical::AbstractChemical)
-    ```
-8. `ChemicalGain`: chemical gain to a precursor.
-
-    ```julia
-    ChemicalGain(chemical::AbstractChemical)
     ```
 
 Users can parse strings and pairs by `parse_chemical`.
@@ -83,8 +75,8 @@ parse_chemical("[H2O+H]+") # Protonated H2O
 parse_chemical("[C6H12O6+H]+ -> [H2O+H]+") # Protonated C6H12O6 framented to Protonated H2O 
 parse_chemical("[C6H12O6+H]+" => "-H2O") # Protonated C6H12O6 and neutral loss H2O
 parse_chemical("[C6H12O6+2H]2+" => "-[H2O+H]+") # DiProtonated C6H12O6 and loss Protonated H2O 
-parse_chemical(ChemicalTransitionParser(ChemicalGainLossParser(; charge = 2, loss = 1)), "C6H14O6" => "-H3O") # C6H14O6 (charge = 2) and loss H3O (charge = 1)
-parse_chemical("[C6H12O6+2H]2+" => ChemicalLoss(Chemical("Water", "H2O"))) # mixing with other chemical type 
+parse_chemical(ChemicalTransitionParser(ChemicalExpressionParser(; charge = 2, loss = 1)), "C6H14O6" => "-H3O") # C6H14O6 (charge = 2) and loss H3O (charge = 1)
+parse_chemical("[C6H12O6+2H]2+" => ChemicalLoss(Water())) # mixing with other chemical type 
 ```
 
 # Elements
@@ -141,44 +133,34 @@ User can use
 to add new elements with mass and natural abundance of all isotopes.
 Custumized minor element names (`minor_name`) is optional.  
 
-# Adduct
-All adducts are instances of abstract type `AbstractAdduct` and `AbstractPosAdduct` or `AbstractNegAdduct`.
+# AbstractSchema
+Any chemical gain and loss is an instance of `AbstractSchema`. This type has three abstract sub types:
+1. `AbstractElementalScheme`: scheme containing real elemental information, including isotopic replacement.
+2. `AbstractStructuralScheme`: scheme containing only structural information. This is useful for defining rule-based fragmentation.
+3. `AbstractCompleteScheme`: scheme containg both elemental and structural scheme. It is the final scheme storing in `AdductIon`. 
 
-Prefefined non-generic adducts:
-|Adduct Object|Adduct expression|
+In addition to single scheme, multiple schema are wrapped in `ChemicalSchema`. 
+
+Predefined chemicals used in adduct:
+|Chemical|abbreviation|
 |-------------|-----------------|
-|`LossElectron`|[M]+|
-|`Protonation`|[M+H]+|
-|`ProtonationNLH2O`|[M+H-H2O]+|
-|`ProtonationNL2H2O`|[M+H-2H2O]+|
-|`ProtonationNL3H2O`|[M+H-3H2O]+|
-|`DiProtonation`|[M+2H]2+|
-|`TriProtonation`|[M+3H]3+|
-|`AddNH4`|[M+NH4]+|
-|`AddHNH4`|[M+H+NH4]2+|
-|`Add2NH4`|[M+2NH4]2+|
-|`Sodization`|[M+Na]+|
-|`SodizationProtonation`|[M+Na+H]2+|
-|`DiSodization`|[M+2Na]2+|
-|`AddElectron`|[M]-|
-|`Deprotonation`|[M-H]-|
-|`DeprotonationNLH2O`|[M-H-H2O]-|
-|`DiDeprotonation`|[M-2H]2-|
-|`TriDeprotonation`|[M-3H]3-|
-|`AddOAc`|[M+OAc]-|
-|`AddOFo`|[M+OFo]-|
-|`Fluoridation`|[M+F]-|
-|`Chloridation`|[M+Cl]-|
-|`Demethylation`|[M-Me]-|
-
-User can customize adduct by generic type `PosAdduct` and `NegAdduct` or define subtypes of `AbstractPosAdduct` or `AbstractNegAdduct` for more customized usage.
-
-For example, [2M+H]+, and [M-2H-2H2O]2- can be created by 
-```julia
-    # kmer, adductformula, ncharge
-    PosAdduct(2, "+H", 1)
-    NegAdduct(1, "-2H-2H2O", 2) 
-```
+|`Electron`|`"e"`|
+|`Proton`|`"H"`|
+|`Water`|`"H2O"`|
+|`Ammonia`|`"NH3"`|
+|`Ammonium`|"`[NH4]+`"|
+|`Sodium`|`"[Na]+"`|
+|`Potassium`|`"[K]+"`|
+|`Silver`|`"[Ag]+"`|
+|`OAc`|`"[OAc]-"`|
+|`OFo`|`"[OFo]-"`|
+|`Fluiride`|`"[F]-"`|
+|`Chloride`|`"[Cl]-"`|
+|`Methinium`|`"[Me]+"`|
+|`AceticAcid`|`"HOAc"`|
+|`FormicaAcid`|`"HOFo"`|
+|`Methylacetate`|`"MeOAc"`|
+|`Methylformate`|`"MeOFo"`|
 
 # API
 ## Attributes of `AbstractChemical`
@@ -251,7 +233,7 @@ carbonchains(chemical::Lipid) = getchemicalproperty(chemical, :carbonchains, [ch
 carbonchains(dg) == [fa1, fa2]
 carbonchains(fa1) == [fa1]
 ```
-The type `Chemical` stores any non-default attributes in the field `property`, user can  create object with these attributes as keyword arguments or add attributes by directly pushing the attr_name-attr_value pair to `chemical.property`, and define the attrubte function to access it. 
+The type `Chemical` stores any non-default attributes in the field `property`, user can create object with these attributes as keyword arguments or add attributes by directly pushing the attr_name-attr_value pair to `chemical.property`, and define the attrubte function to access it. 
 ```julia
     chemical = Chemical("18:0 PC-d9", "	C44H79NO8PD9"; lipidclass = "PC")
     
@@ -267,40 +249,29 @@ The type `Chemical` stores any non-default attributes in the field `property`, u
 |----|----|-----------|
 |`ioncore`|`AbstractChemical`|core chemical|
 |`ionadduct`|`AbstractAdduct`|adduct originated from ionization|
-|`kmer`|`Int`|number of core chemical|
-|`adductelements`|`Vector{Pair{String, Int}}`|the elements changed with adduct|
-|`adductisotopes`|`Vector{Pair{String, Int}}`|the elements changed when the core chemical has isotopic labeling that is lost in adduct formation. The returned vector is element-number pairs|
+|`ncore`|`Int`|number of core chemical|
 
-When isotopes are involved in addut ion formation for an object `adduct_ion` which `chemical = ioncore(adduct_ion)::ChemicalType` and `adduct = ionadduct(adduct_ion)::Affected_Adduct`, there are two solutions.
-1. If `ChemicalType` is a customized chemical type, define type-specific `adductisotopes`
+When isotopes are involved in addut ion formation for an object `adduct_ion` which `chemical = ioncore(adduct_ion)::ChemicalType` and `adduct = ionadduct(adduct_ion)::Existing_Scheme`, there are two solutions.
+1. If `ChemicalType` is a customized chemical type, define type-specific `completescheme`
     ```julia
-    adductisotopes(adduct_ion::AbstractAdductIon{ChemicalType, Affected_Adduct})
+    completescheme(adduct_ion::ChemicalType, ::Affected_Scheme)
+    completescheme(adduct_ion::AbstractAdductIon{ChemicalType, Existing_Scheme}, ::Affected_Scheme)
     ```
     
-    `adductisotopes` returns element-number pairs which are the elements changed when the core chemical has isotopic labeling that is lost during adduct formation. For instance, [M-Me]- (`Demethylation`) of Deuterium-labeled phosphatidylcholine (`DL_PC`) may turn out to be [M-CD3]- rather than [M-CH3]- if Deuteriums are labeled on the methyl group of choline. In this case, extend `adductisotopes(::AbstractAdductIon{Demethylation, DL_PC})` such that
+    `completescheme` returns `CompleteSchema` which wraps `Affected_Scheme` and corresponding elemental scheme. For instance, [M-Me]- of Deuterium-labeled phosphatidylcholine (`DL_PC`) may turn out to be [M-CD3]- (`ElementalScheme{false, DL_Methenium}`) rather than [M-CH3]- (`ElementalScheme{false, Methenium}`) if Deuteriums are labeled on the methyl group of choline. In this case, extend `completescheme(::DL_PC, ::ElementalScheme{false, Methenium})` such that
     ```julia 
     # dlmcpc: [M-Me]- of Deuterium-labeled phosphatidylcholine on the methyl group of choline
     # dlpc: [M-Me]- of Deuterium-labeled phosphatidylcholine on other part
-    adductisotopes(dlmcpc) == ["H" => 3, "D" => -3]
-    adductisotopes(dlpc) == []
+    completescheme(dlmcpc, x::ElementalScheme{false, Methenium}) == StructuralElementalScheme(x, ElementalScheme(false, DL_Methenium()))
+    completescheme(dlpc, x::ElementalScheme{false, Methenium}) == StructuralElementalScheme(x, x)
     ```
-2. If `ChemicalType` is `Chemical`, define an attribute `:adductisotopes` for the `chemical`. The attribute should be ionadduct-(element-number pairs) pairs. `adductisotopes` finds this attribute, and extracts the value of key `adduct`. If the attribute or the key does not exist, empty vector is returned. 
+2. If `ChemicalType` is `Chemical`, define an attribute `:structure` for the `chemical`. The attribute should be ionadduct-(scheme-scheme pairs) pairs. `:structure` finds this attribute, and extracts the value of key `adduct`. 
     ```julia
     chemical = Chemical("18:0 PC-d9", "	C44H79NO8PD9")
-    push!(chemical.property, :adductisotopes => [Demethylation() => ["H" => 3, "D" => -3]])
-    adductisotopes(Adduction(chemical, "[M+H]+")) == [] # No key Protonation()
-    adductisotopes(Adduction(chemical, "[M-Me]-")) == ["H" => 3, "D" => -3]
+    push!(chemical.property, :structure => [nothing => [ElementalScheme(false, Methenium()) => StructuralElementalScheme(x, ElementalScheme(false, DL_Methenium()))]])
+    completescheme(chemical, ChemicalGain(Proton())) == StructuralElementalScheme(ChemicalGain(Proton()), ChemicalGain(Proton())) # No key Protonation()
+    completescheme(chemical, ChemicalLoss(Methenium())) == StructuralElementalScheme(ChemicalLoss(Methenium()), ChemicalLoss(Methenium()))
     ```
-
-## Attributes of `AbstractAdduct`
-|Attribute|Return type|Description|
-|--------|----|-----------|
-|`kmer`|`Int`|number of core chemical|
-|`charge`|`Int`|charges (positive or negative); defaults to 0|
-|`ncharge`|`Int`|number of charges|
-|`adductformula`|`String`|the formula for adduct. For instance, `"-H"` for [M-H]-, `"+OAc"` for [M+OAc]-.|
-|`adductelements`|`Vector{Pair{String, Int}}`|elements changed with adduct formation. For generic adduct, it uses `adductformula` to calculate elements. If non-element strings are used in `adductformula`, defining customized `adductelements` is required.| 
-
 ## Isotopic abundance and Isotopologues
 There are three related functions
 * `isotopicabundance`
