@@ -243,29 +243,29 @@ Whether apply post filtering normalization.
 dopostnormalize(::AbstractAbundance) = false 
 dopostnormalize(::List) = true
 """
-    msmstotalmaxabundance(::AbstractAbundance, abundance, threshold, max_proportion_vec, element_dictionary_vec) 
+    abundance_threshold_msn(::AbstractAbundance, abundance, threshold, max_proportion_vec, element_dictionary_vec) 
 
-Total abundance and maximxal abundance for MS/MS. 
+Total abundance and threshold for isotopologues abundance prediction at recursion step for MS/MS. 
 """
-function msmspremaxabundance(::Union{List, Total, Raw}, abundance, threshold, max_proportion_vec, element_dictionary_vec)  
+function abundance_threshold_msn(::Union{List, Total, Raw}, abundance, threshold, max_proportion_vec, element_dictionary_vec)  
     total = abundance
     maxab = total
     for p in max_proportion_vec
         maxab *= p 
     end
-    total, maxab
+    total, minimum(makecrit_value(crit(threshold), maxab))
 end
 
-function msmspremaxabundance(::Max, abundance, threshold, max_proportion_vec, element_dictionary_vec) 
+function abundance_threshold_msn(::Max, abundance, threshold, max_proportion_vec, element_dictionary_vec) 
     total = abundance
     maxab = total 
     for p in max_proportion_vec
         total /= p 
     end
-    total, maxab
+    total, minimum(makecrit_value(crit(threshold), maxab))
 end
 
-function msmspremaxabundance(::Input, abundance, threshold, max_proportion_vec, element_dictionary_vec) 
+function abundance_threshold_msn(::Input, abundance, threshold, max_proportion_vec, element_dictionary_vec) 
     total = abundance
     maxab = total 
     for p in element_dictionary_vec
@@ -275,19 +275,19 @@ function msmspremaxabundance(::Input, abundance, threshold, max_proportion_vec, 
     for p in max_proportion_vec
         maxab *= p 
     end
-    total, maxab
+    total, minimum(makecrit_value(crit(threshold), maxab))
 end
 
 """
     abundance_threshold(::AbstractAbundance, abundance, threshold, first_proportion, max_proportion = first_proportion)
 
-Threshold for isotopologues abundance prediction at recursion step.
+Total abundance and threshold for isotopologues abundance prediction at recursion step.
 """
-abundance_threshold(::Input, abundance, threshold, first_proportion, max_proportion = first_proportion) = minimum(makecrit_value(crit(threshold), abundance * max_proportion / first_proportion)) / abundance * first_proportion
-abundance_threshold(::Max, abundance, threshold, first_proportion, max_proportion = first_proportion) = minimum(makecrit_value(crit(threshold), abundance)) / abundance * max_proportion
-abundance_threshold(::List, abundance, threshold, first_proportion, max_proportion = first_proportion) = minimum(makecrit_value(crit(threshold), abundance * max_proportion)) / abundance
-abundance_threshold(::Total, abundance, threshold, first_proportion, max_proportion = first_proportion) = minimum(makecrit_value(crit(threshold), abundance * max_proportion)) / abundance
-abundance_threshold(::Raw, abundance, threshold, first_proportion, max_proportion = first_proportion) = minimum(makecrit_value(crit(threshold), abundance * max_proportion)) / abundance
+abundance_threshold(::Input, abundance, threshold, first_proportion, max_proportion = first_proportion) = abundance / first_proportion, minimum(makecrit_value(crit(threshold), abundance * max_proportion / first_proportion))
+abundance_threshold(::Max, abundance, threshold, first_proportion, max_proportion = first_proportion) = abundance / max_proportion, minimum(makecrit_value(crit(threshold), abundance)) 
+abundance_threshold(::List, abundance, threshold, first_proportion, max_proportion = first_proportion) = abundance, minimum(makecrit_value(crit(threshold), abundance * max_proportion)) 
+abundance_threshold(::Total, abundance, threshold, first_proportion, max_proportion = first_proportion) = abundance, minimum(makecrit_value(crit(threshold), abundance * max_proportion)) 
+abundance_threshold(::Raw, abundance, threshold, first_proportion, max_proportion = first_proportion) = abundance, minimum(makecrit_value(crit(threshold), abundance * max_proportion)) 
 
 abtypeop(::Max) = maximum
 abtypeop(::Input) = first
