@@ -25,6 +25,7 @@ else
             if te - ti > 2
                 @info "`Isotopologues` takes too much time for transitions ≈ 10 kDa -> 5 kDa. Skip tests for larger transitions."
             else
+                TandemIsotopologues("C988H1552O296N272S8" => "C494H776O148N136S4"; abtype = :total)
                 itll = Isotopologues("C988H1552O296N272S8" => "C494H776O148N136S4"; abtype = :total)
             end
         end

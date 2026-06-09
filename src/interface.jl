@@ -11,6 +11,7 @@
 ==(x::StructuralElementalScheme, y::StructuralElementalScheme) = x.structuralscheme == y.structuralscheme && x.elementalscheme == y.elementalscheme
 ==(x::ChemicalSchema, y::ChemicalSchema) = x.schema == y.schema 
 ==(x::IsotopomerizedSchema, y::IsotopomerizedSchema) = x.parent == y.parent && all(v -> ==(sort(first(v)), sort(last(v))), zip(sort(x.isotopes), sort(y.isotopes)))
+==(x::Groupedisotopomerizedschema, y::Groupedisotopomerizedschema) = x.parent == y.parent && x.state == y.state && x.isotope == y.isotope && all(v -> ==(sort(first(v)), sort(last(v))), zip(sort(x.isotopes), sort(y.isotopes))) && all(splat(isapprox), zip(x.abundance, y.abundance))
 
 const ABUNDANCE_ROUNDING_DIGITS = 4
 abundance_rounding_digits() = ABUNDANCE_ROUNDING_DIGITS
@@ -83,7 +84,24 @@ function hash(x::IsotopomerizedSchema, h::UInt)
     h = hash(map(last, axes(x.isotopes)), h)
     hash(sum(hash, x.isotopes; init = zero(h)), h)
 end
-
+function hash(x::Groupedisotopomerizedschema, h::UInt) 
+    h = hash(x.parent, h) 
+    h = hash(x.state, h) 
+    h = hash(x.isotope, h) 
+    h = hash(map(first, axes(x.isotopes)), h)
+    h = hash(map(last, axes(x.isotopes)), h)
+    for y in x.isotopes 
+        h = hash(map(first, axes(y)), h)
+        h = hash(map(last, axes(y)), h)
+        h = hash(sum(hash, y; init = zero(h)), h)
+    end
+    h = hash(map(first, axes(x.abundance)), h)
+    h = hash(map(last, axes(x.abundance)), h)
+    for a in x.abundance
+        h = hash(round(a; digits = abundance_rounding_digits()), h)
+    end
+    h
+end
 copy(x::Chemical) = Chemical(x.name, copy(x.elements), copy(x.property))
 copy(x::FormulaChemical) = FormulaChemical(copy(x.elements), copy(x.property))
 copy(x::ChemicalTransition) = ChemicalTransition(copy(x.transition))
@@ -96,6 +114,7 @@ copy(x::ElementalScheme{T}) where T = ElementalScheme(T, copy(x.chemical))
 copy(x::StructuralElementalScheme) = StructuralElementalScheme(copy(x.structuralscheme), copy(x.elementalscheme)) 
 copy(x::ChemicalSchema) = ChemicalSchema(copy(x.schema)) 
 copy(x::IsotopomerizedSchema) = IsotopomerizedSchema(copy(x.parent), copy(x.isotopes)) 
+copy(x::Groupedisotopomerizedschema) = Groupedisotopomerizedschema(copy(x.parent), x.state, x.isotope, [copy(y) for y in x.isotopes], copy(x.abundance))
 
 in(cc::AbstractChemical, isobars::Isobars) = any(i -> ischemicalequal(i, cc), isobars)
 length(isobars::Isobars) = length(chemicalspecies(isobars))

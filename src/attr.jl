@@ -1,12 +1,4 @@
 """
-    defaultname(chemical::AbstractChemicalsSchema)
-
-Default name of `chemical` if no attribute and specific method is not implemented for `chemicalname`.
-"""
-defaultname(::T) where {T <: AbstractChemical} = string("Chemical::", T)
-defaultname(::T) where {T <: AbstractScheme} = string("Scheme::", T)
-
-"""
     getchemicalproperty(chemical::AbstractChemicalsSchema, property::Symbol, default = nothing)
 
 Get property from `chemical`. 
@@ -445,9 +437,11 @@ The parent chemical without delocalized isotopes replacement.
 # Specific Methods
 * Entity Level
 * `ChemicalTransition`: `ChemicalTransition` of parent chemicals of each transition
+* `Groupedisotopmers`: field `parent` 
 * `ElementalScheme`: scheme of chemical parent of chemical entity 
 * `ChemicalSchema`: schema of chemical parent(s) of chemical entity(s)
 * `IsotopomerizedSchema`: schema of chemical parent(s) of chemical entity(s)
+* `Groupedisotopmerizedschema`: field `parent` 
 """
 chemicalparent(cc::AbstractChemical; kwargs...) = cc
 chemicalparent(chemical::T; kwargs...) where {T <: AbstractChemicalWrapper} = T.name.wrapper(chemicalparent(chemical.chemical; kwargs...))
@@ -467,12 +461,13 @@ The delocalized isotopes replacement of isotopomers.
 * `AbstractCompleteScheme`: delocalized isotopes replacement of elemental scheme
 
 # Specific Methods 
-* Entity Level'
-* `Isotopomers`: `chemical.isotopes`
+* Entity Level
+* `Isotopomers`: field `isotopes`
 * `Groupedisotopomers`: isotopes replacement of the most abundunt isotopomers
 * `ElementalScheme`: delocalized isotopes replacement of chemical entity loss
 * `ChemicalSchema`: all delocalized isotopes replacement of chemical entity loss
-* `IsotopomerizedSchema`: `chemical.isotopes`
+* `IsotopomerizedSchema`: field `isotopes`
+* `Groupedisotopomerizedschema`: isotopes replacement of the most abundunt isotopomers
 
 # Property Search Workflow
 1. Function: `getchemicalproperty`
@@ -500,7 +495,7 @@ isotopomerstate(cc::AbstractChemicalsSchema; isotope = "[13C]") = _isotopomersta
 
 # truly formed chemical
 """
-    analyzedchemical(chemical::AbstractChemical) -> AbstractChemical
+    analyzedchemical(chemical::AbstractChemicalsSchema) -> AbstractChemical
 
 The single chemical entity that is directly analyzed in the very begining of instrumental analysis.
 
@@ -510,8 +505,6 @@ The single chemical entity that is directly analyzed in the very begining of ins
 
 # Specific Methods
 * Species Level
-* `ChemicalLoss`: throw error
-* `ChemicalGain`: throw error
 * `ChemicalTransition`: the very begining precursor, but cannot be chemical gain or loss.
 * `Isobars`: the most abundant analyzed chemical
 """
@@ -519,17 +512,16 @@ analyzedchemical(cc::AbstractChemical; kwargs...) = cc
 analyzedchemical(cc::AbstractScheme; kwargs...) = throw(ArgumentError("Scheme cannot be analyzed directly."))
 
 """
-    detectedchemical(chemical::AbstractChemical) -> AbstractChemical
+    detectedchemical(chemical::AbstractChemicalsSchema) -> AbstractChemical
 
 The single chemical entity that is directly detected in the very ending of instrumental analysis.
 
 # Generic Methods
 * `AbstractChemical`: itself
+* `AbstractScheme`: precursor with scheme. It requires a keyword argument `precursor`.
 
 # Specific Methods
 * Species Level
-* `ChemicalLoss`: precursor exclueded `chemical.chemical` part. It requires a keyword argument `precursor`.
-* `ChemicalGain`: precursor inclueded `chemical.chemical` part. It requires a keyword argument `precursor`.
 * `ChemicalTransition`: the very ending product, but takes chemical gain and loss in consideration.
 * `Isobars`: the most abundant detected chemical
 """
@@ -540,81 +532,81 @@ function detectedchemical(sch::AbstractScheme; precursor = nothing, kwargs...)
     detectedchemical(precursor, sch)
 end
 """
-    detectedisotopes(chemical::AbstractChemical) -> Vector{Pair{String, Int}}
+    detectedisotopes(chemical::AbstractChemicalsSchema) -> Vector{Pair{String, Int}}
 
 The delocalized isotopes replacement of detected chemical. See `detectedchemical` for details.
 """
-detectedisotopes(cc::AbstractChemical; kwargs...) = isotopomersisotopes(detectedchemical(cc); kwargs...)
+detectedisotopes(cc::AbstractChemicalsSchema; kwargs...) = isotopomersisotopes(detectedchemical(cc); kwargs...)
 
 """
-    detectedcharge(chemical::AbstractChemical) -> Int
+    detectedcharge(chemical::AbstractChemicalsSchema) -> Int
 
 The charge state of detected chemical. See `detectedchemical` for details.
 """
-detectedcharge(cc::AbstractChemical; kwargs...) = charge(detectedchemical(cc); kwargs...)
+detectedcharge(cc::AbstractChemicalsSchema; kwargs...) = charge(detectedchemical(cc); kwargs...)
 
 """
-    detectedelements(chemical::AbstractChemical) -> Vector{Pair{String, Int}}
+    detectedelements(chemical::AbstractChemicalsSchema) -> Vector{Pair{String, Int}}
 
 The elements of detected chemical. See `detectedchemical` for details.
 """
-detectedelements(cc::AbstractChemical; kwargs...) = chemicalelements(detectedchemical(cc); kwargs...)
+detectedelements(cc::AbstractChemicalsSchema; kwargs...) = chemicalelements(detectedchemical(cc); kwargs...)
 
 # MS representation of chemical
 """
-    inputchemical(chemical::AbstractChemical) -> AbstractChemical
+    inputchemical(chemical::AbstractChemicalsSchema) -> AbstractChemical
 
 The single chemical entity that is the input of the very begining of instrumental analysis. 
 
-It is equivalent to `analyzedchemical`, except `ChemicalLoss` and `ChemicalGain` are accepeted. See `analyzedchemical` for details.
+It is equivalent to `analyzedchemical`, except schema are accepeted. See `analyzedchemical` for details.
 """
-inputchemical(cc::AbstractChemical; kwargs...) = cc
+inputchemical(cc::AbstractChemicalsSchema; kwargs...) = cc
 
 """
-    outputchemical(chemical::AbstractChemical) -> AbstractChemical
+    outputchemical(chemical::AbstractChemicalsSchema) -> AbstractChemicalsSchema
 
 The single chemical entity that is the output of the very ending of instrumental analysis.
 
-It is equivalent to `detectedchemical`, except `ChemicalLoss` and `ChemicalGain` are kept unchanged. See `detectedchemical` for details.
+It is equivalent to `detectedchemical`, except schema are kept unchanged. See `detectedchemical` for details.
 """
-outputchemical(cc::AbstractChemical; kwargs...) = cc
+outputchemical(cc::AbstractChemicalsSchema; kwargs...) = cc
 
 """
-    seriesanalyzedchemical(chemical::AbstractChemical) -> Vector{<: AbstractChemical}
+    seriesanalyzedchemical(chemical::AbstractChemicalsSchema) -> Vector{<: AbstractChemical}
 
 The chemical entities that are directly analyzed in each stage of instrumental analysis. 
 
-It is equivalent to `chemicaltransition`, except that `ChemicalLoss` and `ChemicalGain` are transformed to detected chemicals.
+It is equivalent to `chemicaltransition`, except schema are transformed to detected chemicals.
 
 # Generic Methods
-* `AbstractChemical`: `[chemical]`
+* `AbstractChemicalsSchema`: `[chemical]`
 
 # Specific Methods
 * Transition Level
 * `ChemicalTransition`: a vector of analyzed chemicals. See `analyzedchemical` for details.
 """
-seriesanalyzedchemical(cc::AbstractChemical; kwargs...) = [cc]
+seriesanalyzedchemical(cc::AbstractChemicalsSchema; kwargs...) = [cc]
 
 """
-    seriesanalyzedisotopes(chemical::AbstractChemical) -> Vector{Vector{Pair{String, Int}}}
+    seriesanalyzedisotopes(chemical::AbstractChemicalsSchema) -> Vector{Vector{Pair{String, Int}}}
 
 The delocalized isotopes replacement of serially analyzed chemical. See `seriesanalyzedchemical` for details.
 """
-seriesanalyzedisotopes(cc::AbstractChemical; kwargs...) = [isotopomersisotopes(c; kwargs...) for c in seriesanalyzedchemical(cc)]
+seriesanalyzedisotopes(cc::AbstractChemicalsSchema; kwargs...) = [isotopomersisotopes(c; kwargs...) for c in seriesanalyzedchemical(cc)]
 
 """
-    seriesanalyzedcharge(chemical::AbstractChemical) -> Vector{Int}
+    seriesanalyzedcharge(chemical::AbstractChemicalsSchema) -> Vector{Int}
 
 The charge states of serially analyzed chemical. See `seriesanalyzedchemical` for details.
 """
-seriesanalyzedcharge(cc::AbstractChemical; kwargs...) = [charge(c; kwargs...) for c in seriesanalyzedchemical(cc)]
+seriesanalyzedcharge(cc::AbstractChemicalsSchema; kwargs...) = [charge(c; kwargs...) for c in seriesanalyzedchemical(cc)]
 
 """
-    seriesanalyzedelements(chemical::AbstractChemical) -> Vector{Vector{Pair{String, Int}}}
+    seriesanalyzedelements(chemical::AbstractChemicalsSchema) -> Vector{Vector{Pair{String, Int}}}
 
 The elements of serially analyzed chemical. See `seriesanalyzedchemical` for details.
 """
-seriesanalyzedelements(cc::AbstractChemical; kwargs...) = [chemicalelements(c; kwargs...) for c in seriesanalyzedchemical(cc)]
+seriesanalyzedelements(cc::AbstractChemicalsSchema; kwargs...) = [chemicalelements(c; kwargs...) for c in seriesanalyzedchemical(cc)]
 
 """
     msstage(chemical::AbstractChemical) -> Int

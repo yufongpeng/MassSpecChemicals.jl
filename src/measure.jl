@@ -8,6 +8,7 @@ charge(loss::ElementalScheme{false}; kwargs...) = charge(chemicalentity(loss); k
 charge(gain::ElementalScheme{true}; kwargs...) = -charge(chemicalentity(gain); kwargs...)
 charge(x::IsotopomerizedSchema) = charge(x.parent)
 charge(x::ChemicalSchema) = sum(charge(k) * v for (k, v) in zip(x.schema, x.number))
+charge(x::Groupedisotopomerizedschema) = charge(x.parent)
 
 retentiontime(isobars::Isobars; kwargs...) = _isobar_species_attr(retentiontime, isobars; kwargs...)
 retentiontime(isotopomers::Isotopomers; kwargs...) = retentiontime(chemicalparent(isotopomers); kwargs...)

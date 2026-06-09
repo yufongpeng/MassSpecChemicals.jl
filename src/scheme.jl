@@ -86,7 +86,7 @@ For custumized scheme type, this function is required to make `nm` parsed into `
 set_scheme!(nm::AbstractString, scheme::AbstractScheme) = push!(scheme_name(), nm => scheme)
 
 """
-    parse_adduct([adductparser::AbstractAdductParser,] adduct::AbstractString; args = false, kwargs...) -> AbstractAdduct 
+    parse_adduct([adductparser::AbstractAdductParser,] adduct::AbstractString; args = false, kwargs...) 
 
 Parse string into `NamedTuple` or `Tuple` using `adductparser`. 
 The default `AdductParser` determines the number of core first (`"[2M+...]"` for 2 cores), and then searches string in `scheme_name()`, or parses the string using `adductparser.chemicalparser`.

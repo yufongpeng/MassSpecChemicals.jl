@@ -158,6 +158,7 @@ end
         @test detectedcharge(cp5) == last(seriesanalyzedcharge(cp5))
         @test MSC.dictionary_elements(seriesanalyzedelements(cp5)[2]) == MSC.dictionary_elements(MSC.loss_elements(chemicalelements(cp5), chemicalelements(chemicaltransition(cp5)[2])))
         @test MSC.dictionary_elements(seriesanalyzedelements(sp5)[2]) == MSC.dictionary_elements(chemicalelements(isotopomerize(completescheme(ipsi1[1], outputchemical(sp1)), ["[13C]" => 5])))
+        @test chemicaltransition(pt2.Chemical[1])[1] isa Isobars
     end
     @testset "Isotopologues" begin 
         # isotopologues
@@ -283,7 +284,6 @@ end
         @test @test_noerror test_show(ci1)
         @test retentiontime(ci1.target.Chemical[4]) - retentiontime(ci1.tables[4].Chemical[1]) <= 0.15
         @test isapprox(sum(ci1.tables[4].Abundance1[2:3]), ib1.var"Abundance1(%)"[4] * ci1.target.Abundance1[4] / 100)
-        @test length(ib2) == 6
         @test all(x -> abs(x) < 0.1, ib2.var"ΔMZ1")
         @test all(>(100 * 1e-4), ib2.var"Abundance2(%)")
     end

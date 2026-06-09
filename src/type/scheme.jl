@@ -74,7 +74,30 @@ struct IsotopomerizedSchema{T<:AbstractScheme} <: AbstractScheme
     isotopes::Vector{Pair{String, Int}}
 end
 
-schemetype(::IsotopomerizedSchema{T}) where T = T 
+"""
+    Groupedisotopomerizedschema{T<:AbstractScheme, N} <: AbstractScheme
+
+Isotopomerized schema grouped by isotopomer state.
+
+# Fields 
+* `parent::T`: shared chemical scheme prior to isotopic replacement. 
+* `state::Int`: isotopomer state.
+* `isotope::String`: isotope for computing isotopomer state.
+* `isotopes::Vector{Vector{Pair{String, Int}}}`: Isotopes-number pairs of isotopic replacements of each isotopomers.
+* `abundance::Vector{N}`: abundance of each isotopomers.
+"""
+struct Groupedisotopomerizedschema{T<:AbstractScheme, N} <: AbstractScheme
+    parent::T 
+    state::Int
+    isotope::String
+    isotopes::Vector{Vector{Pair{String, Int}}}
+    abundance::Vector{N}
+    function Groupedisotopomerizedschema(parent::T, state::Int, isotope::String, isotopes::Vector{Vector{Pair{String, Int}}}, abundance::Vector{N}) where {T, N}
+        id = sortperm(abundance)
+        new{T, N}(parent, state, isotope, isotopes[id], abundance[id])
+    end
+end
+
 schemetype(::ChemicalSchema{T}) where T = T 
 schemetype(::T) where T = T 
 
@@ -137,22 +160,22 @@ function push_scheme!(cs::Vector, cn::Vector, scheme::AbstractScheme)
 end
 
 """
-    const CompleteSchema = Union{<:AbstractCompleteScheme, <:ChemicalSchema{<:AbstractCompleteScheme}, <:IsotopomerizedSchema{<:AbstractCompleteScheme}}
+    const CompleteSchema = Union{<:AbstractCompleteScheme, <:ChemicalSchema{<:AbstractCompleteScheme}, <:IsotopomerizedSchema{<:AbstractCompleteScheme}, <:Groupedisotopomerizedschema{<:IsotopomerizedSchema{<:AbstractCompleteScheme}}}
 
 Complete scheme (scheme containing both `structuralscheme` and `elementalscheme`)
 """
-const CompleteSchema = Union{<:AbstractCompleteScheme, <:ChemicalSchema{<:AbstractCompleteScheme}, <:IsotopomerizedSchema{<:AbstractCompleteScheme}}
+const CompleteSchema = Union{<:AbstractCompleteScheme, <:ChemicalSchema{<:AbstractCompleteScheme}, <:IsotopomerizedSchema{<:AbstractCompleteScheme}, <:Groupedisotopomerizedschema{<:IsotopomerizedSchema{<:AbstractCompleteScheme}}}
 
 """
-    const StructuralSchema = Union{<:AbstractStructuralScheme, <:ChemicalSchema{<:AbstractStructuralScheme}, <:IsotopomerizedSchema{<:AbstractStructuralScheme}}
+    const StructuralSchema = Union{<:AbstractStructuralScheme, <:ChemicalSchema{<:AbstractStructuralScheme}, <:IsotopomerizedSchema{<:AbstractStructuralScheme}, <:Groupedisotopomerizedschema{<:IsotopomerizedSchema{<:AbstractStructuralScheme}}}
 
 Stuctural schema.
 """
-const StructuralSchema = Union{<:AbstractStructuralScheme, <:ChemicalSchema{<:AbstractStructuralScheme}, <:IsotopomerizedSchema{<:AbstractStructuralScheme}}
+const StructuralSchema = Union{<:AbstractStructuralScheme, <:ChemicalSchema{<:AbstractStructuralScheme}, <:IsotopomerizedSchema{<:AbstractStructuralScheme}, <:Groupedisotopomerizedschema{<:IsotopomerizedSchema{<:AbstractStructuralScheme}}}
 
 """
-    const ElementalSchema = Union{<:AbstractElementalScheme, <:ChemicalSchema{<:AbstractElementalScheme}, <:IsotopomerizedSchema{<:AbstractElementalScheme}}
+    const ElementalSchema = Union{<:AbstractElementalScheme, <:ChemicalSchema{<:AbstractElementalScheme}, <:IsotopomerizedSchema{<:AbstractElementalScheme}, <:Groupedisotopomerizedschema{<:IsotopomerizedSchema{<:AbstractElementalScheme}}}
 
 Elemental schema.
 """
-const ElementalSchema = Union{<:AbstractElementalScheme, <:ChemicalSchema{<:AbstractElementalScheme}, <:IsotopomerizedSchema{<:AbstractElementalScheme}}
+const ElementalSchema = Union{<:AbstractElementalScheme, <:ChemicalSchema{<:AbstractElementalScheme}, <:IsotopomerizedSchema{<:AbstractElementalScheme}, <:Groupedisotopomerizedschema{<:IsotopomerizedSchema{<:AbstractElementalScheme}}}

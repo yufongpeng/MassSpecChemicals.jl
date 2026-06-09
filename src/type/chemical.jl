@@ -45,7 +45,7 @@ FormulaChemical(elements::Vector{Pair{String, Int}}; kwargs...) = FormulaChemica
 FormulaChemical(formula::AbstractString; kwargs...) = FormulaChemical(chemicalelements(formula), collect(kwargs))
 
 """
-    ChemicalTransition{T} <: AbstractChemical
+    ChemicalTransition{T<:AbstractChemicalsSchema} <: AbstractChemical
 
 Chemical transition in MSⁿ. Products can be a `ChemicalLoss` or `ChemicalGain`.
 
@@ -56,7 +56,7 @@ Chemical transition in MSⁿ. Products can be a `ChemicalLoss` or `ChemicalGain`
 * `ChemicalTransition(transition::Vector)`
 * `ChemicalTransition(precursor, products...)`: push `products` into `precursor`.
 """
-struct ChemicalTransition{T} <: AbstractChemical
+struct ChemicalTransition{T<:AbstractChemicalsSchema} <: AbstractChemical
     transition::Vector{T}
 end
 
@@ -88,7 +88,7 @@ Chemicals with similar m/z.
 
 # Fields 
 * `chemicals::Vector{T}`: a vector of chemicals.
-* `abundnace::VecOrMat{Float64}`: the abundance of each chemical. If chemicals are trasitions, this should be a matrix, and each column is the abundance of each ms stage.
+* `abundnace::VecOrMat{N}`: the abundance of each chemical. If chemicals are trasitions, this should be a matrix, and each column is the abundance of each ms stage.
 
 # Constructors 
 * `Isobars(chemicals::Vector, abundance::Vector)`
@@ -156,18 +156,18 @@ function Isotopomers(chemical::AbstractChemical, fullelements::Dict)
 end
 
 """
-    Groupedisotopomers{T<:AbstractChemicalsSchema, N} <: AbstractChemicalsSchema
+    Groupedisotopomers{T<:AbstractChemical, N} <: AbstractChemical
 
 Isotopomerized chemicals grouped by isotopomer state.
 
 # Fields 
-* `parent::T`: shared chemical structure or scheme prior to isotopic replacement. 
+* `parent::T`: shared chemical structure prior to isotopic replacement. 
 * `state::Int`: isotopomer state.
 * `isotope::String`: isotope for computing isotopomer state.
 * `isotopes::Vector{Vector{Pair{String, Int}}}`: Isotopes-number pairs of isotopic replacements of each isotopomers.
 * `abundance::Vector{N}`: abundance of each isotopomers.
 """
-struct Groupedisotopomers{T<:AbstractChemicalsSchema, N} <: AbstractChemicalsSchema
+struct Groupedisotopomers{T<:AbstractChemical, N} <: AbstractChemical
     parent::T 
     state::Int
     isotope::String

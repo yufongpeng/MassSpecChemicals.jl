@@ -28,6 +28,7 @@ function chemicalformula(x::IsotopomerizedSchema; kwargs...)
     isotopeformula(elements, x.isotopes)
 end
 chemicalformula(x::ChemicalSchema) = join((join(repeat(chemicalformula(k), v), "") for (k, v) in zip(x.schema, x.number)), "")
+chemicalformula(x::Groupedisotopomerizedschema; kwargs...) = chemicalformula(IsotopomerizedSchema(chemicalparent(x), isotopomersisotopes(x)); kwargs...)
 
 chemicalelements(cc::Chemical; kwargs...) = cc.elements
 chemicalelements(cc::FormulaChemical; kwargs...) = cc.elements
@@ -59,6 +60,7 @@ function chemicalelements(x::IsotopomerizedSchema; kwargs...)
     isotopeelements(elements, x.isotopes)
 end
 chemicalelements(x::ChemicalSchema; kwargs...) = vcat((repeat(chemicalelements(k; kwargs...), v) for (k, v) in zip(x.schema, x.number))...)
+chemicalelements(x::Groupedisotopomerizedschema; kwargs...) = chemicalelements(IsotopomerizedSchema(chemicalparent(x), isotopomersisotopes(x)); kwargs...)
 
 """
     chemicalformula(elements::Dict; delim = "", unique = true) -> String

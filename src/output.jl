@@ -1,3 +1,11 @@
+"""
+    defaultname(chemical::AbstractChemicalsSchema)
+
+Default name of `chemical` if no attribute and specific method is not implemented for `chemicalname`.
+"""
+defaultname(::T) where {T <: AbstractChemical} = string("Chemical::", T)
+defaultname(::T) where {T <: AbstractScheme} = string("Scheme::", T)
+
 decorator(::ElementalScheme{false}; loss = false, delim = "") = string(delim, loss ? "Gain_" : "Loss_")
 decorator(::ElementalScheme{false, FormulaChemical}; loss = false, delim = "") = loss ? "+" : "-"
 decorator(::ElementalScheme{false, <:Isotopomers{FormulaChemical}}; loss = false, delim = "") = loss ? "+" : "-"
@@ -33,6 +41,7 @@ function chemicalname(sch::ChemicalSchema; n = 1, loss = false, bracket = false,
     end
     bracket ? string("[", s, "]") : s 
 end
+chemicalname(sch::Groupedisotopomerizedschema; n = 1, loss = false, bracket = false, delim = "|", kwargs...) = string(chemicalname(chemicalparent(sch); n, loss, bracket, delim, kwargs...), sch.state > 0 ? string("(+", sch.state, ")") : sch.state < 0 ? string("(-", abs(sch.state), ")") : "") 
 
 chemicalabbr(isobars::Isobars; verbose = true, kwargs...) = (length(chemicalspecies(isobars)) == 1 || verbose) ? string("Isobars[", join(chemicalabbr.(chemicalspecies(isobars); kwargs...), ", "), "]") : string("Isobars[", chemicalabbr(first(chemicalspecies(isobars); kwargs...)), ", …]")
 chemicalabbr(isotopomers::Isotopomers; n = 1, kwargs...) = string(chemicalabbr(chemicalparent(isotopomers); n, kwargs...), isempty(unique_elements(isotopomers.isotopes)) ? "" : string("[", chemicalformula(isotopomers.isotopes; delim = ","), "]"))
@@ -49,6 +58,7 @@ function chemicalabbr(sch::ChemicalSchema; loss = false, bracket = true, n = 1, 
     s = join([chemicalabbr(k; n = n * v, loss, bracket = false, kwargs...) for (k, v) in zip(sch.schema, sch.number)], "")
     bracket ? string("[", s, "]", charge_repr(-charge(sch))) : s 
 end
+chemicalabbr(sch::Groupedisotopomerizedschema; n = 1, loss = false, bracket = true, kwargs...) = string(chemicalname(chemicalparent(sch); n, loss, bracket, kwargs...), sch.state > 0 ? string("(+", sch.state, ")") : sch.state < 0 ? string("(-", abs(sch.state), ")") : "") 
 
 chemicalsmiles(isobars::Isobars; kwargs...) = chemicalsmiles(chemicalentity(isobars); kwargs...)
 chemicalsmiles(isotopomers::Isotopomers; kwargs...) = chemicalsmiles(chemicalparent(isotopomers); kwargs...)

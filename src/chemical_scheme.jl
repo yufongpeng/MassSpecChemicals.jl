@@ -11,6 +11,7 @@ ischemicalequal(x::Groupedisotopomers, y::Groupedisotopomers) = istransformedche
 ischemicalequal(x::ChemicalTransition, y::ChemicalTransition) = istransformedchemicalequal(x, y)
 ischemicalequal(x::ElementalScheme{true}, y::ElementalScheme{true}) = istransformedchemicalequal(x, y)
 ischemicalequal(x::ElementalScheme{false}, y::ElementalScheme{false}) = istransformedchemicalequal(x, y)
+ischemicalequal(x::Groupedisotopomerizedschema, y::Groupedisotopomerizedschema) = istransformedchemicalequal(x, y)
 ischemicalequal(x::AbstractChemicalsSchema, y::AbstractChemicalsSchema) = istransformedchemicalequal(ischemicalequaltransform(x), ischemicalequaltransform(y))
 
 """
@@ -23,6 +24,7 @@ ischemicalequaltransform(x::AbstractScheme) = x
 ischemicalequaltransform(x::Isobars) = length(x) == 1 ? ischemicalequaltransform(chemicalentity(x)) : x
 ischemicalequaltransform(x::Isotopomers) = isempty(unique_elements(x.isotopes)) ? x.parent : x 
 ischemicalequaltransform(x::Groupedisotopomers) = length(x.isotopes) > 1 ? x : isempty(unique_elements(x.isotopes[1])) ? x.parent : Isotopomers(x.parent, x.isotopes[1]) 
+ischemicalequaltransform(x::Groupedisotopomerizedschema) = length(x.isotopes) > 1 ? x : isempty(unique_elements(x.isotopes[1])) ? x.parent : Isotopomers(x.parent, x.isotopes[1]) 
 ischemicalequaltransform(x::ChemicalTransition) = x 
 
 """
@@ -43,6 +45,7 @@ istransformedchemicalequal(x::Isotopomers, y::Isotopomers) = ischemicalequal(x.p
 istransformedchemicalequal(x::Groupedisotopomers, y::Groupedisotopomers) = ischemicalequal(x.parent, y.parent) && x.state == y.state && x.isotope == y.isotope && all(isequal(sort!(unique_elements(vx)), sort!(unique_elements(vy))) for (vx, vy) in zip(x.isotopes, y.isotopes)) && all(isapprox(a, b) for (a, b) in zip(x.abundance, y.abundance))
 istransformedchemicalequal(x::ChemicalTransition, y::ChemicalTransition) = all(ischemicalequal.(x.transition, y.transition))
 
+istransformedchemicalequal(x::Groupedisotopomerizedschema, y::Groupedisotopomerizedschema) = ischemicalequal(x.parent, y.parent) && x.state == y.state && x.isotope == y.isotope && all(isequal(sort!(unique_elements(vx)), sort!(unique_elements(vy))) for (vx, vy) in zip(x.isotopes, y.isotopes)) && all(isapprox(a, b) for (a, b) in zip(x.abundance, y.abundance))
 istransformedchemicalequal(x::IsotopomerizedSchema, y::IsotopomerizedSchema) = istransformedchemicalequal(x, y) && isequal(sort!(unique_elements(x.isotopes)), sort!(unique_elements(y.isotopes)))
 function istransformedchemicalequal(x::ChemicalSchema, y::ChemicalSchema) 
     uk = [false for _ in eachindex(y.schema)]
@@ -92,6 +95,21 @@ isotopomerize(sch::ElementalScheme{T}, isotopes) where T = ElementalScheme(T, is
 isotopomerize(sch::ChemicalSchema, isotopes) = IsotopomerizedSchema(sch, isotopes)
 isotopomerize(sch::IsotopomerizedSchema, isotopes) = IsotopomerizedSchema(sch.parent, collect(gain_elements(sch.isotopes, isotopes)))
 isotopomerize(sch::T, isotopes) where {T<:AbstractScheme} = throw(ArgumentError("Cannot add isotopes information to $T."))
+
+"""
+    groupedisotopomerize(chemical::AbstractChemicalsSchema, isotopes) -> AbstractChemicalsSchema
+
+Add delocalized isotopic replacements `isotopes` to `chemical`.
+"""
+groupedisotopomerize(chemical::AbstractChemical, state, isotope, isotopes, abundance) = Groupedisotopomers(chemical, state, isotope, isotopes, abundance)
+groupedisotopomerize(chemical::Isotopomers, state, isotope, isotopes, abundance) = Groupedisotopomers(chemical.parent, state, isotope, isotopes, abundance)
+groupedisotopomerize(chemical::Groupedisotopomers, state, isotope, isotopes, abundance) = Groupedisotopomers(chemical.parent, state, isotope, isotopes, abundance)
+groupedisotopomerize(sch::StructuralElementalScheme, state, isotope, isotopes, abundance) = StructuralElementalScheme(structuralscheme(sch), groupedisotopomerize(elementalscheme(sch), state, isotope, isotopes, abundance))
+groupedisotopomerize(sch::ElementalScheme{T}, state, isotope, isotopes, abundance) where T = ElementalScheme(T, groupedisotopomerize(sch.chemical, state, isotope, isotopes, abundance))
+groupedisotopomerize(sch::ChemicalSchema, state, isotope, isotopes, abundance) = Groupedisotopomerizedschema(sch, state, isotope, isotopes, abundance)
+groupedisotopomerize(sch::IsotopomerizedSchema, state, isotope, isotopes, abundance) = Groupedisotopomerizedschema(sch.parent, state, isotope, isotopes, abundance)
+groupedisotopomerize(sch::Groupedisotopomerizedschema, state, isotope, isotopes, abundance) = Groupedisotopomerizedschema(sch.parent, state, isotope, isotopes, abundance)
+groupedisotopomerize(sch::T, state, isotope, isotopes, abundance) where {T<:AbstractScheme} = throw(ArgumentError("Cannot add isotopes information to $T."))
 
 """
     isgainscheme(sch::AbstractScheme) -> Bool
@@ -236,6 +254,7 @@ chemicalparent(sch::StructuralElementalScheme; kwargs...) = StructuralElementalS
 chemicalparent(sch::ElementalScheme{T}; kwargs...) where T = ElementalScheme(T, chemicalparent(chemicalentity(sch); kwargs...))
 chemicalparent(sch::IsotopomerizedSchema; kwargs...) = sch.parent
 chemicalparent(sch::ChemicalSchema; kwargs...) = ChemicalSchema(chemicalparent.(sch.schema; kwargs...), sch.number)
+chemicalparent(sch::Groupedisotopomerizedschema; kwargs...) = sch.parent 
 
 isotopomersisotopes(isobars::Isobars; kwargs...) = isotopomersisotopes(chemicalentity(isobars); kwargs...)
 isotopomersisotopes(isotopomers::Isotopomers; kwargs...) = isotopomers.isotopes
@@ -246,6 +265,7 @@ isotopomersisotopes(sch::ElementalScheme{true}; kwargs...) = [k => -v for (k, v)
 isotopomersisotopes(sch::ElementalScheme{false}; kwargs...) = isotopomersisotopes(chemicalentity(sch); kwargs...) 
 isotopomersisotopes(x::IsotopomerizedSchema) = x.isotopes
 isotopomersisotopes(x::ChemicalSchema) = vcat((repeat(isotopomersisotopes(k), v) for (k, v) in zip(x.schema, x.number))...)
+isotopomersisotopes(sch::Groupedisotopomerizedschema; kwargs...) = first(sch.isotopes)
 
 inputchemical(isobars::Isobars; kwargs...) = Isobars([inputchemical(chemical; kwargs...) for chemical in chemicalspecies(isobars)], isobars.abundance[:, begin])
 inputchemical(ct::ChemicalTransition; kwargs...) = first(chemicaltransition(ct))
