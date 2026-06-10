@@ -373,7 +373,7 @@ function isotopologues_elements_ms2(it1, element_precursor_dictionary, element_p
     elseif gain 
         msfix = mmi(element_product) - mmi(element_precursor_dictionary)
         proportion_cutoff = minimum(makecrit_value(crit(threshold), abundance)) * isotopicabundance(element_precursor_dictionary) / abundance
-        it2 = isotopologues_elements(element_precursor_dictionary, 0, 1, Total(), proportion_cutoff)
+        it2 = isotopologues_elements(dictionary_elements(element_precursor_dictionary), 0, 1, Total(), proportion_cutoff)
         data = map(it1.Abundance) do r
             (; Element = it2.Element, 
             Mass = it2.Mass, 
@@ -454,6 +454,7 @@ function isotopologues_elements_msn(element_dictionary_vec, msfix_vec, abundance
     idm = sortperm(mass)
     mass = mass[idm]
     abv = abv[idm]
+    els = els[idm]
     if dopostnormalize(abtype)
         abv = normalize_abundance(abv, abundance, abtype)
     end

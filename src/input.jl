@@ -174,7 +174,7 @@ function parse_chemical(chemicalparser::ChemicalExpressionParser, name::Abstract
         core = ""
         sch = name
     end
-    assemble_chemical(chemicalgain, parse_adduction(chemicalparser.chemicalparser, sch, core; chemicalgain, kwargs...)...)
+    assemble_chemical(chemicalgain, parse_adduction(chemicalparser.chemicalparser, sch, core; kwargs..., chemicalgain)...)
 end
 
 function isplusminusbracket(x)
@@ -213,7 +213,7 @@ function parse_chemical(chemicalparser::ChemicalTransitionParser, name::Abstract
     trans = Any[]
     precursorcharge = nothing
     if length(name) < 2
-        return parse_chemical(chemicalparser.chemicalparser, first(name); precursorcharge, kwargs...)
+        return parse_chemical(chemicalparser.chemicalparser, first(name); kwargs..., precursorcharge)
     end
     for nm in name
         c, precursorcharge = parse_chemical(chemicalparser.chemicalparser, nm, precursorcharge; kwargs...)

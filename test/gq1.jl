@@ -101,6 +101,7 @@ ms0 = Table(; Chemical = [GQ1, GD3], Adduct = [["[M+2H]2+", "[M+H+Na]2+", "[M+2H
 spec1 = @p ms0 |> Ionization(; abtype = :list) |> MSScan
 spec2 = @p spec1 |> Isolation(Quadrupole(1210.588728; fwhm = 1.3, offset = 0.3)) |> Fragmentation(pt) |> MSScan
 spec3 = @p spec2 |> Isolation(Quadrupole(948.3303; fwhm = 1.3, offset = 0.3)) |> Fragmentation(pt) |> MSScan
+spec4 = @p spec3 |> AllIons((1000, 2000)) |> MSScan
 
 transitiontable = Table(;
     Transition = collect(1:5),

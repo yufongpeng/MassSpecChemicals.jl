@@ -50,13 +50,13 @@ function Ionization(mztable::Table; adduction = AdductIon, threading = nothing, 
         t = Vector{Table}(undef, length(id))
         Threads.@threads for k in eachindex(t)
             i, j = t[k]
-            t[k] = Isotopologues(ionize(adduction, chemical[i]; adduct[i][j]...); id = (k, ), abundance = abundance[i] * proportion[i][j], threshold, kwargs...)
+            t[k] = Isotopologues(ionize(adduction, chemical[i]; adduct[i][j]...); kwargs..., id = (k, ), abundance = abundance[i] * proportion[i][j], threshold)
         end
         tbl = Table(; (map(propertynames(t[1])) do p
             p => ChainedVector(getproperty.(t, p))
         end)...)
     else
-        tbl = Table(vcat((Isotopologues(ionize(adduction, chemical[i]; adduct[i][j]...); id = (k, ), abundance = abundance[i] * proportion[i][j], threshold, kwargs...) for (k, (i, j)) in enumerate(id))...))
+        tbl = Table(vcat((Isotopologues(ionize(adduction, chemical[i]; adduct[i][j]...); kwargs..., id = (k, ), abundance = abundance[i] * proportion[i][j], threshold) for (k, (i, j)) in enumerate(id))...))
     end
     colab = lastcolnum(propertynames(tbl), "Abundance"; error = false)
     ab = getproperty(tbl, colab)

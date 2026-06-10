@@ -70,9 +70,25 @@ Mutiple chemical schema with delocalized isotopic replacements.
 * `isotopes::Vector{Pair{String, Int}}`: delocalized isotopic replacements
 """
 struct IsotopomerizedSchema{T<:AbstractScheme} <: AbstractScheme 
-    schema::ChemicalSchema{T}
+    parent::ChemicalSchema{T}
     isotopes::Vector{Pair{String, Int}}
 end
+
+function IsotopomerizedSchema(chemical::AbstractScheme, fullformula::String)
+    IsotopomerizedSchema(chemicalparent(chemical), dictionary_elements(chemicalelements(fullformula)))
+end
+
+function IsotopomerizedSchema(chemical::AbstractScheme, fullelements::Dict)
+    parent = chemicalparent(chemical)
+    dp = dictionary_elements(chemicalelements(parent))
+    dr = copy(fullelements)
+    for k in keys(fullelements)
+        iselement(k) && (delete!(dr, k); continue)
+        dr[k] -= get(dp, k, 0) 
+    end
+    IsotopomerizedSchema(parent, collect(dr))
+end
+
 
 """
     Groupedisotopomerizedschema{T<:AbstractScheme, N} <: AbstractScheme

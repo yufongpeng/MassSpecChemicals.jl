@@ -11,7 +11,7 @@ lossserine = ChemicalLoss(cserine)
 lossserinei = ChemicalLoss(cserinei)
 losshserine = ChemicalLoss(AdductIon(cserine, "[M+H]+"))
 losshserinei = ChemicalLoss(AdductIon(cserinei, "[M+H]+"))
-
+losshserinegainwater = ChemicalSchema(ChemicalLoss(AdductIon(cserine, "[M+H]+")), ChemicalGain(Water()))
 # Generic structure interface
 push!(cps.property, :schema => [
     ChemicalLoss(Proton()) => [
@@ -62,4 +62,6 @@ cp2 = ChemicalSeries(icps[3] => lossserine => outputchemical(cp1))
 cp3 = ChemicalSeries(icps[3], cp1)
 cp4 = ChemicalSeries(isotopomerize(icps[3], ["[13C]" => 5]) => isotopomerize(completescheme(icps[1], outputchemical(cp1)), ["[13C]" => 5]))
 cp5 = ChemicalSeries(isotopomerize(icpsi1[3], ["[13C]" => 5, "D" => 2]), ChemicalSeries(isotopomerize(completescheme(icpsi1[3], lossserine), ["D" => 1]), isotopomerize(completescheme(icpsi1[1], outputchemical(cp1)), ["[13C]" => 5])))
-pt1 = peak_table(MSScan(Isotopologues(icglc[1]; abundance = 1e5, threshold = crit(1e1, 1e-2))))
+pt1 = peak_table(MSScan(Isotopologues([icglc[1]]; abundance = 1e5, threshold = crit(1e1, 1e-2))))
+itit11 = Isotopologues("[C2H5[12C]OO]-" => "[-H2O-CO]" => "+H2O"; abtype = :input)
+itit12 = TandemIsotopologues("[C2H5[12C]OO]-" => "[-H2O-CO]" => "+H2O"; abtype = :input)

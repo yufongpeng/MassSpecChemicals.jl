@@ -90,7 +90,7 @@ function Isotopologues(ct::ChemicalTransition;
                 loss_elements!(last(pre), last(post))
             end
         end
-        precursor_info[end] = (first(precursor_info[end]), dictionary_elements(chemicalelements(last(trans))))
+        precursor_info = vcat(precursor_info[begin:end - 1], (last(trans), dictionary_elements(chemicalelements(last(trans); loss = false))))
     else
         @inbounds for (pre, post) in @views zip(precursor_info[begin:end - 1], precursor_info[begin + 1:end])
             loss_elements!(last(pre), last(post))
@@ -102,16 +102,25 @@ function Isotopologues(ct::ChemicalTransition;
         element_dictionary_vec[i], msfix_vec[i] = get_element_dictinonary_fixmass(last(info))
     end
     it = isotopologues_elements_msn(element_dictionary_vec, msfix_vec, abundance, abtype, threshold) 
+    if isgainscheme(last(trans)) 
+        for m in it.Mass
+            gain = m[end]
+            m[end] = m[end - 1] 
+            for i in eachindex(m[begin:end - 1])
+                m[i] = m[i] - gain
+            end
+        end
+        for e in it.Element 
+            for i in eachindex(e[begin:end - 1])
+                e[i] = loss_elements(e[i], e[end])
+            end
+        end
+    end
     chemical = seriesisotopomerize(trans, it.Element)
     net_charge = [charge(first(p)) for p in precursor_info]
     abs_charge = max.(1, net_charge)
     colab = Symbol(string("Abundance", length(precursor_info))) 
     colmz = all(==(0), net_charge) ? [Symbol(string("Mass", i)) for i in eachindex(precursor_info)] : [Symbol(string("MZ", i)) for i in eachindex(precursor_info)]
-    if isgainscheme(last(trans)) 
-        for m in it.Mass
-            m[end] += m[end - 1]
-        end
-    end
     mass = [colmz[i] => net_charge[i] == 0 ? [m[i] for m in it.Mass] : [m[i] / abs_charge[i] + (net_charge[i] < 0) * ME for m in it.Mass] for i in eachindex(precursor_info)]
     Table(; ID = [id for _ in eachindex(chemical)], Chemical = chemical, mass..., (colab => it.Abundance, )...) 
 end
@@ -138,7 +147,7 @@ function Isotopologues(mztable::Table; threading = nothing, chemicalparser = Che
         mztable = Table(mztable; abundance = collect.(getproperties(mztable, colab)))
         push!(vec_key, :abundance)
         delete!(kwargs, :abundance)
-    elseif !isnothing(get(kwargs, :abundance, nothing))
+    elseif haskey(kwargs, :abundance)
         mztable = Table(mztable; abundance = vectorize(get(kwargs, :abundance, nothing), length(mztable)))
         push!(vec_key, :abundance)
         delete!(kwargs, :abundance)
@@ -154,13 +163,13 @@ function Isotopologues(mztable::Table; threading = nothing, chemicalparser = Che
     if threading
         t = Vector{Table}(undef, length(mztable))
         Threads.@threads for i in eachindex(t)
-            t[i] = Isotopologues(mztable.Chemical[i]; id = mztable.ID[i], [k => getproperty(mztable, k)[i] for k in vec_key]..., threshold, kwargs...)
+            t[i] = Isotopologues(mztable.Chemical[i]; kwargs..., id = mztable.ID[i], [k => getproperty(mztable, k)[i] for k in vec_key]..., threshold)
         end
         tbl = Table(; (map(propertynames(t[1])) do p
             p => ChainedVector(getproperty.(t, p))
         end)...)
     else
-        tbl = Table(vcat((Isotopologues(r.Chemical; id = r.ID, [k => getproperty(r, k) for k in vec_key]..., threshold, kwargs...) for r in mztable)...))
+        tbl = Table(vcat((Isotopologues(r.Chemical; kwargs..., id = r.ID, [k => getproperty(r, k) for k in vec_key]..., threshold) for r in mztable)...))
     end
     # spectrum specific threshold ?
     colab = lastcolnum(propertynames(tbl), "Abundance"; error = false)
@@ -346,7 +355,7 @@ function __TandemIsotopologues(precursor_table, itp, id, precursor_info, product
     end
     net_charge = charge(product)
     if isgainscheme(raw_product) 
-        element_precursor = chemicalelements(raw_product)
+        element_precursor = chemicalelements(raw_product; loss = false)
     end
     it = isotopologues_elements_ms2(itp, element_precursor, element_product, abundance, abtype, proportion, threshold; gain = isgainscheme(raw_product), loss = islossscheme(raw_product))
     abs_charge = max(1, net_charge)
@@ -409,7 +418,7 @@ function TandemIsotopologues(mztable::Table; threading = nothing, chemicalparser
         mztable = Table(mztable; product = mztable.Product)
         push!(vec_key, :product)
         delete!(kwargs, :product)
-    elseif !isnothing(get(kwargs, :product, nothing))
+    elseif haskey(kwargs, :product)
         mztable = Table(mztable; product = vectorize(get(kwargs, :product, nothing), length(mztable)))
         push!(vec_key, :product)
         delete!(kwargs, :product)
@@ -420,7 +429,7 @@ function TandemIsotopologues(mztable::Table; threading = nothing, chemicalparser
         mztable = Table(mztable; abundance = collect.(getproperties(mztable, colab)))
         push!(vec_key, :abundance)
         delete!(kwargs, :abundance)
-    elseif !isnothing(get(kwargs, :abundance, nothing))
+    elseif haskey(kwargs, :abundance)
         mztable = Table(mztable; abundance = vectorize(get(kwargs, :abundance, nothing), length(mztable)))
         push!(vec_key, :abundance)
         delete!(kwargs, :abundance)
@@ -429,7 +438,7 @@ function TandemIsotopologues(mztable::Table; threading = nothing, chemicalparser
         mztable = Table(mztable; transmission = mztable.Transmission)
         push!(vec_key, :transmission)
         delete!(kwargs, :transmission)
-    elseif !isnothing(get(kwargs, :transmission, nothing))
+    elseif haskey(kwargs, :transmission)
         mztable = Table(mztable; transmission = vectorize(get(kwargs, :transmission, nothing), length(mztable)))
         push!(vec_key, :transmission)
         delete!(kwargs, :transmission)
@@ -438,7 +447,7 @@ function TandemIsotopologues(mztable::Table; threading = nothing, chemicalparser
         mztable = Table(mztable; proportion = mztable.Proportion)
         push!(vec_key, :proportion)
         delete!(kwargs, :proportion)
-    elseif !isnothing(get(kwargs, :proportion, nothing))
+    elseif haskey(kwargs, :proportion)
         mztable = Table(mztable; proportion = vectorize(get(kwargs, :proportion, nothing), length(mztable)))
         push!(vec_key, :proportion)
         delete!(kwargs, :proportion)
@@ -454,13 +463,13 @@ function TandemIsotopologues(mztable::Table; threading = nothing, chemicalparser
     if threading
         t = Vector{Table}(undef, length(mztable))
         Threads.@threads for i in eachindex(t)
-            t[i] = TandemIsotopologues(mztable.Chemical[i]; id = mztable.ID[i], [k => getproperty(mztable, k)[i] for k in vec_key]..., threshold, kwargs...)
+            t[i] = TandemIsotopologues(mztable.Chemical[i]; kwargs..., id = mztable.ID[i], [k => getproperty(mztable, k)[i] for k in vec_key]..., threshold)
         end
         tbl = Table(; (map(propertynames(t[1])) do p
             p => ChainedVector(getproperty.(t, p))
         end)...)
     else
-        tbl = Table(vcat((TandemIsotopologues(r.Chemical; id = r.ID, [k => getproperty(r, k) for k in vec_key]..., threshold, kwargs...) for r in mztable)...))
+        tbl = Table(vcat((TandemIsotopologues(r.Chemical; kwargs..., id = r.ID, [k => getproperty(r, k) for k in vec_key]..., threshold) for r in mztable)...))
     end
     colab = propertynames(tbl)[findlast(x -> startswith(string(x), "Abundance"), propertynames(tbl))]
     ab = getproperty(tbl, colab)

@@ -33,9 +33,9 @@ chemicalname(ct::ChemicalTransition; kwargs...) = join(chemicalname.(chemicaltra
 chemicalname(sch::StructuralElementalScheme; n = 1, kwargs...) = chemicalname(elementalscheme(sch); n, kwargs...)
 chemicalname(sch::ElementalScheme{true}; n = 1, loss = false, delim = "", kwargs...) = string(decorator(sch; loss, delim), chemicalname(chemicalentity(sch); n, loss, kwargs...))
 chemicalname(sch::ElementalScheme{false}; n = 1, loss = false, delim = "", kwargs...) = string(decorator(sch; loss, delim), chemicalname(chemicalentity(sch); n, loss = !loss, kwargs...))
-chemicalname(sch::IsotopomerizedSchema; n = 1, loss = false, bracket = false, delim = "|", kwargs...) = string(chemicalname(chemicalparent(sch); n, loss, bracket, delim, kwargs...), isotope_repr(sch.isotopes))
+chemicalname(sch::IsotopomerizedSchema; n = 1, loss = false, bracket = true, delim = "|", kwargs...) = string(chemicalname(chemicalparent(sch); n, loss, bracket, delim, kwargs...), isotope_repr(sch.isotopes))
 function chemicalname(sch::ChemicalSchema; n = 1, loss = false, bracket = false, delim = "|", kwargs...) 
-    s = join([chemicalname(k; n = n * v, loss, bracket = false, delim, kwargs...) for (k, v) in zip(sch.schema, sch.number)], "")
+    s = join([chemicalname(k; n = n * v, loss, bracket = true, delim, kwargs...) for (k, v) in zip(sch.schema, sch.number)], "")
     if startswith(s, delim)
         s = s[begin + 1:end] 
     end

@@ -118,7 +118,7 @@ Whether `sch` contains only chemical gains.
 """
 isgainscheme(sch) = false
 isgainscheme(sch::ElementalScheme{true}) = true
-isgainscheme(sch::ChemicalSchema) = all(isgainscheme, keys(sch.schema))
+isgainscheme(sch::ChemicalSchema) = all(isgainscheme, sch.schema)
 isgainscheme(sch::IsotopomerizedSchema) = isgainscheme(sch.parent)
 
 """
@@ -128,7 +128,7 @@ Whether `sch` contains only chemical losses.
 """
 islossscheme(sch) = false
 islossscheme(sch::ElementalScheme{false}) = true
-islossscheme(sch::ChemicalSchema) = all(islossscheme, keys(sch.schema))
+islossscheme(sch::ChemicalSchema) = all(islossscheme, sch.schema)
 islossscheme(sch::IsotopomerizedSchema) = islossscheme(sch.parent) 
 
 # completescheme(::chemicaltype, ::scheme)
@@ -234,8 +234,8 @@ elementalscheme(sch::IsotopomerizedSchema; kwargs...) = IsotopomerizedSchema(ele
 elementalscheme(sch::ChemicalSchema; kwargs...) = ChemicalSchema(elementalscheme.(sch.schema; kwargs...), sch.number)
 structuralscheme(sch::IsotopomerizedSchema; kwargs...) = IsotopomerizedSchema(structuralscheme(sch.schema; kwargs...), sch.isotopes)
 structuralscheme(sch::ChemicalSchema; kwargs...) = ChemicalSchema(structuralscheme.(sch.schema; kwargs...), sch.number)
-structuralscheme(::Nothing) = nothing 
-elementalscheme(::Nothing) = nothing 
+structuralscheme(::Nothing; kwargs...) = nothing 
+elementalscheme(::Nothing; kwargs...) = nothing 
 
 chemicalspecies(isobars::Isobars; kwargs...) = isobars.chemicals
 
@@ -255,17 +255,6 @@ chemicalparent(sch::ElementalScheme{T}; kwargs...) where T = ElementalScheme(T, 
 chemicalparent(sch::IsotopomerizedSchema; kwargs...) = sch.parent
 chemicalparent(sch::ChemicalSchema; kwargs...) = ChemicalSchema(chemicalparent.(sch.schema; kwargs...), sch.number)
 chemicalparent(sch::Groupedisotopomerizedschema; kwargs...) = sch.parent 
-
-isotopomersisotopes(isobars::Isobars; kwargs...) = isotopomersisotopes(chemicalentity(isobars); kwargs...)
-isotopomersisotopes(isotopomers::Isotopomers; kwargs...) = isotopomers.isotopes
-isotopomersisotopes(isotopomers::Groupedisotopomers; kwargs...) = first(isotopomers.isotopes)
-isotopomersisotopes(ct::ChemicalTransition; kwargs...) = isotopomersisotopes(chemicalentity(ct); kwargs...)
-
-isotopomersisotopes(sch::ElementalScheme{true}; kwargs...) = [k => -v for (k, v) in isotopomersisotopes(chemicalentity(sch); kwargs...)]
-isotopomersisotopes(sch::ElementalScheme{false}; kwargs...) = isotopomersisotopes(chemicalentity(sch); kwargs...) 
-isotopomersisotopes(x::IsotopomerizedSchema) = x.isotopes
-isotopomersisotopes(x::ChemicalSchema) = vcat((repeat(isotopomersisotopes(k), v) for (k, v) in zip(x.schema, x.number))...)
-isotopomersisotopes(sch::Groupedisotopomerizedschema; kwargs...) = first(sch.isotopes)
 
 inputchemical(isobars::Isobars; kwargs...) = Isobars([inputchemical(chemical; kwargs...) for chemical in chemicalspecies(isobars)], isobars.abundance[:, begin])
 inputchemical(ct::ChemicalTransition; kwargs...) = first(chemicaltransition(ct))

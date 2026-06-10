@@ -39,9 +39,9 @@ Plot a spectrum to an existing figure.
 Other keyword arguments can controls the settings of plot.
 """
 plot_spectrum!(mz_range, spectrum::Spectrum; deconvolution = false, abundance = 1, abtype = Max(), threshold = rcrit(1e-4), kwargs...) = 
-    _plot_spectrum(mz_range, spectrum; fn = plot!, deconvolution, abundance, abtype, threshold, kwargs...)
+    _plot_spectrum(mz_range, spectrum; deconvolution, abundance, abtype, threshold, kwargs..., fn = plot!)
 plot_spectrum!(mz_range, mztable::Table; abundance = 1, abtype = Max(), threshold = rcrit(1e-4), kwargs...) = 
-    _plot_spectrum(mz_range, mztable; fn = plot!, abundance, abtype, threshold, kwargs...)
+    _plot_spectrum(mz_range, mztable; abundance, abtype, threshold, kwargs..., fn = plot!)
 plot_spectrum!(x; kwargs...) = plot_spectrum!(nothing, x; kwargs...)
 
 function _plot_spectrum(mz_range, spectrum::Spectrum; fn = plot, deconvolution = false, abundance = 1, abtype = Max(), threshold = rcrit(1e-4), kwargs...)
@@ -165,7 +165,7 @@ Plot the function of m/z to resolving_power to an existing figure.
 Other keyword arguments can controls the settings of plot.
 """
 plot_resolving_power!(mz_range, ms::AbstractMSAnalyzer; n = 1000, kwargs...) = 
-    _plot_resolving_power(mz_range, ms; fn = plot!, n, kwargs...)
+    _plot_resolving_power(mz_range, ms; n, kwargs..., fn = plot!)
 plot_resolving_power!(ms::AbstractMSAnalyzer; n = 1000, kwargs...) = plot_resolving_power!(nothing, ms; n, kwargs...)
 
 function _plot_resolving_power(mz_range, ms::AbstractMSAnalyzer; fn = plot, n = 1000, kwargs...)
