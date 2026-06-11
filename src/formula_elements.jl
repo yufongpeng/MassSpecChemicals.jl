@@ -21,12 +21,12 @@ chemicalformula(isotopomers::Groupedisotopomers; kwargs...) = chemicalformula(ch
 chemicalformula(ct::ChemicalTransition; kwargs...) = chemicalformula(chemicalentity(ct); kwargs...)
 
 chemicalformula(sch::AbstractCompleteScheme; kwargs...) = chemicalformula(elementalscheme(sch); kwargs...)
-chemicalformula(sch::ElementalScheme{false}; loss = true, kwargs...) = chemicalformula(chemicalentity(sch); loss, kwargs..., chemical = false)
-chemicalformula(sch::ElementalScheme{true}; loss = true, kwargs...) = chemicalformula(chemicalentity(sch); loss = !loss, kwargs..., chemical = false)
-chemicalformula(x::ChemicalSchema; loss = true, kwargs...) = chemicalformula(chemicalelements(x); loss, kwargs..., chemical = false)
+chemicalformula(sch::ElementalScheme{false}; loss = true, kwargs...) = chemicalformula(sch.chemical; loss, kwargs..., ischemical = false)
+chemicalformula(sch::ElementalScheme{true}; loss = true, kwargs...) = chemicalformula(sch.chemical; loss = !loss, kwargs..., ischemical = false)
+chemicalformula(x::ChemicalSchema; loss = true, kwargs...) = chemicalformula(chemicalelements(x); loss, kwargs..., ischemical = false)
 function chemicalformula(x::IsotopomerizedSchema; loss = true, kwargs...)
     elements = dictionary_elements(Dictionary, chemicalelements(chemicalparent(x)))
-    isotopeformula(elements, x.isotopes; loss, kwargs..., chemical = false)
+    isotopeformula(elements, x.isotopes; loss, kwargs..., ischemical = false)
 end
 chemicalformula(x::Groupedisotopomerizedschema; kwargs...) = chemicalformula(IsotopomerizedSchema(chemicalparent(x), isotopomersisotopes(x)); kwargs...)
 
@@ -53,8 +53,8 @@ chemicalelements(isotopomers::Groupedisotopomers; kwargs...) = chemicalelements(
 chemicalelements(ct::ChemicalTransition; kwargs...) = chemicalelements(chemicalentity(ct); kwargs...)
 
 chemicalelements(sch::AbstractCompleteScheme; kwargs...) = chemicalelements(elementalscheme(sch); kwargs...)
-chemicalelements(sch::ElementalScheme{false}; loss = true, kwargs...) = loss ? chemicalelements(chemicalentity(sch); kwargs...) : [k => -v for (k, v) in chemicalelements(chemicalentity(sch); kwargs...)]
-chemicalelements(sch::ElementalScheme{true}; loss = true, kwargs...) = loss ? [k => -v for (k, v) in chemicalelements(chemicalentity(sch); kwargs...)] : chemicalelements(chemicalentity(sch); kwargs...)
+chemicalelements(sch::ElementalScheme{false}; loss = true, kwargs...) = loss ? chemicalelements(sch.chemical; kwargs...) : [k => -v for (k, v) in chemicalelements(sch.chemical; kwargs...)]
+chemicalelements(sch::ElementalScheme{true}; loss = true, kwargs...) = loss ? [k => -v for (k, v) in chemicalelements(sch.chemical; kwargs...)] : chemicalelements(sch.chemical; kwargs...)
 function chemicalelements(x::IsotopomerizedSchema; kwargs...)
     elements = dictionary_elements(Dictionary, chemicalelements(chemicalparent(x); kwargs...))
     isotopeelements(elements, x.isotopes)
@@ -67,33 +67,49 @@ isotopomersisotopes(isotopomers::Isotopomers; kwargs...) = isotopomers.isotopes
 isotopomersisotopes(isotopomers::Groupedisotopomers; kwargs...) = first(isotopomers.isotopes)
 isotopomersisotopes(ct::ChemicalTransition; kwargs...) = isotopomersisotopes(chemicalentity(ct); kwargs...)
 
-isotopomersisotopes(sch::ElementalScheme{true}; loss = true, kwargs...) = loss ? [k => -v for (k, v) in isotopomersisotopes(chemicalentity(sch); kwargs...)] : isotopomersisotopes(chemicalentity(sch); kwargs...)
-isotopomersisotopes(sch::ElementalScheme{false}; loss = true, kwargs...) = loss ? isotopomersisotopes(chemicalentity(sch); kwargs...) : [k => -v for (k, v) in isotopomersisotopes(chemicalentity(sch); kwargs...)]
-isotopomersisotopes(x::IsotopomerizedSchema; kwargs...) = x.isotopes
-isotopomersisotopes(x::ChemicalSchema; kwargs...) = vcat((repeat(isotopomersisotopes(k; kwargs...), v) for (k, v) in zip(x.schema, x.number))...)
-isotopomersisotopes(sch::Groupedisotopomerizedschema; kwargs...) = first(sch.isotopes)
+isotopomersisotopes(sch::ElementalScheme{true}; loss = true, kwargs...) = loss ? [k => -v for (k, v) in isotopomersisotopes(sch.chemical; kwargs...)] : isotopomersisotopes(sch.chemical; kwargs...)
+isotopomersisotopes(sch::ElementalScheme{false}; loss = true, kwargs...) = loss ? isotopomersisotopes(sch.chemical; kwargs...) : [k => -v for (k, v) in isotopomersisotopes(sch.chemical; kwargs...)]
+isotopomersisotopes(x::IsotopomerizedSchema; loss = true, kwargs...) = loss ? x.isotopes : [k => -v for (k, v) in x.isotopes]
+isotopomersisotopes(x::ChemicalSchema; loss = true, kwargs...) = vcat((repeat(isotopomersisotopes(k; kwargs..., loss), v) for (k, v) in zip(x.schema, x.number))...)
+
+isotopomerstate(sch::ElementalScheme{true}; isotope_unit = nothing, isotope = "[13C]", loss = true, kwargs...) = _isotopomerstate(isotopomersisotopes(sch), isnothing(isotope_unit) ? elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]] : isotope_unit; loss = !loss, ischemical = false, kwargs...)
+isotopomerstate(sch::ElementalScheme{false}; isotope_unit = nothing, isotope = "[13C]", loss = true, kwargs...) = _isotopomerstate(isotopomersisotopes(sch), isnothing(isotope_unit) ? elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]] : isotope_unit; loss, ischemical = false, kwargs...)
+
+function _isotopomerstate(isotopes::Vector, isotope_unit; ischemical = true, loss = false)
+    ds = 0
+    if ischemical || loss
+        for (e, n) in isotopes
+            ds += (elements_mass()[e] - elements_mass()[elements_parents()[e]]) * n
+        end
+    else
+        for (e, n) in isotopes
+            ds += (elements_mass()[e] - elements_mass()[elements_parents()[e]]) * (-n)
+        end
+    end
+    round(Int, ds / isotope_unit)
+end
 
 """
-    chemicalformula(elements::Dict; delim = "", unique = true, chemical = true, loss = false) -> String
-    chemicalformula(elements::Dictionary; delim = "", unique = true, chemical = true, loss = false) -> String
-    chemicalformula(elements::Vector{<: Pair}; delim = "", unique = true, chemical = true, loss = false) -> String
+    chemicalformula(elements::Dict; delim = "", unique = true, ischemical = true, loss = false) -> String
+    chemicalformula(elements::Dictionary; delim = "", unique = true, ischemical = true, loss = false) -> String
+    chemicalformula(elements::Vector{<: Pair}; delim = "", unique = true, ischemical = true, loss = false) -> String
 
 Create chemical formula using given element-number pairs. 
 
 * `delim` assigns the delimiter between each element.
 * `unique` determines whether combines the elements to become unique or not.
-* `chemical` determines whether the chemical is a chemical or a scheme. 
+* `ischemical` determines whether the chemical is a chemical or a scheme. 
 * `loss` determines whether the chemical is part of chemical loss, and signs are factored out from elements. 
 """
-function chemicalformula(elements::Vector{<: Pair}; delim = "", unique = true, loss = false, chemical = true)
+function chemicalformula(elements::Vector{<: Pair}; delim = "", unique = true, loss = false, ischemical = true)
     if unique 
-        chemicalformula(dictionary_elements(Dictionary, elements); unique = false, loss, chemical, delim)
+        chemicalformula(dictionary_elements(Dictionary, elements); unique = false, loss, ischemical, delim)
     elseif all(x -> last(x) >= 0, elements)
-        string(chemical ? "" : loss ? "-" : "+", join((v == 1 ? k : string(k, v) for (k, v) in elements if v != 0), delim))
+        string(ischemical ? "" : loss ? "-" : "+", join((v == 1 ? k : string(k, v) for (k, v) in elements if v != 0), delim))
     elseif all(x -> last(x) <= 0, elements)
         string(loss ? "+" : "-", join((v == -1 ? k : string(k, abs(v)) for (k, v) in elements if v != 0), delim))
-    elseif chemical
-        chemicalformula(dictionary_elements(Dictionary, elements); unique = false, loss, chemical, delim)
+    elseif ischemical
+        chemicalformula(dictionary_elements(Dictionary, elements); unique = false, loss, ischemical, delim)
     else
         elements_pos = filter(x -> last(x) > 0, elements)
         elements_neg = filter(x -> last(x) < 0, elements)
@@ -101,12 +117,12 @@ function chemicalformula(elements::Vector{<: Pair}; delim = "", unique = true, l
     end
 end
 
-chemicalformula(elements::Dict; delim = "", unique = true, loss = false, chemical = true) = _chemicalformula(elements; delim, unique, loss, chemical)
-chemicalformula(elements::Dictionary; delim = "", unique = true, loss = false, chemical = true) = _chemicalformula(pairs(elements); delim, unique, loss, chemical)
+chemicalformula(elements::Dict; delim = "", unique = true, loss = false, ischemical = true) = _chemicalformula(elements; delim, unique, loss, ischemical)
+chemicalformula(elements::Dictionary; delim = "", unique = true, loss = false, ischemical = true) = _chemicalformula(pairs(elements); delim, unique, loss, ischemical)
 
-function _chemicalformula(elements; delim = "", unique = false, loss = false, chemical = true)
+function _chemicalformula(elements; delim = "", unique = false, loss = false, ischemical = true)
     if all(x -> last(x) >= 0, elements)
-        string(chemical ? "" : loss ? "-" : "+", join((v == 1 ? k : string(k, v) for (k, v) in elements if v != 0), delim))
+        string(ischemical ? "" : loss ? "-" : "+", join((v == 1 ? k : string(k, v) for (k, v) in elements if v != 0), delim))
     elseif all(x -> last(x) <= 0, elements)
         string(loss ? "+" : "-", join((v == -1 ? k : string(k, abs(v)) for (k, v) in elements if v != 0), delim))
     else

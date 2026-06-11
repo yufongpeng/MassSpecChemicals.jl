@@ -73,7 +73,7 @@ Ionize `chemical` and wrap with `constructor`.
 """
 ionize(chemical::AbstractChemical; kwargs...) = ionize(AdductIon, chemical; kwargs...)
 """
-    ionize(::Type{AdductIon}, chemical; adduct, ncore = 1, kwargs...) -> AdductIon
+    ionize(::Type{AdductIon}, chemical::AbstractChemical; adduct, ncore = 1, kwargs...) -> AdductIon
 
 Ionize `chemical` and wrap with `AdductIon`.
 
@@ -81,7 +81,11 @@ Ionize `chemical` and wrap with `AdductIon`.
 * `adduct::AbstractScheme`: adduct scheme.
 * `ncore::Int`: number of core chemicals.
 """
-ionize(::Type{AdductIon}, chemical; adduct, ncore = 1, kwargs...) = AdductIon(chemical, adduct, ncore)
+ionize(::Type{AdductIon}, chemical::AbstractChemical; adduct, ncore = 1, kwargs...) = AdductIon(chemical, adduct, ncore)
+ionize(::Type{AdductIon}, chemical::AbstractAdductIon; adduct, ncore = 1, kwargs...) = AdductIon(ioncore(chemical), adduct, ncore)
+ionize(::Type{AdductIon}, chemical::Isobars; adduct, ncore = 1, kwargs...) = Isobars(ionize.(chemicalspecies(chemical); adduct, ncore, kwargs...), chemical.abundance)
+ionize(::Type{AdductIon}, chemical::Isotopomers; adduct, ncore = 1, kwargs...) = Isotopomers(ionize(chemicalparent(chemical); adduct, ncore, kwargs...), chemical.isotopes)
+ionize(::Type{AdductIon}, chemical::Groupedisotopomers; adduct, ncore = 1, kwargs...) = Groupedisotopomers(ionize(chemicalparent(chemical); adduct, ncore, kwargs...), chemical.state, chemical.isotope, chemical.isotopes, chemical.abundance)
 
 """
     isotopomerize(chemical::AbstractChemicalsSchema, isotopes) -> AbstractChemicalsSchema
@@ -226,9 +230,7 @@ end
 
 chemicalentity(isobars::Isobars; kwargs...) = chemicalentity(first(chemicalspecies(isobars)))
 chemicalentity(isotopomers::Groupedisotopomers; kwargs...) = Isotopomers(chemicalparent(isotopomers), isotopomersisotopes(isotopomers))
-chemicalentity(ct::ChemicalTransition; kwargs...) = first(chemicaltransition(ct))
-
-chemicalentity(sch::ElementalScheme; kwargs...) = chemicalentity(sch.chemical)
+chemicalentity(ct::ChemicalTransition; kwargs...) = chemicalentity(first(chemicaltransition(ct)))
 
 elementalscheme(sch::IsotopomerizedSchema; kwargs...) = IsotopomerizedSchema(elementalscheme(sch.parent; kwargs...), sch.isotopes)
 elementalscheme(sch::ChemicalSchema; kwargs...) = ChemicalSchema(elementalscheme.(sch.schema; kwargs...), sch.number)
@@ -250,8 +252,8 @@ chemicalparent(isotopomers::Isotopomers; kwargs...) = isotopomers.parent
 chemicalparent(isotopomers::Groupedisotopomers; kwargs...) = isotopomers.parent 
 chemicalparent(ct::ChemicalTransition; kwargs...) = ChemicalTransition(chemicalparent.(chemicaltransition(ct); kwargs...))
 
-chemicalparent(sch::StructuralElementalScheme; kwargs...) = StructuralElementalScheme(structuralscheme(sch), chemicalparent(chemicalentity(sch); kwargs...))
-chemicalparent(sch::ElementalScheme{T}; kwargs...) where T = ElementalScheme(T, chemicalparent(chemicalentity(sch); kwargs...))
+chemicalparent(sch::StructuralElementalScheme; kwargs...) = StructuralElementalScheme(structuralscheme(sch), chemicalparent(elementalscheme(sch); kwargs...))
+chemicalparent(sch::ElementalScheme{T}; kwargs...) where T = ElementalScheme(T, chemicalparent(sch.chemical; kwargs...))
 chemicalparent(sch::IsotopomerizedSchema; kwargs...) = sch.parent
 chemicalparent(sch::ChemicalSchema; kwargs...) = ChemicalSchema(chemicalparent.(sch.schema; kwargs...), sch.number)
 chemicalparent(sch::Groupedisotopomerizedschema; kwargs...) = sch.parent 

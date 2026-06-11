@@ -95,6 +95,7 @@ The default `AdductParser` determines the number of core first (`"[2M+...]"` for
 * `args::Bool`: determines whether returning a tuple (`false`) or a named tuple (`true`). Named tuple is useful for user input from a data table and ionization using `ionize`; tuple can be used for fixed adduct ion constructor interface.
 """
 parse_adduct(adduct::AbstractString; args = false, kwargs...) = parse_adduct(AdductParser(), adduct; args, kwargs...)
+parse_adduct(adduct::AbstractScheme; args = false, kwargs...) = args ? (adduct, 1) : (; adduct, ncore = 1)
 function parse_adduct(adductparser::AdductParser, adduct::AbstractString; args = false, kwargs...) 
     nm, sch = split(adduct, "M"; limit = 2)
     nm = nm[begin + 1:end]

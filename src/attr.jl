@@ -63,7 +63,7 @@ function chemicalname(adduct_ion::AbstractAdductIon; loss = false, bracket = tru
 end
 
 """
-    chemicalformula(chemical::AbstractChemicalsSchema; delim = "", unique = true, chemical = true, loss = false, kwargs...) -> String
+    chemicalformula(chemical::AbstractChemicalsSchema; kwargs...) -> String
 
 The formula of chemical entity of `chemical`.
 
@@ -85,13 +85,22 @@ The formula of chemical entity of `chemical`.
 # Keyword arguments
 * `delim` assigns the delimiter between each element.
 * `unique` determines whether combines the elements to become unique or not when constructing formula from attribute `chemicalelements`. It defaults to false for type `Chemical` and `FormulaChemical`.
-* `chemical` determines whether the chemical is a chemical or a scheme. 
+* `ischemical` determines whether the chemical is a chemical or a scheme. 
 * `loss` determines whether the chemical is part of chemical loss, and signs are factored out from elements. 
 """
-function chemicalformula(chemical::AbstractChemicalsSchema; shallow = false, kwargs...) 
+function chemicalformula(chemical::AbstractChemical; shallow = false, loss = false, ischemical = true, kwargs...) 
     result = getchemicalproperty(chemical, :formula, "")
     if isempty(result) && !shallow
-        chemicalformula(chemicalelements(chemical; shallow = true); kwargs...)
+        chemicalformula(chemicalelements(chemical; shallow = true); loss, ischemical, kwargs...)
+    else 
+        result 
+    end
+end
+
+function chemicalformula(chemical::AbstractScheme; shallow = false, loss = true, ischemical = false, kwargs...) 
+    result = getchemicalproperty(chemical, :formula, "")
+    if isempty(result) && !shallow
+        chemicalformula(chemicalelements(chemical; shallow = true); loss, ischemical, kwargs...)
     else 
         result 
     end
@@ -133,10 +142,19 @@ The elements of chemical entity of `chemical`.
 # Keyword Arguments 
 * `loss` determines whether the chemical is part of chemical loss, and sign flips are propagated into elements.
 """
-function chemicalelements(chemical::AbstractChemicalsSchema; shallow = false, kwargs...) 
+function chemicalelements(chemical::AbstractChemical; shallow = false, loss = false, kwargs...) 
     result = getchemicalproperty(chemical, :elements, Pair{String, Int}[])
     if isempty(result) && !shallow
-        chemicalelements(chemicalformula(chemical; shallow = true); kwargs...)
+        chemicalelements(chemicalformula(chemical; shallow = true); loss, kwargs...)
+    else 
+        result 
+    end
+end
+
+function chemicalelements(chemical::AbstractScheme; shallow = false, loss = true, kwargs...) 
+    result = getchemicalproperty(chemical, :elements, Pair{String, Int}[])
+    if isempty(result) && !shallow
+        chemicalelements(chemicalformula(chemical; shallow = true); loss, kwargs...)
     else 
         result 
     end
@@ -336,7 +354,7 @@ retentiontime(chemical::AbstractChemical; kwargs...) = getchemicalproperty(chemi
 retentiontime(chemical::AbstractChemicalWrapper; kwargs...) = retentiontime(chemical.chemical; kwargs...)
 
 """
-    chemicalentity(chemical::AbstractChemicalsSchema; kwargs...) -> AbstractChemical
+    chemicalentity(chemical::AbstractChemical; kwargs...) -> AbstractChemical
 
 The single chemical entity (having a single formula) from a chemical entity (i.e. itself), or chemical species. 
 
@@ -345,17 +363,14 @@ Attributes with Specific Methods marked as `Entity` indicate the `chemicalentity
 # Generic Methods
 * `AbstractChemical`: itself
 * `AbstractChemicalWrapper`: wrapped chemical entity of field `chemical`
-* `AbstractScheme`: chemical entity of elemental scheme
 
 # Specific Methods
 * `Isobars`: `chemicalentity(first(chemical.chemicals))`, i.e. the most abundant entity.
 * `ChemicalTransition`: the very begining precursor
 * `Groupedisotopomers`: the most abundant isotopomer
-* `ElementalScheme`: chemical entity of loss or gain chemical
 """
 chemicalentity(chemical::AbstractChemical; kwargs...) = chemical
 chemicalentity(chemical::T; kwargs...) where {T <: AbstractChemicalWrapper} = T.name.wrapper(chemicalentity(chemical.chemical; kwargs...))
-chemicalentity(sch::AbstractScheme; kwargs...) = chemicalentity(elementalscheme(sch); kwargs...)
 
 """
     elementalscheme(scheme::AbstractScheme; kwargs...) -> ElementalSchema
@@ -455,7 +470,7 @@ chemicalparent(sch::AbstractScheme; kwargs...) = sch
 chemicalparent(sch::AbstractStructuralScheme; kwargs...) = throw(ArgumentError("`chemicalparent` cannot be defined for structural scheme."))
 
 """
-    isotopomersisotopes(chemical::AbstractChemicalsSchema; loss = false, kwargs...) -> Vector{Pair{String, Int}}
+    isotopomersisotopes(chemical::AbstractChemicalsSchema; kwargs...) -> Vector{Pair{String, Int}}
 
 The delocalized isotopes replacement of isotopomers.
 
@@ -501,9 +516,11 @@ The isotopomers state, i.e. equivalent number of `isotope`.
 * Entity Level
 
 # Keyword arguments
-* `loss` determines whether the chemical is part of chemical loss, and sign flips are propagated into elements.
+* `ischemical` determines whether the chemical is a chemical or a scheme. 
+* `loss` determines whether the chemical is part of chemical loss, and sign flips are propagated into `isotopomersisotopes`.
 """
-isotopomerstate(cc::AbstractChemicalsSchema; isotope = "[13C]", kwargs...) = _isotopomerstate(isotopomersisotopes(cc; kwargs..., loss = false), elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]])
+isotopomerstate(cc::AbstractChemical; isotope_unit = nothing, isotope = "[13C]", loss = false, ischemical = true, kwargs...) = _isotopomerstate(isotopomersisotopes(cc), isnothing(isotope_unit) ? elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]] : isotope_unit; loss, ischemical, kwargs...)
+isotopomerstate(cc::AbstractScheme; isotope_unit = nothing, isotope = "[13C]", loss = true, ischemical = false, kwargs...) = _isotopomerstate(isotopomersisotopes(cc), isnothing(isotope_unit) ? elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]] : isotope_unit; loss, ischemical, kwargs...)
 
 # truly formed chemical
 """
@@ -678,11 +695,10 @@ The mass to charge ratio (m/z) of charged chemical or chemical with adduct. It i
 * `ChemicalTransition`: m/z of `analyzedchemical`
 """
 mz(charged_cc::AbstractChemical) = charge(charged_cc) == 0 ? NaN : mmi(charged_cc) / ncharge(charged_cc)
-mz(cc::AbstractChemical, adduct) = mz(AdductIon(cc, parse_adduct(adduct; args = true)...))
+mz(cc::AbstractChemical, adduct) = mz(ionize(cc; parse_adduct(adduct)...))
 function mz(adduct_ion::AbstractAdductIon) 
     (ncore(adduct_ion) * mmi(ioncore(adduct_ion)) + mmi(chemicalelements(ionadduct(adduct_ion); loss = false)) - charge(adduct_ion) * ME) / ncharge(adduct_ion)
 end
-mz(adduct_ion::AbstractAdductIon, adduct) = mz(AdductIon(ioncore(adduct_ion), parse_adduct(adduct; args = true)...))
 
 # list all propertys
 # add new propertys

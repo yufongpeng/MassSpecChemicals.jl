@@ -18,6 +18,17 @@ struct Mannose <: Hexose
     n13C::Int
     retentiontime::Float64
 end
+copy(x::Glucose) = Glucose(x.chirality, x.nD, x.n13C, x.retentiontime)
+copy(x::Galactose) = Galactose(x.chirality, x.nD, x.n13C, x.retentiontime)
+copy(x::Mannose) = Mannose(x.chirality, x.nD, x.n13C, x.retentiontime)
+function hash(x::Hexose, h::UInt) 
+    h = hash(x.chirality, h) 
+    h = hash(x.nD, h) 
+    h = hash(x.n13C, h) 
+    hash(x.retentiontime, h) 
+end
+==(x::T, y::T) where {T <: Hexose} = x.chirality == y.chirality && x.nD == y.nD && x.n13C == y.n13C && x.retentiontime == y.retentiontime
+
 
 repr_isotope(m::Hexose) = repr_isotope(m.nD, m.n13C)
 function repr_isotope(nD, n13C)
@@ -71,6 +82,23 @@ struct DiacylPS <: AbstractChemical
     fa2::FattyAcid
     retentiontime::Float64
 end
+copy(x::FattyAcid) = FattyAcid(x.ncb, x.ndb, x.nD, x.n13C)
+copy(x::DiacylPS) = DiacylPS(x.headgroup, copy(x.fa1), copy(x.fa2), x.retentiontime)
+function hash(x::FattyAcid, h::UInt) 
+    h = hash(x.ncb, h) 
+    h = hash(x.ndb, h) 
+    h = hash(x.nD, h) 
+    hash(x.n13C, h) 
+end
+function hash(x::DiacylPS, h::UInt) 
+    h = hash(x.headgroup, h) 
+    h = hash(x.fa1, h) 
+    h = hash(x.fa2, h) 
+    hash(x.retentiontime, h) 
+end
+==(x::FattyAcid, y::FattyAcid) = x.ncb == y.ncb && x.ndb == y.ndb && x.nD == y.nD && x.n13C == y.n13C 
+==(x::DiacylPS, y::DiacylPS) = x.headgroup == y.headgroup && x.fa1 == y.fa1 && x.fa2 == y.fa2 && x.retentiontime == y.retentiontime
+
 repr_headgroup(m::DiacylPS) = string("PS", repr_isotope(m.headgroup...))
 repr_fa(fa::FattyAcid) = string(fa.ncb, ":", fa.ndb, repr_isotope(fa.nD, fa.n13C))
 chemicalname(m::FattyAcid; kwargs...) = string("FA", " ", repr_fa(m))
@@ -134,6 +162,9 @@ struct LossProtonSerine <: AbstractStructuralScheme end
 struct Serine{T} <: AbstractChemicalWrapper{T} 
     chemical::T 
 end
+copy(x::LossSerine) = x 
+copy(x::LossProtonSerine) = x 
+
 function Serine(; nD = 0, n13C = 0) 
     nD == 0 && n13C == 0 && return Serine(Chemical("Serine", "C3H5NO2"; abbreviation = "Ser"))
     @assert 0 <= n13C < 4

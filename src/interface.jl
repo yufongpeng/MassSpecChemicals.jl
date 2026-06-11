@@ -10,7 +10,7 @@
 ==(x::ElementalScheme{T}, y::ElementalScheme{T}) where T = x.chemical == y.chemical
 ==(x::StructuralElementalScheme, y::StructuralElementalScheme) = x.structuralscheme == y.structuralscheme && x.elementalscheme == y.elementalscheme
 ==(x::ChemicalSchema, y::ChemicalSchema) = x.schema == y.schema 
-==(x::IsotopomerizedSchema, y::IsotopomerizedSchema) = x.parent == y.parent && all(v -> ==(sort(first(v)), sort(last(v))), zip(sort(x.isotopes), sort(y.isotopes)))
+==(x::IsotopomerizedSchema, y::IsotopomerizedSchema) = x.parent == y.parent && sort(x.isotopes) == sort(y.isotopes) 
 ==(x::Groupedisotopomerizedschema, y::Groupedisotopomerizedschema) = x.parent == y.parent && x.state == y.state && x.isotope == y.isotope && all(v -> ==(sort(first(v)), sort(last(v))), zip(sort(x.isotopes), sort(y.isotopes))) && all(splat(isapprox), zip(x.abundance, y.abundance))
 
 const ABUNDANCE_ROUNDING_DIGITS = 4

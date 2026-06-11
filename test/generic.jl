@@ -1,4 +1,5 @@
 cglc = Chemical("Glucose", ["C" => 6, "H" => 12, "O" => 6]; retentiontime = 1.5, abbreviation = "Glc", SMILES = "")
+fglc = FormulaChemical(["C" => 6, "H" => 12, "O" => 6]; retentiontime = 1.5, abbreviation = "Glc", SMILES = "")
 cgld = Chemical("Glucose_d6", "C6H6D6O6"; retentiontime = 1.5, abbreviation = "Glc[D6]", SMILES = "")
 cps = Chemical("PS 18:0/20:4(5Z,8Z,11Z,14Z)", "C44H78NO10P"; retentiontime = 7.8)
 cpsi1 = Chemical("PS[D3,13C3] 18:0/20:4(5Z,8Z,11Z,14Z)", "C41[13C]3H75D3NO10P"; retentiontime = 7.8)
@@ -12,6 +13,7 @@ lossserinei = ChemicalLoss(cserinei)
 losshserine = ChemicalLoss(AdductIon(cserine, "[M+H]+"))
 losshserinei = ChemicalLoss(AdductIon(cserinei, "[M+H]+"))
 losshserinegainwater = ChemicalSchema(ChemicalLoss(AdductIon(cserine, "[M+H]+")), ChemicalGain(Water()))
+losshserinegaincolossco = ChemicalSchema(ChemicalLoss(AdductIon(cserine, "[M+H]+")), parse_chemical("+CO"), parse_chemical("-CO"))
 # Generic structure interface
 push!(cps.property, :schema => [
     ChemicalLoss(Proton()) => [
@@ -65,3 +67,8 @@ cp5 = ChemicalSeries(isotopomerize(icpsi1[3], ["[13C]" => 5, "D" => 2]), Chemica
 pt1 = peak_table(MSScan(Isotopologues([icglc[1]]; abundance = 1e5, threshold = crit(1e1, 1e-2))))
 itit11 = Isotopologues("[C2H5[12C]OO]-" => "[-H2O-CO]" => "+H2O"; abtype = :input)
 itit12 = TandemIsotopologues("[C2H5[12C]OO]-" => "[-H2O-CO]" => "+H2O"; abtype = :input)
+itit13 = TandemIsotopologues("[C2H5[12C]OO]-" => "-[CO]+" => "+CO2"; abtype = :input)
+itit14 = TandemIsotopologues("[C2H5[12C]OO]-" => "-CO" => "+[CO2]-"; abtype = :input)
+gitit12 = group_isotopologues(itit12)
+gitit13 = group_isotopologues(itit13)
+gitit14 = group_isotopologues(itit14)

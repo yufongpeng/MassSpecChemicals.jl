@@ -207,7 +207,7 @@ function unique_group_mz_ab(mztable, transitions, colmz, colab, gf = nothing)
     gids = [groupfind(x -> x[begin:i], gfv) for i in eachindex(first(gfv))]
     ma = map(enumerate(gids)) do (i, gid)
         map(gid) do v 
-            c = [x[begin:i] for x in transitions[v]]
+            c = [y[begin:i] for y in transitions[v]]
             u = v[[findfirst(x -> x == t, c) for t in unique(c)]]
             ab = getproperty(mztable, colab[i])[u]
             mean(getproperty(mztable, colmz[i])[u], weights(ab)), sum(ab)
@@ -229,15 +229,7 @@ Create function for grouping isotopologues by parent chemical and isotopomer sta
 """
 function gf_parent_isotope(isotope = "[13C]")
     isotope_unit = elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]]
-    x -> [chemicalparent(m) => _isotopomerstate(isotopomersisotopes(m), isotope_unit) for m in x]
-end
-
-function _isotopomerstate(isotopes, isotope_unit)
-    ds = 0
-    for (e, n) in isotopes
-        ds += (elements_mass()[e] - elements_mass()[elements_parents()[e]]) * n
-    end
-    round(Int, ds / isotope_unit)
+    x -> [chemicalparent(m) => isotopomerstate(m; isotope_unit) for m in x]
 end
 
 """

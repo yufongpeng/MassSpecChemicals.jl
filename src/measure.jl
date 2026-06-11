@@ -4,8 +4,8 @@ charge(isotopomers::Groupedisotopomers; kwargs...) = charge(chemicalparent(isoto
 charge(ct::ChemicalTransition; kwargs...) = charge(chemicalentity(ct); kwargs...) 
 
 charge(sch::AbstractCompleteScheme; kwargs...) = charge(elementalscheme(sch); kwargs...)
-charge(loss::ElementalScheme{false}; kwargs...) = charge(chemicalentity(loss); kwargs...)
-charge(gain::ElementalScheme{true}; kwargs...) = -charge(chemicalentity(gain); kwargs...)
+charge(loss::ElementalScheme{false}; kwargs...) = charge(loss.chemical; kwargs...)
+charge(gain::ElementalScheme{true}; kwargs...) = -charge(gain.chemical; kwargs...)
 charge(x::IsotopomerizedSchema) = charge(x.parent)
 charge(x::ChemicalSchema) = sum(charge(k) * v for (k, v) in zip(x.schema, x.number))
 charge(x::Groupedisotopomerizedschema) = charge(x.parent)
@@ -19,7 +19,6 @@ msstage(isobars::Isobars{<: ChemicalTransition}; kwargs...) = only(unique(msstag
 msstage(ct::ChemicalTransition; kwargs...) = length(ct.transition)
 
 _isobar_species_attr(fn, isobars::Isobars, args...; kwargs...) = mean(fn.(chemicalspecies(isobars), args...), weights(isobars.abundance))
-_isobar_species_attr(fn, isobars::Isobars{<: ChemicalTransition}, args...; kwargs...) = mean(fn.(chemicalspecies(isobars), args...), weights(isobars.abundance[begin:size(isobars.abundance, 1)]))
 
 """
     mmi(formula::AbstractString, net_charge = 0) -> AbstractFloat
@@ -101,9 +100,5 @@ molarmass(isotopomers::Groupedisotopomers) = molarmass(chemicalparent(isotopomer
 molarmass(isotopomers::Isotopomers) = molarmass(chemicalelements(isotopomers), charge(isotopomers))
 molarmass(ct::ChemicalTransition) = molarmass(analyzedchemical(ct))
 
-mz(isotopomers::Isotopomers{<: AbstractAdductIon}, adduct) = mz(Isotopomers(AdductIon(ioncore(isotopomers.parent), parse_adduct(adduct)), isotopomers.isotopes))
-mz(isobars::Isobars{<: AbstractAdductIon}) = _isobar_species_attr(mz, isobars)
-mz(isobars::Isobars, adduct) = _isobar_species_attr(mz, isobars, adduct)
-mz(isotopomers::Groupedisotopomers{<: AbstractAdductIon}) = mz(chemicalparent(isotopomers)) + mean([sum([(mmi(x) - mmi(elements_parents()[x])) * n for (x, n) in iso]; init = 0) for iso in isotopomers.isotopes], weights(isotopomers.abundance))
-mz(isotopomers::Groupedisotopomers, adduct) = mz(chemicalparent(isotopomers), adduct) + mean([sum([(mmi(x) - mmi(elements_parents()[x])) * n for (x, n) in iso]; init = 0) for iso in isotopomers.isotopes], weights(isotopomers.abundance))
 mz(ct::ChemicalTransition) = mz(analyzedchemical(ct))
+mz(ct::ChemicalTransition, adduct) = mz(analyzedchemical(ct), adduct)

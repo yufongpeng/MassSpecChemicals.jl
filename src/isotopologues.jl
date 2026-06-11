@@ -118,7 +118,7 @@ function Isotopologues(ct::ChemicalTransition;
     end
     chemical = seriesisotopomerize(trans, it.Element)
     net_charge = [charge(first(p)) for p in precursor_info]
-    abs_charge = max.(1, net_charge)
+    abs_charge = [max(1, abs(x)) for x in net_charge]
     colab = Symbol(string("Abundance", length(precursor_info))) 
     colmz = all(==(0), net_charge) ? [Symbol(string("Mass", i)) for i in eachindex(precursor_info)] : [Symbol(string("MZ", i)) for i in eachindex(precursor_info)]
     mass = [colmz[i] => net_charge[i] == 0 ? [m[i] for m in it.Mass] : [m[i] / abs_charge[i] + (net_charge[i] < 0) * ME for m in it.Mass] for i in eachindex(precursor_info)]
@@ -358,7 +358,7 @@ function __TandemIsotopologues(precursor_table, itp, id, precursor_info, product
         element_precursor = chemicalelements(raw_product; loss = false)
     end
     it = isotopologues_elements_ms2(itp, element_precursor, element_product, abundance, abtype, proportion, threshold; gain = isgainscheme(raw_product), loss = islossscheme(raw_product))
-    abs_charge = max(1, net_charge)
+    abs_charge = max(1, abs(net_charge))
     mass = net_charge == 0 ? it.Mass : [m / abs_charge + (net_charge < 0) * ME for m in it.Mass]
     chemical = [ChemicalTransition(precursor_table.Chemical[id], isotopomerize(raw_product, element)) for (id, element) in zip(it.ID, it.Element)]
     abpre = map(1:nms - 1) do i 
@@ -500,7 +500,7 @@ function group_isotopologues(mztable::Table; isotope = "[13C]")
     #     (; [c => mean(getproperty(mztable, c)[v], weights(getproperty(mztable, d)[v])) for (c, d) in zip(colmz, colab)]..., [c => sum(getproperty(mztable, c)[v]) for c in colab]...)
     # end
     chemcial_parent_state = collect(keys(gid))
-    chemical_isotopes = [collect(zip([isotopomersisotopes.(x) for x in transitions[id]]...)) for id in gid]
+    chemical_isotopes = [collect(zip([isotopomersisotopes.(x; loss = false) for x in transitions[id]]...)) for id in gid]
     chemical_abundance = [[getproperty(mztable, a)[id] for a in colab] for id in gid]
     chemical = [ChemicalSeries([groupedisotopomerize(p..., isotope, collect(i), a) for (p, i, a) in zip(pa, iso, ab)]) for (pa, iso, ab) in zip(chemcial_parent_state, chemical_isotopes, chemical_abundance)]
     Table(Table(; Chemical = chemical), Table(collect(NamedTuple, gt)))
