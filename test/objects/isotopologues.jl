@@ -1,0 +1,65 @@
+@info "Running Isotopologues and TandemIsotopologues"
+
+it1 = Isotopologues(icglc[1]; abundance = 1e5, threshold = crit(1e1, 1e-2))
+it2 = Isotopologues(ioncore(icglc[1]); abundance = 1e5, abtype = :total, threshold = crit(1e1, 1e-2))
+it3 = Isotopologues(ipsi2[1]; abtype = :total, threshold = crit(1e-3, 1e-3))
+it4 = Isotopologues("C6H12O6"; abundance = 1e5, abtype = :total, threshold = crit(1e1, 1e-2))
+# Tandemisotopologues / Isotopologues MS/MS
+itit1 = TandemIsotopologues(cp1; abundance = 1e5, threshold = crit(1e1, 1e-2), transmission = 0.3)
+itit2 = TandemIsotopologues(chemicalformula(icps[1]) => chemicalformula(last(chemicaltransition(cp1))); abundance = 1e5, threshold = crit(1e1, 1e-2), transmission = 0.3, chemicalparser = ChemicalTransitionParser())
+itit3 = TandemIsotopologues(ChemicalSeries(AdductIon(cps, "[M-H]-"), lossserine); abundance = 1e5, threshold = crit(1e1, 1e-2), transmission = 0.5)
+itit4 = TandemIsotopologues(string("[", chemicalformula(cps), "-H]-") => "-C3H5NO2"; abundance = 1e5, threshold = crit(1e1, 1e-2), transmission = 0.5)
+itit5 = TandemIsotopologues(ChemicalSeries(ips[1], AdductIon(ioncore(ips[1]).fa1, "[M-H]-")); abtype = :total, threshold = crit(1e-8, 1e-8), transmission = 0.3)
+itit6 = TandemIsotopologues(ChemicalSeries(AdductIon(ps, "[M-H]-"), lossserine); abtype = :total, threshold = crit(1e-8, 1e-8), transmission = 0.5)
+itit7 = Isotopologues("[S8]2-" => "[S7]-"; abtype = :total)
+itit8 = Isotopologues("[C2H5[13C]OO]-" => "[C2H5]-"; abtype = :total)
+itit9 = Isotopologues("[C2H5[13C]OO]-" => "-[13C]O2"; abtype = :total)
+itit10 = Isotopologues("[C2H5[12C]OO]-" => "-[12C]O2"; abtype = :total)
+
+itit11 = Isotopologues("[C2H5[12C]OO]-" => "[-H2O-CO]" => "+H2O"; abtype = :input)
+itit12 = TandemIsotopologues("[C2H5[12C]OO]-" => "[-H2O-CO]" => "+H2O"; abtype = :input)
+itit13 = TandemIsotopologues("[C2H5[12C]OO]-" => "-[CO]+" => "+CO2"; abtype = :input)
+itit14 = TandemIsotopologues("[C2H5[12C]OO]-" => "-CO" => "+[CO2]-"; abtype = :input)
+gitit12 = group_isotopologues(itit12)
+gitit13 = group_isotopologues(itit13)
+gitit14 = group_isotopologues(itit14)
+
+d = MSC.dictionary_elements(chemicalelements(ipsi2[1]))
+d1 = MSC.dictionary_elements(chemicalelements(inputchemical(itit5.Chemical[14])))
+d2 = MSC.dictionary_elements(chemicalelements(outputchemical(itit5.Chemical[14])))
+
+@info "Running isotpologues function on large chemical"
+Isotopologues("C494H776O148N136S4"; abtype = :total)
+ti = time()
+itl = Isotopologues("C494H776O148N136S4"; abtype = :total)
+te = time()
+if te - ti > 1
+    @info "`Isotopologues` takes too much time for chemical ≈ 10 kDa. Skip tests for larger chemicals and transitions."
+else
+    ti = time()
+    itl = Isotopologues("C1482H2328O444N408S12"; abtype = :total)
+    te = time()
+    if te - ti > 2
+        @info "`Isotopologues` takes too much time for chemical ≈ 30 kDa. Skip tests for larger chemicals and transitions."
+    else
+        ti = time()
+        itl = Isotopologues("C2964H4656O888N816S24"; abtype = :total)
+        te = time()
+        if te - ti > 5
+            @info "`Isotopologues` takes too much time for chemical ≈ 50 kDa. Skip tests for larger chemicals and transitions."
+        else
+            itl = Isotopologues("C4940H7760O1480N1360S40"; abtype = :total)
+            TandemIsotopologues("C494H776O148N136S4" => "C247H388O74N68S2"; abtype = :total)
+            Isotopologues("C494H776O148N136S4" => "C247H388O74N68S2"; abtype = :total)
+            ti = time()
+            itll = Isotopologues("C494H776O148N136S4" => "C247H388O74N68S2"; abtype = :max)
+            te = time()
+            if te - ti > 2
+                @info "`Isotopologues` takes too much time for transitions ≈ 10 kDa -> 5 kDa. Skip tests for larger transitions."
+            else
+                itll = TandemIsotopologues("C988H1552O296N272S8" => "C494H776O148N136S4"; abtype = :max)
+                itll = Isotopologues("C988H1552O296N272S8" => "C494H776O148N136S4"; abtype = :max)
+            end
+        end
+    end
+end

@@ -1,4 +1,6 @@
 # GQ1 
+@info "Defining chemical and product table"
+
 GQ1 = Chemical("GQ1b 18:1;O2/18:0", "C106H182N6O55")
 GD3 = Chemical("GD3 18:1;O2/18:0", "C70H125N3O29")
 nana = Chemical("N-acetylneuraminic acid", "C11H19NO9")
@@ -98,10 +100,15 @@ pt = Table(;
 IGQ1b = AdductIon(GQ1, "[M+2H]2+")
 IGD3 = AdductIon(GD3, "[M+H]+")
 ms0 = Table(; Chemical = [GQ1, GD3], Adduct = [["[M+2H]2+", "[M+H+Na]2+", "[M+2H-H2O]2+"], ["[M+H]+"]], Proportion = [[1, 0.1, 0.3], [1]], Abundance = [100000, 10000])
+
+@info "Running HRMS and MS/MS"
+
 spec1 = @p ms0 |> Ionization(; abtype = :list) |> MSScan
 spec2 = @p spec1 |> Isolation(Quadrupole(1210.588728; fwhm = 1.3, offset = 0.3)) |> Fragmentation(pt) |> MSScan
 spec3 = @p spec2 |> Isolation(Quadrupole(948.3303; fwhm = 1.3, offset = 0.3)) |> Fragmentation(pt) |> MSScan
 spec4 = @p spec3 |> AllIons((1000, 2000)) |> MSScan
+
+@info "Running SIM"
 
 transitiontable = Table(;
     Transition = collect(1:5),
@@ -123,3 +130,52 @@ transitiontable = Table(;
 )
 sim = SelectedIonMonitor(transitiontable, vcat(Isotopologues(IGQ1b; abtype = :input, abundance = 100000), Isotopologues(IGD3; abtype = :input, abundance = 10000)))
 pt2 = peak_table(sim)
+
+@info "Running CoelutingIsobars"
+
+exp1 = Table(;
+    Chemical = AdductIon.([
+        Chemical("Fructose", "C6H12O6"; retentiontime = 1.25),
+        Chemical("Glucose", "C6H12O6"; retentiontime = 1.51), 
+        Chemical("Galactose", "C6H12O6"; retentiontime = 2.005), 
+        Chemical("Mannose", "C6H12O6"; retentiontime = 1.97), 
+        Chemical("Glucosamine", "C6H13O5N"; retentiontime = 2.12),
+        Chemical("Galactosamine", "C6H13O5N"; retentiontime = 2.61),
+        Chemical("Mannosamine", "C6H13O5N"; retentiontime = 2.51),
+    ], "[M+H]+"),
+    Abundance1 = [100, 10000, 5000, 4000, 2000, 1000, 700], 
+)
+
+ci1 = CoelutingIsobars(
+        [retentiontime => acrit(0.15)], 
+        [
+            TOF([]; resolution = 20000) => rcrit(1e-5)
+        ], 
+        exp1
+    )
+ib1 = isobar_table(ci1; threshold = rcrit(1e-5))
+
+FA180 = AdductIon(Chemical("FA 18:0", "C18H36O2"), "[M-H]-")
+FA181 = AdductIon(Chemical("FA 18:1", "C18H34O2"), "[M-H]-")
+FA200 = AdductIon(Chemical("FA 20:0", "C20H40O2"), "[M-H]-")
+exp2 = Table(;
+    Chemical = ChemicalSeries.([
+        AdductIon(Chemical("PC O-18:1/18:0", "C44H88NO7P"; retentiontime = 7.8), "[M+OFo]-") => FA180,
+        AdductIon(Chemical("PC O-18:0/18:1", "C44H88NO7P"; retentiontime = 7.85), "[M+OFo]-") => FA181,
+        AdductIon(Chemical("PS 18:0/20:0", "C44H86NO10P"; retentiontime = 7.7), "[M-H]-") => FA180,
+        AdductIon(Chemical("PS 18:0/20:0", "C44H86NO10P"; retentiontime = 7.7), "[M-H]-") => FA200,
+        AdductIon(Chemical("PC P-18:0/18:0", "C44H88NO7P"; retentiontime = 7.94), "[M+OFo]-") => FA180,
+        AdductIon(Chemical("PC P-18:0/18:1", "C44H86NO7P"; retentiontime = 7.68), "[M+OFo]-") => FA181,
+    ]),
+    Abundance1 = [2000, 1500, 10000, 5000, 4000, 3000], 
+)
+
+ci2 = CoelutingIsobars(
+        [retentiontime => acrit(0.15)], 
+        [
+            Quadrupole([]; accuracy = 0.1, fwhm = 1.3, digits = 1) => rcrit(1e-3),
+            Quadrupole([]; accuracy = 0.1, fwhm = 1.3, digits = 1) => rcrit(1e-3)
+        ], 
+        exp2
+    )
+ib2 = isobar_table(ci2)

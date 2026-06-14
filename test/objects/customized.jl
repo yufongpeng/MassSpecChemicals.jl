@@ -1,4 +1,6 @@
 # Interface AbstractChemical
+@info "Defining interfaces for custom chemical and scheme types"
+
 abstract type Hexose <: AbstractChemical end
 struct Glucose <: Hexose
     chirality::String
@@ -52,16 +54,6 @@ chemicalelements(m::Hexose; kwargs...) =
         "D"     => m.nD,
         "O"     => 6
     ]
-# function getchemicalattr(m::Hexose, ::Val{:formula}) 
-#     nd = m.nD 
-#     n13c = m.n13C
-#     nc = 6 - n13c
-#     nh = 12 - nd
-#     no = 6
-#     rc = string("C", nc > 1 ? nc : "", n13c > 0 ? string("[13C]", n13c > 1 ? n13c : "") : "") 
-#     rh = string("H", nh > 1 ? nh : "", nd > 0 ? string("[2H]", nd > 1 ? nd : "") : "") 
-#     string(rc, rh, "O", no)
-# end
 
 chemicalabbr(m::Hexose; kwargs...) = string(first(chemicalname(m), 5), repr_isotope(m))
 chemicalabbr(m::Glucose; kwargs...) = string(first(chemicalname(m), 4), "c", repr_isotope(m))
@@ -117,17 +109,6 @@ chemicalncb(m::FattyAcid; kwargs...) = getchemicalproperty(m, :ncb)
 chemicalnD(m::FattyAcid; kwargs...) = getchemicalproperty(m, :nD)
 chemicalndb(m::FattyAcid; kwargs...) = getchemicalproperty(m, :ndb)
 
-# function getchemicalattr(m::DiacylPS, ::Val{:elements}; kwargs...)
-#     filter(x -> last(x) > 0, [
-#         "C"     => 6 + getchemicalattr(m, :ncb) - getchemicalattr(m, :n13C), 
-#         "[13C]" => getchemicalattr(m, :n13C),
-#         "H"     => 12 + getchemicalattr(m, :ncb) * 2 - getchemicalattr(m, :ndb) * 2 - getchemicalattr(m, :nD),
-#         "D"     => getchemicalattr(m, :nD),
-#         "N"     => 1, 
-#         "O"     => 10, 
-#         "P"     => 1
-#     ])
-# end
 function chemicalelements(m::DiacylPS; kwargs...)
     fa1 = chemicalelements(m.fa1)
     fa2 = chemicalelements(m.fa2)
@@ -142,13 +123,6 @@ function chemicalelements(m::DiacylPS; kwargs...)
     filter(x -> last(x) > 0, vcat(["C" => (6 - m.headgroup[2]), "[13C]" => m.headgroup[2], "H" => (12 - m.headgroup[1]), "D" => m.headgroup[1], "N" => 1, "O" => 8, "P" => 1], fa1, fa2))
 end
 chemicalformula(m::DiacylPS; unique = false, kwargs...) = chemicalformula(chemicalelements(m); unique, kwargs...)
-# getchemicalattr(m::DiacylPS, ::Val{:formula}) = 
-#     string("C", 6 + getchemicalattr(m, :ncb) - getchemicalattr(m, :n13C), 
-#         getchemicalattr(m, :n13C) > 0 ? string("[13C]", getchemicalattr(m, :n13C)) : "",
-#         "H", 12 + getchemicalattr(m, :ncb) * 2 - getchemicalattr(m, :ndb) * 2 - getchemicalattr(m, :nD),
-#         getchemicalattr(m, :nD) > 0 ? string("D", getchemicalattr(m, :nD)) : "",
-#         "N", "O", 10, "P"
-#     )
 chemicalsmiles(m::FattyAcid; kwargs...) = ""
 chemicalsmiles(m::DiacylPS; kwargs...) = ""
 chemicalnD(m::DiacylPS; kwargs...) = +(m.headgroup[1], chemicalnD(m.fa1; kwargs...), chemicalnD(m.fa2; kwargs...))
@@ -209,16 +183,24 @@ chemicalname(::SN2Acyl; n = 1, kwargs...) = string(n > 1 ? n : "", "Sn2_Acyl")
 chemicalabbr(::SN1Acyl; n = 1, kwargs...) = string(n > 1 ? n : "", "Sn1")
 chemicalabbr(::SN2Acyl; n = 1, kwargs...) = string(n > 1 ? n : "", "Sn2")
 
+@info "Defining custom chemicals and schema"
+
 glc = Glucose("D", 0, 0, 1.5)
 gld = Glucose("D", 6, 0, 1.5)
 ps = DiacylPS((0, 0), FattyAcid(18, 0, 0, 0), FattyAcid(20, 4, 0, 0), 7.8)
 psi1 = DiacylPS((3, 3), FattyAcid(18, 0, 0, 0), FattyAcid(20, 4, 0, 0), 7.8)
 psi2 = DiacylPS((0, 0), FattyAcid(18, 0, 5, 0), FattyAcid(20, 4, 0, 0), 7.8)
+
+@info "Defining generic adduct ions"
+
 iglc = [AdductIon(glc, "[M+H]+")]
 igld = [AdductIon(gld, "[M+H]+")]
 ips = [AdductIon(ps, "[M-H-Ser]-"), AdductIon(ps, "[2M+H]+"), AdductIon(ps, "[M-H]-")]
 ipsi1 = [AdductIon(psi1, "[M-H-Ser]-"), AdductIon(psi1, "[2M+H]+"), AdductIon(psi1, "[M-H]-")]
 ipsi2 = [AdductIon(psi2, "[M-H-Ser]-"), AdductIon(psi1, "[2M+H]+"), AdductIon(psi2, "[M-H]-")]
+
+@info "Defining chemical transitions"
+
 sp1 = ChemicalSeries(ipsi1[1], SN2Acyl())
 sp2 = ChemicalSeries(ipsi1[3] => LossSerine() => SN2Acyl())
 sp3 = ChemicalSeries(ipsi2[1], SN1Acyl())

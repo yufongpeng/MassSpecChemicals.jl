@@ -1,3 +1,5 @@
+@info "Defining generic chemicals and schema"
+
 cglc = Chemical("Glucose", ["C" => 6, "H" => 12, "O" => 6]; retentiontime = 1.5, abbreviation = "Glc", SMILES = "")
 fglc = FormulaChemical(["C" => 6, "H" => 12, "O" => 6]; retentiontime = 1.5, abbreviation = "Glc", SMILES = "")
 cgld = Chemical("Glucose_d6", "C6H6D6O6"; retentiontime = 1.5, abbreviation = "Glc[D6]", SMILES = "")
@@ -53,22 +55,27 @@ push!(cpsi2.property, :structure => [
 # dimh = Adduct(2, "+H", 1)
 # test all default adduct 
 # icglcall = [AdductIon(cglc, k) for k in keys(MSC.ADDUCT_NAME)]
+@info "Defining generic adduct ions"
 
 icglc = [AdductIon(cglc, "[M+H]+"), AdductIon(cglc, "[M+H-H2O]+")]
-icgld = [parse_chemical(ChemicalEntityParser(ChemicalParser()), "[Glucose_d6+H]+"; formula = "C6H6D6O6", retentiontime = 1.5), AdductIon(parse_chemical(ChemicalParser(; formula = "C6H6D6O6"), "Glucose_d6"; retentiontime = 1.5), "[M+H]+"), AdductIon(cgld, "[M+H]+")]
+icgld = [AdductIon(cgld, "[M+H]+"), AdductIon(cgld, "[M+H-H2O]+")]
 icps = [ionize(cps; adduct = losshserine), AdductIon(cps, "[2M+H]+"), AdductIon(cps, "[M-H]-")]
 icpsi1 = [ionize(cpsi1; adduct = losshserine), AdductIon(cpsi1, "[2M+H]+"), AdductIon(cpsi1, "[M-H]-")]
 icpsi2 = [ionize(cpsi2; adduct = losshserine), AdductIon(cpsi2, "[2M+H]+"), AdductIon(cpsi2, "[M-H]-")]
+
+@info "Defining chemical transitions"
+
 cp1 = ChemicalSeries(icps[1], AdductIon(fa1, ChemicalLoss(Proton())))
 cp2 = ChemicalSeries(icps[3] => lossserine => outputchemical(cp1))
 cp3 = ChemicalSeries(icps[3], cp1)
 cp4 = ChemicalSeries(isotopomerize(icps[3], ["[13C]" => 5]) => isotopomerize(completescheme(icps[1], outputchemical(cp1)), ["[13C]" => 5]))
 cp5 = ChemicalSeries(isotopomerize(icpsi1[3], ["[13C]" => 5, "D" => 2]), ChemicalSeries(isotopomerize(completescheme(icpsi1[3], lossserine), ["D" => 1]), isotopomerize(completescheme(icpsi1[1], outputchemical(cp1)), ["[13C]" => 5])))
 pt1 = peak_table(MSScan(Isotopologues([icglc[1]]; abundance = 1e5, threshold = crit(1e1, 1e-2))))
-itit11 = Isotopologues("[C2H5[12C]OO]-" => "[-H2O-CO]" => "+H2O"; abtype = :input)
-itit12 = TandemIsotopologues("[C2H5[12C]OO]-" => "[-H2O-CO]" => "+H2O"; abtype = :input)
-itit13 = TandemIsotopologues("[C2H5[12C]OO]-" => "-[CO]+" => "+CO2"; abtype = :input)
-itit14 = TandemIsotopologues("[C2H5[12C]OO]-" => "-CO" => "+[CO2]-"; abtype = :input)
-gitit12 = group_isotopologues(itit12)
-gitit13 = group_isotopologues(itit13)
-gitit14 = group_isotopologues(itit14)
+
+@info "Defining criteria"
+
+ct1 = crit(10)
+ct2 = rcrit(0.2)
+ct3 = crit(10, 0.2)
+qualified_peak1(x, x̂, ct) = all(c -> in(x, c), makecrit_delta(ct, x̂))
+qualified_peak2(x, x̂, ct) = any(c -> x >= c, makecrit_value(ct, x̂))

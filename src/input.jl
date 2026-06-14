@@ -51,7 +51,7 @@ function parse_chemical(chemicalparser::FormulaChemicalParser, name::AbstractStr
 end
 
 function parse_adduction(chemicalparser, name, core; chemicalgain = nothing, kwargs...)
-    if isempty(core)
+    if isnothing(core) || isempty(core) 
         corechemical = nothing 
         corecharge = 0
         ncore = 1
@@ -132,6 +132,8 @@ function parse_chemical(chemicalparser::ChemicalExpressionParser, name::Abstract
     end
     # process +/-
     chemicalgain, bracket = isplusminusbracket(name)
+    core = nothing
+    sch = nothing
     if (both || chemicalparser.scheme) && !isnothing(chemicalgain) && !chemicalgain && !bracket
         chemicalcharge = chemicalparser.loss
         if precursorcharge == 0 
@@ -170,10 +172,11 @@ function parse_chemical(chemicalparser::ChemicalExpressionParser, name::Abstract
         chemicalcharge = min(abs(precursorcharge), abs(chemicalparser.charge)) * sign(precursorcharge)
         sch = string("[]", charge_repr(chemicalcharge))
         core = name
-    elseif (both || chemicalparser.scheme) && startswith(name, "[") 
+    elseif (both || chemicalparser.scheme) && startswith(name, r"\[[\]+-]") 
         core = ""
         sch = name
     end
+    isnothing(sch) && throw(ArgumentError("Failed to parse \"$name\"."))
     assemble_chemical(chemicalgain, parse_adduction(chemicalparser.chemicalparser, sch, core; kwargs..., chemicalgain)...)
 end
 
