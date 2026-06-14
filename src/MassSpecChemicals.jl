@@ -111,10 +111,10 @@ The following attributes are optional, but generic functions are defined.
 * `chemicalentity -> AbstractChemical`: a single chemical entity representing the chemical
 * `chemicalspecies -> Vector{<: AbstractChemical}`: multiple chemical entities having shared properties. 
 * `chemicaltransition -> Vector{<: AbstractChemical}`: chemical entities analyzed in each stage of instrumental analysis.  
-* `inputchemical -> AbstractChemical`: a single chemical entity that is the input of the very ending of instrumental analysis. 
-* `outputchemical -> AbstractChemical`: a single chemical entity that is the output of the very ending of instrumental analysis. 
-* `analyzedchemical -> AbstractChemical`: a single chemical entity directly detected in the very begining of instrumental analysis. 
-* `detectedchemical -> AbstractChemical`: a single chemical entity directly detected in the very ending of instrumental analysis. 
+* `inputchemical -> AbstractChemical`: a single chemical entity that is the input at the very beginning of instrumental analysis. 
+* `outputchemical -> AbstractChemical`: a single chemical entity that is the output at the very end of instrumental analysis. 
+* `analyzedchemical -> AbstractChemical`: a single chemical entity directly detected at the very beginning of instrumental analysis. 
+* `detectedchemical -> AbstractChemical`: a single chemical entity directly detected at the very end of instrumental analysis. 
 * `seriesanalyzedchemical -> Vector{<: AbstractChemical}`: chemical entities directly analyzed in each stage of instrumental analysis.
 * `detectedcharge -> Int`: charge of detected chemical
 * `detectedelements -> Vector{Pair{String, Int}}`: elements of detected chemical

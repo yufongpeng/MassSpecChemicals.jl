@@ -368,7 +368,7 @@ retentiontime(chemical::AbstractChemicalWrapper; kwargs...) = retentiontime(chem
 
 The single chemical entity (having a single formula) from a chemical entity (i.e. itself), or chemical species. 
 
-Attributes with Specific Methods marked as `Entity` indicate the `chemicalentity` are applied in the function for chemical types that are not inheretly single entities. 
+Attributes with Specific Methods marked as `Entity` indicate the `chemicalentity` are applied in the function for chemical types that are not inherently single entities. 
 
 # Generic Methods
 * `AbstractChemical`: itself
@@ -376,7 +376,7 @@ Attributes with Specific Methods marked as `Entity` indicate the `chemicalentity
 
 # Specific Methods
 * `Isobars`: `chemicalentity(first(chemical.chemicals))`, i.e. the most abundant entity.
-* `ChemicalTransition`: the very begining precursor
+* `ChemicalTransition`: the very beginning precursor
 * `Groupedisotopomers`: the most abundant isotopomer
 """
 chemicalentity(chemical::AbstractChemical; kwargs...) = chemical
@@ -387,7 +387,7 @@ chemicalentity(chemical::T; kwargs...) where {T <: AbstractChemicalWrapper} = T.
 
 The elemental scheme of `scheme`. 
 
-Attributes with Specific Methods marked as `Entity` indicate the `elementalscheme` are applied in the function for scheme types that are not inheretly elemental. 
+Attributes with Specific Methods marked as `Entity` indicate the `elementalscheme` are applied in the function for scheme types that are not inherently elemental. 
 
 # Generic Methods
 * `AbstractScheme`: property search
@@ -496,11 +496,11 @@ The delocalized isotopes replacement of isotopomers.
 # Specific Methods 
 * Entity Level
 * `Isotopomers`: field `isotopes`
-* `Groupedisotopomers`: isotopes replacement of the most abundunt isotopomers
+* `Groupedisotopomers`: isotopes replacement of the most abundant isotopomers
 * `ElementalScheme`: change of delocalized isotopes replacement 
 * `ChemicalSchema`: all changes of delocalized isotopes replacement 
 * `IsotopomerizedSchema`: field `isotopes`
-* `Groupedisotopomerizedschema`: isotopes replacement of the most abundunt isotopomers
+* `Groupedisotopomerizedschema`: isotopes replacement of the most abundant isotopomers
 
 # Property Search Workflow
 1. Function: `getchemicalproperty`
@@ -584,7 +584,7 @@ groupedisotopomersabundance(x::AbstractScheme; kwargs...) = groupedisotopomersab
 """
     analyzedchemical(chemical::AbstractChemicalsSchema; kwargs...) -> AbstractChemical
 
-The single chemical entity that is directly analyzed in the very begining of instrumental analysis.
+The single chemical entity that is directly analyzed at the very beginning of instrumental analysis.
 
 # Generic Methods
 * `AbstractChemical`: itself
@@ -601,7 +601,7 @@ analyzedchemical(cc::AbstractScheme; kwargs...) = throw(ArgumentError("Scheme ca
 """
     detectedchemical(chemical::AbstractChemicalsSchema; kwargs...) -> AbstractChemical
 
-The single chemical entity that is directly detected in the very ending of instrumental analysis.
+The single chemical entity that is directly detected at the very end of instrumental analysis.
 
 # Generic Methods
 * `AbstractChemical`: itself
@@ -643,9 +643,9 @@ detectedelements(cc::AbstractChemicalsSchema; kwargs...) = chemicalelements(dete
 """
     inputchemical(chemical::AbstractChemicalsSchema; kwargs...) -> AbstractChemical
 
-The single chemical entity that is the input of the very begining of instrumental analysis. 
+The single chemical entity that is the input at the very beginning of instrumental analysis. 
 
-It is equivalent to `analyzedchemical`, except schema are accepeted. See `analyzedchemical` for details.
+It is equivalent to `analyzedchemical`, except schemas are accepted. See `analyzedchemical` for details.
 """
 inputchemical(cc::AbstractChemicalsSchema; kwargs...) = cc
 

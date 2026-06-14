@@ -3,13 +3,14 @@
 [![Build Status](https://github.com/yufongpeng/MassSpecChemicals.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/yufongpeng/MassSpecChemicals.jl/actions/workflows/CI.yml?query=branch%3Amaster)
 [![Coverage](https://codecov.io/gh/yufongpeng/MassSpecChemicals.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/yufongpeng/MassSpecChemicals.jl)
 
-A package for representing molecules or ions formed in mass spectrometers (MS). 
+A Julia package for representing molecules and ions formed in mass spectrometers (MS).
 
-All chemicals are instances of abstract type `AbstractChemical`.
-Charged chemicals with specific adduct or molecule loss that formed in MS (adduct ion) are instances of abstract type `AbstractAdductIon`.
+All chemicals are instances of the abstract type `AbstractChemical`.
+Charged chemicals formed in MS with a specific adduct or neutral loss (adduct ions) are instances of the abstract type `AbstractAdductIon`.
 
 # Built-in chemical types
-1. `Chemical`: unstructured chemicals, storing name, elements, and other attributes
+
+1. `Chemical`: unstructured chemicals storing name, elements, and other attributes
 
     ```julia
     Chemical(name::AbstractString, elements::Vector{Pair{String, Int}}; property...)
@@ -19,7 +20,7 @@ Charged chemicals with specific adduct or molecule loss that formed in MS (adduc
     Chemical(name::String, elements::Vector{Pair{String, Int}}, property::Vector{Pair{Symbol, Any}})
     ```
 
-2. `FormulaChemical`: unstructured chemicals using formula as name
+2. `FormulaChemical`: unstructured chemicals using the formula as the name
 
     ```julia
     FormulaChemical(elements::Vector{Pair{String, Int}}; property...)
@@ -29,14 +30,15 @@ Charged chemicals with specific adduct or molecule loss that formed in MS (adduc
     FormulaChemical(elements::Vector{Pair{String, Int}}, property::Vector{Pair{Symbol, Any}})
     ```
 
-2. `AdductIon`: charged chemicals with specific adduct or molecule loss.
+3. `AdductIon`: charged chemicals with a specific adduct or neutral loss
 
     ```julia
     AdductIon(core::AbstractChemical, adduct::AbstractScheme, ncore::Int)
 
     AdductIon(core::AbstractChemical, adduct::AbstractString)
     ```
-3. `ChemicalTransition`: MS/MS transition.
+
+4. `ChemicalTransition`: MS/MS transitions
 
     ```julia
     ChemicalTransition(transition::Vector)
@@ -44,14 +46,14 @@ Charged chemicals with specific adduct or molecule loss that formed in MS (adduc
     ChemicalTransition(precursor::AbstractChemical, products...)
     ```
 
-4. `Isobars`: multiple chemicals with similar m/z.
-        
+5. `Isobars`: multiple chemicals with similar m/z
+
     ```julia
     Isobars(chemical::Vector{<: AbstractChemical}, abundance::VecOrMat)
     ```
 
-5. `Isotopomers`: multiple chemicals differed from isotopic replacement location
-        
+6. `Isotopomers`: multiple chemicals differing by isotopic replacement location
+
     ```julia
     Isotopomers(parent::AbstractChemical, isotopes::Vector{Pair{String, Int}})
 
@@ -61,31 +63,33 @@ Charged chemicals with specific adduct or molecule loss that formed in MS (adduc
 
     Isotopomers(parent::AbstractChemical, fullelements::Vector{Pair{String, Int}})
     ```
-6. `Groupedisotopomers`: isotopomers grouped by isotopomer state
+
+7. `Groupedisotopomers`: isotopomers grouped by isotopomer state
+
     ```julia
-    Groupedisotopomers(parent::AbstractChemicalsSchema, state::Int, isotope::String, isotopes::Vector{Vector{Pair{String, Int}}}
-    , abundance::Vector)
+    Groupedisotopomers(parent::AbstractChemicalsSchema, state::Int, isotope::String, isotopes::Vector{Vector{Pair{String, Int}}}, abundance::Vector)
     ```
 
-Users can parse strings and pairs by `parse_chemical`.
+Users can parse chemical expressions and pairs using `parse_chemical`.
 
 ```julia
-parse_chemical("[H3O]+") # H3O with 1 positive charge
-parse_chemical("[H2O+H]+") # Protonated H2O 
-parse_chemical("[C6H12O6+H]+ -> [H2O+H]+") # Protonated C6H12O6 framented to Protonated H2O 
-parse_chemical("[C6H12O6+H]+" => "-H2O") # Protonated C6H12O6 and neutral loss H2O
-parse_chemical("[C6H12O6+2H]2+" => "-[H2O+H]+") # DiProtonated C6H12O6 and loss Protonated H2O 
+parse_chemical("[H3O]+") # H3O with one positive charge
+parse_chemical("[H2O+H]+") # protonated H2O
+parse_chemical("[C6H12O6+H]+ -> [H2O+H]+") # protonated C6H12O6 fragmented to protonated H2O
+parse_chemical("[C6H12O6+H]+" => "-H2O") # protonated C6H12O6 and neutral loss H2O
+parse_chemical("[C6H12O6+2H]2+" => "-[H2O+H]+") # diprotonated C6H12O6 and loss of protonated H2O
 parse_chemical(ChemicalTransitionParser(ChemicalExpressionParser(; charge = 2, loss = 1)), "C6H14O6" => "-H3O") # C6H14O6 (charge = 2) and loss H3O (charge = 1)
-parse_chemical("[C6H12O6+2H]2+" => ChemicalLoss(Water())) # mixing with other chemical type 
+parse_chemical("[C6H12O6+2H]2+" => ChemicalLoss(Water())) # mixed parser with another chemical type
 ```
 
 # Elements
-## Parent Elements and Major isotopes
+## Parent elements and major isotopes
+
 |Symbol|Major isotopes|Atomic number|Mass number|
 |--------|-------------|-----------|------------------|
 |C|[12C]|6|12|
 |H|[1H]|1|1|
-|O|[16H]|8|16|
+|O|[16O]|8|16|
 |N|[14N]|7|14|
 |P|[31P]|15|31|
 |S|[32S]|16|32|
@@ -97,7 +101,8 @@ parse_chemical("[C6H12O6+2H]2+" => ChemicalLoss(Water())) # mixing with other ch
 |Ag|[108Ag]|47|108|
 |Se|[80Se]|34|80|
 
-## Minor Isotopes
+## Minor isotopes
+
 |Minor isotopes|Atomic number|Mass number|Alternative symbol|
 |--------|-------------|-----------|------------------|
 |[13C]|6|13||
@@ -119,131 +124,146 @@ parse_chemical("[C6H12O6+2H]2+" => ChemicalLoss(Water())) # mixing with other ch
 |[78Se]|34|78||
 |[82Se]|34|82||
 
+By default, parent elements are considered major isotopes and may be replaced by minor isotopes. For example:
+* `CO2` has carbon-12 and two oxygen-16 atoms, but minor isotope replacements are possible.
+* `[13C][16O]O` has carbon-13, and two oxygen-16 atoms. Carbon-13 atom and one oxygen-16 atom cannot be replaced by other isotopes.
 
-By default, parent elements are considered as major isotopes possibly replaced by minor isotopes. For instance,
-* CO2 has a carbon-12 and two oxygen-16, but any minor isotopes replacements are possible.
-* [13C][16O]O has a carbon-13, an oxygen-16, and an oxygen-16 possibly replaced by other minor isotopes.
+One exception is that for parent chemical of `Isotopomers`, parent elements are major isotopes and the number of replacements is restricted by the `isotopes` field.
 
-One exception is that in `parent` chemical of `Isotopomers`, parent elements are major isotopes, and the number of replacement is restricted by the field `isotopes`. 
+Users can use:
 
-User can use 
 ```julia
-    set_elements!(element, mass, abundance; minor_name = nothing)
+set_elements!(element, mass, abundance; minor_name = nothing)
 ```
-to add new elements with mass and natural abundance of all isotopes.
-Custumized minor element names (`minor_name`) is optional.  
+
+to add new elements with mass and natural abundances for all isotopes.
+Customized minor element names (`minor_name`) are optional.
 
 # AbstractSchema
-Any chemical gain and loss is an instance of `AbstractSchema`. This type has three abstract sub types:
-1. `AbstractElementalScheme`: scheme containing real elemental information, including isotopic replacement.
-2. `AbstractStructuralScheme`: scheme containing only structural information. This is useful for defining rule-based fragmentation.
-3. `AbstractCompleteScheme`: scheme containg both elemental and structural scheme. It is the final scheme storing in `AdductIon`. 
 
-In addition to single scheme, multiple schema are wrapped in `ChemicalSchema`. 
+Any chemical gain or loss is an instance of `AbstractSchema`. This type has three abstract subtypes:
 
-Predefined chemicals used in adduct:
-|Chemical|abbreviation|
+1. `AbstractElementalScheme`: a scheme containing elemental information, including isotopic replacement.
+2. `AbstractStructuralScheme`: a scheme containing only structural information. This is useful for defining rule-based fragmentation.
+3. `AbstractCompleteScheme`: a scheme containing both elemental and structural information. It is the final scheme stored in `AdductIon`.
+
+In addition to single schemes, multiple schemas are wrapped in `ChemicalSchema`.
+
+Predefined chemicals used in adducts:
+
+|Chemical|Abbreviation|
 |-------------|-----------------|
 |`Electron`|`"e"`|
 |`Proton`|`"H"`|
 |`Water`|`"H2O"`|
 |`Ammonia`|`"NH3"`|
-|`Ammonium`|"`[NH4]+`"|
+|`Ammonium`|`"[NH4]+"`|
 |`Sodium`|`"[Na]+"`|
 |`Potassium`|`"[K]+"`|
 |`Silver`|`"[Ag]+"`|
 |`OAc`|`"[OAc]-"`|
 |`OFo`|`"[OFo]-"`|
-|`Fluiride`|`"[F]-"`|
+|`Fluoride`|`"[F]-"`|
 |`Chloride`|`"[Cl]-"`|
 |`Methinium`|`"[Me]+"`|
 |`AceticAcid`|`"HOAc"`|
-|`FormicaAcid`|`"HOFo"`|
+|`FormicAcid`|`"HOFo"`|
 |`Methylacetate`|`"MeOAc"`|
 |`Methylformate`|`"MeOFo"`|
 
 # API
 ## Attributes of `AbstractChemical`
-Attributes are interfaces directly accessing properties and fields through `getchemicalproperty` or deriving values from other attributes.
+
+Attributes are interfaces for directly accessing properties and fields through `getchemicalproperty`, or for deriving values from other attributes.
 
 |Attribute|Return type|Description|
 |----|----|-----------|
 |`chemicalname`|`String`|unique chemical name|
 |`chemicalformula`|`String`|chemical formula|
-|`chemicalelements`|`Vector{Pair{String, Int}}`|chemical elements| 
-|`chemicalabbr`|`String`|common abbreviation; defaults to `chemicalname`| 
-|`chemicalsmiles`|`String`|SMILES; defaults to `""`| 
-|`charge`|`Int`|charges (positive or negative); defaults to 0|
+|`chemicalelements`|`Vector{Pair{String, Int}}`|chemical elements|
+|`chemicalabbr`|`String`|common abbreviation; defaults to `chemicalname`|
+|`chemicalsmiles`|`String`|SMILES; defaults to `""`|
+|`charge`|`Int`|net charge (positive or negative); defaults to 0|
 |`ncharge`|`Int`|number of charges|
-|`retentiontime`|`Float64`|retention time; defaults to `NaN`| 
-|`chemicalparent`|`AbstractChemical`|parent chemical without delocalized isotopes replacement| 
-|`isotopomersisotopes`|`Vector{Pair{String, Int}}`|delocalized isotopes replacement of isotopomers|
-|`isotopomerstate`|`Int`|isotopomers state, i.e. equivalent number of isotope|
-|`groupedisotopomersisotopes`|`Vector{Vector{Pair{String, Int}}}`|delocalized isotopes replacements of each isotopomers|
-|`groupedisotopomersabundance`|`AbstractFloat`|abundance of each isotopomers|
-|`chemicalentity`|`AbstractChemical`|a single chemical entity representing the chemical| 
-|`chemicalspecies`|`Vector{<: AbstractChemical}`|multiple chemical entities having shared properties| 
+|`retentiontime`|`Float64`|retention time; defaults to `NaN`|
+|`chemicalparent`|`AbstractChemical`|parent chemical without delocalized isotope replacements|
+|`isotopomersisotopes`|`Vector{Pair{String, Int}}`|delocalized isotope replacements of isotopomers|
+|`isotopomerstate`|`Int`|isotopomer state, i.e. equivalent number of isotopes|
+|`groupedisotopomersisotopes`|`Vector{Vector{Pair{String, Int}}}`|delocalized isotope replacements of each isotopomer in group|
+|`groupedisotopomersabundance`|`AbstractFloat`|abundance of each isotopomer in group|
+|`chemicalentity`|`AbstractChemical`|a single chemical entity representing the chemical|
+|`chemicalspecies`|`Vector{<: AbstractChemical}`|multiple chemical entities with shared properties|
 |`chemicaltransitions`|`Vector{<: AbstractChemical}`|chemical entities analyzed in each stage of instrumental analysis|
-|`inputchemical`|`AbstractChemical`|a single chemical entity that is the input of the very begining of instrumental analysis| 
-|`outputchemical`|`AbstractChemical`|a single chemical entity that is the output of the very ending of instrumental analysis| 
-|`analyzedchemical`|`AbstractChemical`|a single chemical entity that is directly analyzed in the very begining of instrumental analysis| 
-|`detectedchemical`|`AbstractChemical`|a single chemical entity that is directly detected in the very ending of instrumental analysis| 
-|`detectedisotopes`|`Vector{Pair{String, Int}}`|delocalized isotopes replacement of detected chemical| 
-|`detectedcharge`|`Int`|charge state of detected chemical| 
-|`detectedelements`|`Vector{Pair{String, Int}}`|elements of detected chemical| 
-|`seriesanalyzedchemical`|`Vector{<: AbstractChemical}`|chemical entites that are directly analyzed in each stage of instrumental analysis| 
-|`seriesanalyzedisotopes`|`Vector{Vector{Pair{String, Int}}}`|delocalized isotopes replacements of serially analyzed chemical| 
-|`seriesanalyzedcharge`|`Vector{Int}`|charge state of serially analyzed chemical| 
-|`seriesanalyzedelements`|`Vector{Vector{Pair{String, Int}}}`|elements of serially analyzed chemical| 
-|`msstage`|`Int`|number of stages of MS the chemical has been through| 
+|`inputchemical`|`AbstractChemical`|the chemical entity that is the input at the beginning of analysis|
+|`outputchemical`|`AbstractChemical`|the chemical entity that is the output at the end of analysis|
+|`analyzedchemical`|`AbstractChemical`|the chemical entity directly analyzed at the beginning of analysis|
+|`detectedchemical`|`AbstractChemical`|the chemical entity directly detected at the end of analysis|
+|`detectedisotopes`|`Vector{Pair{String, Int}}`|delocalized isotope replacements of the detected chemical|
+|`detectedcharge`|`Int`|charge state of the detected chemical|
+|`detectedelements`|`Vector{Pair{String, Int}}`|elements of the detected chemical|
+|`seriesanalyzedchemical`|`Vector{<: AbstractChemical}`|chemical entities directly analyzed in each stage of instrumental analysis|
+|`seriesanalyzedisotopes`|`Vector{Vector{Pair{String, Int}}}`|delocalized isotope replacements of serially analyzed chemicals|
+|`seriesanalyzedcharge`|`Vector{Int}`|charge states of serially analyzed chemicals|
+|`seriesanalyzedelements`|`Vector{Vector{Pair{String, Int}}}`|elements of serially analyzed chemicals|
+|`msstage`|`Int`|number of MS stages the chemical has been through|
 |`mmi`|`Float64`|monoisotopic mass|
 |`molarmass`|`Float64`|molar mass|
-|`mz`|`Float64`|m/z; mass-to-charge ratio|
+|`mz`|`Float64`|m/z, mass-to-charge ratio|
 
-Specific Methods for the attributes are defined for other intrinsic chemical type on different chemical level
+Specific methods for attributes are defined for each intrinsic chemical type at different chemical levels:
 * Entity Level: attribute of the corresponding chemical entity
 * Species Level: attribute of the corresponding chemical species
 * Transition Level: attribute of the corresponding chemical transitions
 
-See documentation of each attribute for the exact level.
+See documentation for each attribute to determine the exact level.
 
-### Type-specific attributes 
-Users can define new attributes or directly overload existing attribute functions for any chemical types
+### Type-specific attributes
+
+Users can define new attributes or overload existing attribute functions for any chemical type.
+
 ```julia
-abstract type Lipid <: AbstractChemical end 
-struct Fattyacid <: Lipid 
+abstract type Lipid <: AbstractChemical end
+struct Fattyacid <: Lipid
     ncarbon::Int
-    ndoublebond::Int 
+    ndoublebond::Int
 end
-struct Acylglycerol <: Lipid 
+struct Acylglycerol <: Lipid
     carbonchains::Vector{Fattyacid}
 end
-# Different attribute methods for different chemical types 
-ncarbon(chemical::Fattyacid) = chemical.ncarbon 
+
+# Different attribute methods for different chemical types
+ncarbon(chemical::Fattyacid) = chemical.ncarbon
 ncarbon(chemical::Acylglycerol) = sum(ncarbon, chemical.carbonchains) + 3
+
 fa1 = Fattyacid(18, 0)
 fa2 = Fattyacid(18, 1)
 dg = Acylglycerol([fa1, fa2])
-ncarbon(fa1) == 18 
-ncarbon(dg) == 39 
+
+ncarbon(fa1) == 18
+ncarbon(dg) == 39
 ```
-### Instance-specific attributes 
-For attributes defined in only some instances, users can use `getchemicalproperty` to handle the missing attributes. 
+
+### Instance-specific attributes
+
+For attributes defined in only some instances, users can use `getchemicalproperty` to handle missing attributes.
+
 ```julia
-# Access the property through :carbonchains getchemicalproperty, default to [chemical]
+# Access the :carbonchains property through getchemicalproperty, defaulting to [chemical]
 carbonchains(chemical::Lipid) = getchemicalproperty(chemical, :carbonchains, [chemical])
 carbonchains(dg) == [fa1, fa2]
 carbonchains(fa1) == [fa1]
 ```
-The type `Chemical` stores any non-default attributes in the field `property`, user can create object with these attributes as keyword arguments or add attributes by directly pushing the attr_name-attr_value pair to `chemical.property`, and define the attrubte function to access it. 
-```julia
-    chemical = Chemical("18:0 PC-d9", "	C44H79NO8PD9"; lipidclass = "PC")
-    
-    lipidclass(chemical::Chemical) = getchemicalproperty(chemical, :lipidclass) # new attribute
-    lipidclass(chemical) == "PC"
 
-    push!(chemical.property, :retentiontime => 10)
-    retentiontime(chemical) == 10 # Defined as accessing :retentiontime through getchemicalproperty
+The type `Chemical` stores any non-default attributes in the field `property`. Users can create objects with these attributes as keyword arguments, or add attributes by directly pushing the `attr_name => attr_value` pair to `chemical.property`, then defining an attribute function to access it.
+
+```julia
+chemical = Chemical("18:0 PC-d9", "	C44H79NO8PD9"; lipidclass = "PC")
+
+lipidclass(chemical::Chemical) = getchemicalproperty(chemical, :lipidclass) # new attribute
+lipidclass(chemical) == "PC"
+
+push!(chemical.property, :retentiontime => 10)
+retentiontime(chemical) == 10 # Defined as accessing :retentiontime through getchemicalproperty
 ```
 
 ### Additional Atttributes of `AbstractAdductIon`
@@ -286,7 +306,7 @@ There are three related functions
 
 * `TandemIsotopologues`
 
-    This function is similar to `Isotopologues`; it computes isotopologues of given precursor(s) and additionally computes the abundance of fragments with given fragmentation patterns. The key difference is that this function is recursive and abundance is calculated from the begining. It generally performs slightly slower for multiple MS stages and abundance is normalized in the first stage and filtered in all stages.
+    This function is similar to `Isotopologues`; it computes isotopologues of given precursor(s) and additionally computes the abundance of fragments with given fragmentation patterns. The key difference is that this function is recursive and abundance is calculated from the beginning. It generally performs slightly slower for multiple MS stages and abundance is normalized in the first stage and filtered in all stages.
 
 Isotopologues table can be aggregated using `group_isotopologues`.
 ## Mass Spectrometer 

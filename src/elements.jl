@@ -322,7 +322,7 @@ Update or insert `element`.
 * `element::AbstractString`: element name.
 * `mass::Vector`: atomic mass of all isotopes.
 * `abundance::Vector`: natural abundance of all isotopes.
-* `minor_name`: custumized minor element names.
+* `minor_name`: customized minor element names.
 """
 function set_element!(element::AbstractString, mass, abundance; minor_name = nothing)
     isotopes = isnothing(minor_name) ? map(mass) do m 

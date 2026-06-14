@@ -81,7 +81,7 @@ end
 
 Set `nm` to be `scheme` for default `SchemeParser`.
 
-For custumized scheme type, this function is required to make `nm` parsed into `scheme` by `parse_scheme`. 
+For customized scheme types, this function is required to make `nm` parsed into `scheme` by `parse_scheme`.
 """
 set_scheme!(nm::AbstractString, scheme::AbstractScheme) = push!(scheme_name(), nm => scheme)
 

@@ -65,6 +65,7 @@ icpsi2 = [ionize(cpsi2; adduct = losshserine), AdductIon(cpsi2, "[2M+H]+"), Addu
 
 @info "Defining chemical transitions"
 
+cp0 = ChemicalSeries(icps[3] => lossserine)
 cp1 = ChemicalSeries(icps[1], AdductIon(fa1, ChemicalLoss(Proton())))
 cp2 = ChemicalSeries(icps[3] => lossserine => outputchemical(cp1))
 cp3 = ChemicalSeries(icps[3], cp1)

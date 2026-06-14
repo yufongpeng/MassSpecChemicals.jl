@@ -199,7 +199,7 @@ A `Table` of isotopologues of the following chemicals and their products.
 * `tbl::Table`: multiple chemicals in column `Chemical` with abundance in column `Abundance1`, `Abundance2`, ... (optional). 
 * `chemicals::Vector`: multiple chemicals.
 
-This function is similar to `Isotopologues`; the key difference is that it is recursive and abundance is calculated from the begining. It generally performs slightly slower for multiple MS stages and abundance is normalized in the first stage and filtered in all stages.
+This function is similar to `Isotopologues`; the key difference is that it is recursive and abundance is calculated from the beginning. It generally performs slightly slower for multiple MS stages and abundance is normalized in the first stage and filtered in all stages.
 Only isotopic abundance of parent elements are considered, and isotopes are viewed as intentionally labeled elements. 
 
 # Keyword Arguments

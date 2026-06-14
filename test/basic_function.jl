@@ -15,12 +15,14 @@
     @test hash(copy(cp3)) == hash(cp3)
     @test copy(pt1.Chemical[3]) == pt1.Chemical[3]
     @test hash(copy(pt1.Chemical[3])) == hash(pt1.Chemical[3])
-    @test copy(git3.Chemical[2]) == git3.Chemical[2]
+    @test copy(it3.Chemical[2]) == it3.Chemical[2]
     @test hash(copy(git3.Chemical[2])) == hash(git3.Chemical[2])
-    @test copy(itit12.Chemical[11]) == itit12.Chemical[11]
-    @test hash(copy(itit12.Chemical[11])) == hash(itit12.Chemical[11])
-    @test copy(gitit12.Chemical[7]) == gitit12.Chemical[7]
-    @test hash(copy(gitit12.Chemical[7])) == hash(gitit12.Chemical[7])
+    @test copy(it3.Chemical[2]) == it3.Chemical[2]
+    @test hash(copy(git3.Chemical[2])) == hash(git3.Chemical[2])
+    @test copy(chemicaltransition(itit12.Chemical[11])[2]) == chemicaltransition(itit12.Chemical[11])[2]
+    @test hash(copy(chemicaltransition(itit12.Chemical[11])[2])) == hash(chemicaltransition(itit12.Chemical[11])[2])
+    @test copy(chemicaltransition(gitit12.Chemical[7])[2]) == chemicaltransition(gitit12.Chemical[7])[2]
+    @test hash(copy(chemicaltransition(gitit12.Chemical[7])[2])) == hash(chemicaltransition(gitit12.Chemical[7])[2])
 end
 
 @info "Running tests for Default chemical parsing"

@@ -24,7 +24,7 @@ Single scheme involving a chemical. The elements are fixed, and can be replaced 
 # Fields 
 * `chemical::T`: chemical involved in scheme.
 
-Single isotopomer can be set by using `Isotopomers` as field `chemical`. Elemental scheme can be redirected to correponding isotopic labeled scheme in `AdductIon` by dispatching on core chemical and existed schema, or looking up the `property` for generic `Chemical`.
+Single isotopomer can be set by using `Isotopomers` as field `chemical`. Elemental scheme can be redirected to the corresponding isotopic labeled scheme in `AdductIon` by dispatching on core chemical and existing schema, or looking up the `property` for generic `Chemical`.
 """
 struct ElementalScheme{Bool, T<:AbstractChemical} <: AbstractElementalScheme
     chemical::T

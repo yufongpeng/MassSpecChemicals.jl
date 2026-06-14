@@ -32,7 +32,6 @@ ischemicalequaltransform(x::IsotopomerizedSchema) = isempty(unique_elements(x.is
 ischemicalequaltransform(x::Groupedisotopomerizedschema) = length(x.isotopes) > 1 ? x : isempty(unique_elements(x.isotopes[1])) ? x.parent : Isotopomers(x.parent, x.isotopes[1]) 
 ischemicalequaltransform(x::ElementalScheme{T}) where T = ElementalScheme(T, ischemicalequaltransform(x.chemical))
 ischemicalequaltransform(x::StructuralElementalScheme) = StructuralElementalScheme(ischemicalequaltransform(x.structuralscheme), ischemicalequaltransform(x.elementalscheme))
-ischemicalequaltransform(x::ChemicalTransition) = x 
 
 """
     istransformedchemicalequal(x::AbstractChemicalsSchema, y::AbstractChemicalsSchema) -> Bool
@@ -167,7 +166,7 @@ completescheme(precursor::AbstractChemical, product::IsotopomerizedSchema) = Iso
 completescheme(precursor::AbstractChemical, product::Groupedisotopomerizedschema) = Groupedisotopomerizedschema(completescheme(precursor, product.parent), product.state, product.isotope, product.isotopes, product.abundance)
 completescheme(precursor::AbstractChemical, product::AbstractElementalScheme) = StructuralElementalScheme(product, copy(product))
 # completescheme(precursor::AbstractChemical, product::ElementalScheme{T}) where T = StructuralElementalScheme(product, ElementalScheme(T, product))
-# structure serach for generics 
+# structure search for generic types
 completescheme(precursor::GenericChemical, product::GenericChemical) = structure_search(precursor, nothing, product)
 completescheme(precursor::GenericChemical, product::AdductIon{<:GenericChemical}) = structure_search(precursor, nothing, product)
 completescheme(precursor::GenericChemical, product::AbstractScheme) = structure_search(precursor, nothing, product)
@@ -203,10 +202,10 @@ For other chemicals, it returns a complete scheme directly without incorporating
 Defining new method is optional for complete scheme of new structural scheme and new chemical type unless scheme blending is intended to be implemented.
 """
 adductionscheme(precursor::AdductIon, product::CompleteSchema) = ChemicalSchema(ionadduct(precursor), product)
-# schema serach for generics adduction
+# schema search for generic adduction
 adductionscheme(precursor::AdductIon{<:GenericChemical}, product::CompleteSchema) = schema_search(ioncore(precursor), ionadduct(precursor), product)
 
-# For custumized adductiontype of specific chemicaltype, implement 
+# For customized adduction type of specific chemical type, implement 
 # detectedchemical(::chemicaltype, ::CompleteSchema) -> adductiontype
 # detectedchemical(::adductiontype, ::CompleteSchema) -> adductiontype
 # adductionscheme(::adductiontype, ::CompleteSchema) -> CompleteSchema
@@ -252,9 +251,11 @@ chemicalentity(isobars::Isobars; kwargs...) = chemicalentity(first(chemicalspeci
 chemicalentity(isotopomers::Groupedisotopomers; kwargs...) = Isotopomers(chemicalparent(isotopomers), isotopomersisotopes(isotopomers))
 chemicalentity(ct::ChemicalTransition; kwargs...) = chemicalentity(first(chemicaltransition(ct)))
 
+elementalscheme(sch::Groupedisotopomerizedschema; kwargs...) = Groupedisotopomerizedschema(elementalscheme(sch.parent; kwargs...), sch.state, sch.isotope, sch.isotopes, sch.abundance)
 elementalscheme(sch::IsotopomerizedSchema; kwargs...) = IsotopomerizedSchema(elementalscheme(sch.parent; kwargs...), sch.isotopes)
 elementalscheme(sch::ChemicalSchema; kwargs...) = ChemicalSchema(elementalscheme.(sch.schema; kwargs...), sch.number)
-structuralscheme(sch::IsotopomerizedSchema; kwargs...) = IsotopomerizedSchema(structuralscheme(sch.schema; kwargs...), sch.isotopes)
+structuralscheme(sch::Groupedisotopomerizedschema; kwargs...) = Groupedisotopomerizedschema(structuralscheme(sch.parent; kwargs...), sch.state, sch.isotope, sch.isotopes, sch.abundance)
+structuralscheme(sch::IsotopomerizedSchema; kwargs...) = IsotopomerizedSchema(structuralscheme(sch.parent; kwargs...), sch.isotopes)
 structuralscheme(sch::ChemicalSchema; kwargs...) = ChemicalSchema(structuralscheme.(sch.schema; kwargs...), sch.number)
 structuralscheme(::Nothing; kwargs...) = nothing 
 elementalscheme(::Nothing; kwargs...) = nothing 

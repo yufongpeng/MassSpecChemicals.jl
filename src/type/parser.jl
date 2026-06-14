@@ -22,7 +22,7 @@ AdductParser() = AdductParser(ChemicalSchemeParser())
 Default chemical parser which parses input string (chemical formula) into `FormulaChemical`. 
 
 # Fields 
-* `property::Vector{Pair{Symbol, Any}}`: additional attributes. These can be muatated, added, or deleted with keyword arguments of `parse_chemical`. Values of `nothing` are deleted.
+* `property::Vector{Pair{Symbol, Any}}`: additional attributes. These can be mutated, added, or deleted with keyword arguments of `parse_chemical`. Values of `nothing` are deleted.
 """
 struct FormulaChemicalParser <: AbstractChemicalParser
     property::Vector{Pair{Symbol, Any}}
@@ -36,7 +36,7 @@ FormulaChemicalParser(; kwargs...) = FormulaChemicalParser(collect(kwargs))
 Chemical parser which parses input string (chemical name) into `Chemical`. 
 
 # Fields 
-* `property::Vector{Pair{Symbol, Any}}`: additional attributes. It must include `:formula` or `:elements`. These can be muatated, added, or deleted with keyword arguments of `parse_chemical`. Values of `nothing` are deleted.
+* `property::Vector{Pair{Symbol, Any}}`: additional attributes. It must include `:formula` or `:elements`. These can be mutated, added, or deleted with keyword arguments of `parse_chemical`. Values of `nothing` are deleted.
 """
 struct ChemicalParser <: AbstractChemicalParser
     property::Vector{Pair{Symbol, Any}}
