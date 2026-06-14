@@ -96,7 +96,7 @@ function parse_adduction(chemicalparser, name, core; chemicalgain = nothing, kwa
             end
         end
     end
-    ne = net_charge + sum(charge, vc; init = 0)
+    ne = net_charge - sum(charge, vc; init = 0)
     if ne == 0 && length(vc) == 0
         sch = nothing
     elseif ne == 0 && length(vc) == 1  

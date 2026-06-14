@@ -9,8 +9,11 @@ ischemicalequal(x::Isobars, y::Isobars) = istransformedchemicalequal(x, y)
 ischemicalequal(x::Isotopomers, y::Isotopomers) = istransformedchemicalequal(x, y)
 ischemicalequal(x::Groupedisotopomers, y::Groupedisotopomers) = istransformedchemicalequal(x, y)
 ischemicalequal(x::ChemicalTransition, y::ChemicalTransition) = istransformedchemicalequal(x, y)
+ischemicalequal(x::ChemicalSchema, y::ChemicalSchema) = istransformedchemicalequal(x, y)
+ischemicalequal(x::StructuralElementalScheme, y::StructuralElementalScheme) = istransformedchemicalequal(x, y)
 ischemicalequal(x::ElementalScheme{true}, y::ElementalScheme{true}) = istransformedchemicalequal(x, y)
 ischemicalequal(x::ElementalScheme{false}, y::ElementalScheme{false}) = istransformedchemicalequal(x, y)
+ischemicalequal(x::IsotopomerizedSchema, y::IsotopomerizedSchema) = istransformedchemicalequal(x, y)
 ischemicalequal(x::Groupedisotopomerizedschema, y::Groupedisotopomerizedschema) = istransformedchemicalequal(x, y)
 ischemicalequal(x::AbstractChemicalsSchema, y::AbstractChemicalsSchema) = istransformedchemicalequal(ischemicalequaltransform(x), ischemicalequaltransform(y))
 
@@ -21,10 +24,14 @@ Return an object for comparison with other chemicals by `istransformedchemicaleq
 """
 ischemicalequaltransform(x::AbstractChemical) = x 
 ischemicalequaltransform(x::AbstractScheme) = x 
+ischemicalequaltransform(x::T) where {T <: AbstractChemicalWrapper} = ischemicalequaltransform(x.chemical)
 ischemicalequaltransform(x::Isobars) = length(x) == 1 ? ischemicalequaltransform(chemicalentity(x)) : x
 ischemicalequaltransform(x::Isotopomers) = isempty(unique_elements(x.isotopes)) ? x.parent : x 
 ischemicalequaltransform(x::Groupedisotopomers) = length(x.isotopes) > 1 ? x : isempty(unique_elements(x.isotopes[1])) ? x.parent : Isotopomers(x.parent, x.isotopes[1]) 
+ischemicalequaltransform(x::IsotopomerizedSchema) = isempty(unique_elements(x.isotopes)) ? x.parent : x 
 ischemicalequaltransform(x::Groupedisotopomerizedschema) = length(x.isotopes) > 1 ? x : isempty(unique_elements(x.isotopes[1])) ? x.parent : Isotopomers(x.parent, x.isotopes[1]) 
+ischemicalequaltransform(x::ElementalScheme{T}) where T = ElementalScheme(T, ischemicalequaltransform(x.chemical))
+ischemicalequaltransform(x::StructuralElementalScheme) = StructuralElementalScheme(ischemicalequaltransform(x.structuralscheme), ischemicalequaltransform(x.elementalscheme))
 ischemicalequaltransform(x::ChemicalTransition) = x 
 
 """
@@ -46,7 +53,7 @@ istransformedchemicalequal(x::Groupedisotopomers, y::Groupedisotopomers) = ische
 istransformedchemicalequal(x::ChemicalTransition, y::ChemicalTransition) = all(ischemicalequal.(x.transition, y.transition))
 
 istransformedchemicalequal(x::Groupedisotopomerizedschema, y::Groupedisotopomerizedschema) = ischemicalequal(x.parent, y.parent) && x.state == y.state && x.isotope == y.isotope && all(isequal(sort!(unique_elements(vx)), sort!(unique_elements(vy))) for (vx, vy) in zip(x.isotopes, y.isotopes)) && all(isapprox(a, b) for (a, b) in zip(x.abundance, y.abundance))
-istransformedchemicalequal(x::IsotopomerizedSchema, y::IsotopomerizedSchema) = istransformedchemicalequal(x, y) && isequal(sort!(unique_elements(x.isotopes)), sort!(unique_elements(y.isotopes)))
+istransformedchemicalequal(x::IsotopomerizedSchema, y::IsotopomerizedSchema) = istransformedchemicalequal(x.parent, y.parent) && isequal(sort!(unique_elements(x.isotopes)), sort!(unique_elements(y.isotopes)))
 function istransformedchemicalequal(x::ChemicalSchema, y::ChemicalSchema) 
     uk = [false for _ in eachindex(y.schema)]
     for (kx, vx) in zip(x.schema, x.number)
@@ -95,7 +102,8 @@ Add delocalized isotopic replacements `isotopes` to `chemical`.
 isotopomerize(chemical::AbstractChemical, isotopes) = Isotopomers(chemical, isotopes)
 isotopomerize(chemical::Isotopomers, isotopes) = Isotopomers(chemical.parent, collect(gain_elements(chemical.isotopes, isotopes)))
 isotopomerize(sch::StructuralElementalScheme, isotopes) = StructuralElementalScheme(structuralscheme(sch), isotopomerize(elementalscheme(sch), isotopes))
-isotopomerize(sch::ElementalScheme{T}, isotopes) where T = ElementalScheme(T, isotopomerize(sch.chemical, isotopes))
+isotopomerize(sch::ElementalScheme{true}, isotopes) = ElementalScheme(true, isotopomerize(sch.chemical, isotopes))
+isotopomerize(sch::ElementalScheme{false}, isotopes) = ElementalScheme(false, isotopomerize(sch.chemical, reverse_elements(isotopes, true)))
 isotopomerize(sch::ChemicalSchema, isotopes) = IsotopomerizedSchema(sch, isotopes)
 isotopomerize(sch::IsotopomerizedSchema, isotopes) = IsotopomerizedSchema(sch.parent, collect(gain_elements(sch.isotopes, isotopes)))
 isotopomerize(sch::T, isotopes) where {T<:AbstractScheme} = throw(ArgumentError("Cannot add isotopes information to $T."))
@@ -109,7 +117,8 @@ groupedisotopomerize(chemical::AbstractChemical, state, isotope, isotopes, abund
 groupedisotopomerize(chemical::Isotopomers, state, isotope, isotopes, abundance) = Groupedisotopomers(chemical.parent, state, isotope, isotopes, abundance)
 groupedisotopomerize(chemical::Groupedisotopomers, state, isotope, isotopes, abundance) = Groupedisotopomers(chemical.parent, state, isotope, isotopes, abundance)
 groupedisotopomerize(sch::StructuralElementalScheme, state, isotope, isotopes, abundance) = StructuralElementalScheme(structuralscheme(sch), groupedisotopomerize(elementalscheme(sch), state, isotope, isotopes, abundance))
-groupedisotopomerize(sch::ElementalScheme{T}, state, isotope, isotopes, abundance) where T = ElementalScheme(T, groupedisotopomerize(sch.chemical, state, isotope, isotopes, abundance))
+groupedisotopomerize(sch::ElementalScheme{true}, state, isotope, isotopes, abundance) = ElementalScheme(true, groupedisotopomerize(sch.chemical, state, isotope, isotopes, abundance))
+groupedisotopomerize(sch::ElementalScheme{false}, state, isotope, isotopes, abundance) = ElementalScheme(false, groupedisotopomerize(sch.chemical, state, isotope, reverse_elements.(isotopes, true), abundance))
 groupedisotopomerize(sch::ChemicalSchema, state, isotope, isotopes, abundance) = Groupedisotopomerizedschema(sch, state, isotope, isotopes, abundance)
 groupedisotopomerize(sch::IsotopomerizedSchema, state, isotope, isotopes, abundance) = Groupedisotopomerizedschema(sch.parent, state, isotope, isotopes, abundance)
 groupedisotopomerize(sch::Groupedisotopomerizedschema, state, isotope, isotopes, abundance) = Groupedisotopomerizedschema(sch.parent, state, isotope, isotopes, abundance)
@@ -153,8 +162,9 @@ New method should be defined for new structural scheme and new chemical type to 
 completescheme(precursor::AbstractChemical, product::AbstractChemical) = StructuralElementalScheme(RandomProductScheme(), product)
 completescheme(precursor::T, product::S) where {T<:AbstractChemical, S<:AbstractScheme} = throw(ArgumentError("Specific `completescheme(precursor::$T, scheme::$S)` method has to be implemented."))
 completescheme(precursor::AbstractChemical, product::CompleteSchema) = product
-completescheme(precursor::AbstractChemical, product::IsotopomerizedSchema) = IsotopomerizedSchema(completescheme(precursor, product.parent), product.isotopes)
 completescheme(precursor::AbstractChemical, product::ChemicalSchema) = ChemicalSchema(completescheme.(Ref(precursor), product.schema), product.number)
+completescheme(precursor::AbstractChemical, product::IsotopomerizedSchema) = IsotopomerizedSchema(completescheme(precursor, product.parent), product.isotopes)
+completescheme(precursor::AbstractChemical, product::Groupedisotopomerizedschema) = Groupedisotopomerizedschema(completescheme(precursor, product.parent), product.state, product.isotope, product.isotopes, product.abundance)
 completescheme(precursor::AbstractChemical, product::AbstractElementalScheme) = StructuralElementalScheme(product, copy(product))
 # completescheme(precursor::AbstractChemical, product::ElementalScheme{T}) where T = StructuralElementalScheme(product, ElementalScheme(T, product))
 # structure serach for generics 
@@ -162,8 +172,9 @@ completescheme(precursor::GenericChemical, product::GenericChemical) = structure
 completescheme(precursor::GenericChemical, product::AdductIon{<:GenericChemical}) = structure_search(precursor, nothing, product)
 completescheme(precursor::GenericChemical, product::AbstractScheme) = structure_search(precursor, nothing, product)
 completescheme(precursor::GenericChemical, product::CompleteSchema) = product
-completescheme(precursor::GenericChemical, product::IsotopomerizedSchema) = structure_search(precursor, nothing, product)
 completescheme(precursor::GenericChemical, product::ChemicalSchema) = structure_search(precursor, nothing, product)
+completescheme(precursor::GenericChemical, product::IsotopomerizedSchema) = structure_search(precursor, nothing, product)
+completescheme(precursor::GenericChemical, product::Groupedisotopomerizedschema) = structure_search(precursor, nothing, product)
 completescheme(precursor::GenericChemical, product::AbstractElementalScheme) = structure_search(precursor, nothing, product)
 completescheme(precursor::AdductIon{<:GenericChemical}, product::GenericChemical) = structure_search(ioncore(precursor), ionadduct(precursor), product)
 completescheme(precursor::AdductIon{<:GenericChemical}, product::AdductIon{<:GenericChemical}) = structure_search(ioncore(precursor), ionadduct(precursor), product)
@@ -224,8 +235,17 @@ detectedchemical(precursor::Isotopomers, product::AbstractChemical) = Isotopomer
 detectedchemical(precursor::Isotopomers, product::Isotopomers) = product
 function detectedchemical(precursor::Isotopomers, product::AbstractScheme) 
     chemical = detectedchemical(chemicalparent(precursor), chemicalparent(product))
-    isotopes = loss_elements(isotopomersisotopes(precursor), isotopomersisotopes(product))
+    isotopes = gain_elements(isotopomersisotopes(precursor), isotopomersisotopes(product))
     Isotopomers(chemical, isotopes)
+end
+detectedchemical(precursor::Groupedisotopomers, product::AbstractChemical) = Groupedisotopomers(product, 0, precursor.isotope, groupedisotopomersisotopes(product), groupedisotopomersabundance(product))
+detectedchemical(precursor::Groupedisotopomers, product::Isotopomers) = Groupedisotopomers(chemicalparent(product), isotopomerstate(product; isotope = precursor.isotope), precursor.isotope, groupedisotopomersisotopes(product), groupedisotopomersabundance(product))
+detectedchemical(precursor::Groupedisotopomers, product::Groupedisotopomers) = product
+function detectedchemical(precursor::Groupedisotopomers, product::AbstractScheme) 
+    chemical = detectedchemical(chemicalparent(precursor), chemicalparent(product))
+    isotopes = map((x, y) -> gain_elements(x, y), groupedisotopomersisotopes(precursor), groupedisotopomersisotopes(product))
+    state = _isotopomerstate(first(isotopes), elements_mass()[precursor.isotope] - elements_mass()[elements_parents()[precursor.isotope]])
+    Groupedisotopomers(chemical, state, precursor.isotope, isotopes, groupedisotopomersabundance(product))
 end
 
 chemicalentity(isobars::Isobars; kwargs...) = chemicalentity(first(chemicalspecies(isobars)))
@@ -315,17 +335,17 @@ detectedchemical(isobars::Isobars{<: ChemicalTransition}; kwargs...) = Isobars([
 function detectedisotopes(sch::AbstractScheme; precursor = nothing, precursorisotopes = nothing, kwargs...) 
     isnothing(precursor) && isnothing(precursorisotopes) && throw(ArgumentError("Scheme cannot be directly detected without precursor information."))
     pre = isnothing(precursorisotopes) ? detectedisotopes(precursor; kwargs...) : precursorisotopes
-    loss_elements(pre, isotopomersisotopes(sch; kwargs...))
+    gain_elements(pre, isotopomersisotopes(sch; kwargs...))
 end
 detectedisotopes(sch::StructuralElementalScheme{T, <:AbstractChemical}; precursor = nothing, precursorisotopes = nothing, kwargs...) where T = isotopomersisotopes(sch; kwargs...)
 function detectedcharge(sch::AbstractScheme; precursor = nothing, precursorcharge = nothing, kwargs...) 
     isnothing(precursor) && isnothing(precursorcharge) && throw(ArgumentError("Scheme cannot be directly detected without precursor information."))
-    (isnothing(precursorcharge) ? detectedcharge(precursor; kwargs...) : precursorcharge) - charge(sch; kwargs...)
+    (isnothing(precursorcharge) ? detectedcharge(precursor; kwargs...) : precursorcharge) + charge(sch; kwargs...)
 end
 detectedcharge(sch::StructuralElementalScheme{T, <:AbstractChemical}; precursor = nothing, precursorcharge = nothing, kwargs...) where T = charge(sch; kwargs...)
 function detectedelements(sch::AbstractScheme; precursor = nothing, precursorelements = nothing, kwargs...) 
     isnothing(precursor) && isnothing(precursorelements) && throw(ArgumentError("Scheme cannot be directly detected without precursor information."))
-    loss_elements(isnothing(precursorelements) ? detectedelements(precursor; kwargs...) : precursorelements, chemicalelements(sch; kwargs...))
+    gain_elements(isnothing(precursorelements) ? detectedelements(precursor; kwargs...) : precursorelements, chemicalelements(sch; kwargs...))
 end
 detectedelements(sch::StructuralElementalScheme{T, <:AbstractChemical}; precursor = nothing, precursorelements = nothing, kwargs...) where T = chemicalelements(sch; kwargs...)
 

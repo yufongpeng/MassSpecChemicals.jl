@@ -53,7 +53,7 @@ function chemicalname(sch::ChemicalSchema; n = 1, loss = false, bracket = false,
     end
     bracket ? string("[", s, "]") : s 
 end
-chemicalname(sch::Groupedisotopomerizedschema; n = 1, loss = false, bracket = false, delim = "|", kwargs...) = string(chemicalname(chemicalparent(sch); n, loss, bracket, delim, kwargs...), sch.state > 0 ? string("(+", sch.state, ")") : sch.state < 0 ? string("(-", abs(sch.state), ")") : "") 
+chemicalname(sch::Groupedisotopomerizedschema; n = 1, loss = false, bracket = true, delim = "|", kwargs...) = string(chemicalname(chemicalparent(sch); n, loss, bracket, delim, kwargs...), sch.state > 0 ? string("(+", sch.state, ")") : sch.state < 0 ? string("(-", abs(sch.state), ")") : "") 
 
 chemicalabbr(isobars::Isobars; verbose = true, kwargs...) = (length(chemicalspecies(isobars)) == 1 || verbose) ? string("Isobars[", join(chemicalabbr.(chemicalspecies(isobars); kwargs...), ", "), "]") : string("Isobars[", chemicalabbr(first(chemicalspecies(isobars); kwargs...)), ", …]")
 chemicalabbr(isotopomers::Isotopomers; n = 1, kwargs...) = string(chemicalabbr(chemicalparent(isotopomers); n, kwargs...), isotope_repr(isotopomers.isotopes))
@@ -63,12 +63,12 @@ chemicalabbr(ct::ChemicalTransition; kwargs...) = join(chemicalabbr.(chemicaltra
 chemicalabbr(sch::StructuralElementalScheme; n = 1, bracket = true, kwargs...) = chemicalabbr(elementalscheme(sch); n, bracket, kwargs...)
 chemicalabbr(sch::ElementalScheme{true, <:Electron}; n = 1, bracket = true, loss = false, kwargs...) = ""
 chemicalabbr(sch::ElementalScheme{false, <:Electron}; n = 1, bracket = true, loss = false, kwargs...) = ""
-chemicalabbr(sch::ElementalScheme{true}; n = 1, bracket = true, loss = false, kwargs...) = string(loss ? "-" : "+", chemicalabbr(sch.chemical; n, bracket, kwargs...))
+chemicalabbr(sch::ElementalScheme{true}; n = 1, bracket = true, loss = false, kwargs...) = string(loss ? "-" : "+", chemicalabbr(sch.chemical; n, bracket, loss, kwargs...))
 chemicalabbr(sch::ElementalScheme{false}; n = 1, bracket = true, loss = false, kwargs...) = string(loss ? "+" : "-", chemicalabbr(sch.chemical; n, bracket, loss = !loss, kwargs...))
 chemicalabbr(sch::IsotopomerizedSchema; loss = false, bracket = true, n = 1, kwargs...) = string(chemicalabbr(chemicalparent(sch); n, loss, bracket, kwargs...), isotope_repr(sch.isotopes))
 function chemicalabbr(sch::ChemicalSchema; loss = false, bracket = true, n = 1, kwargs...) 
     s = join([chemicalabbr(k; n = n * v, loss, bracket = false, kwargs...) for (k, v) in zip(sch.schema, sch.number)], "")
-    bracket ? string("[", s, "]", charge_repr(-charge(sch))) : s 
+    bracket ? string("[", s, "]", charge_repr(charge(sch; loss))) : s 
 end
 chemicalabbr(sch::Groupedisotopomerizedschema; n = 1, loss = false, bracket = true, kwargs...) = string(chemicalname(chemicalparent(sch); n, loss, bracket, kwargs...), sch.state > 0 ? string("(+", sch.state, ")") : sch.state < 0 ? string("(-", abs(sch.state), ")") : "") 
 

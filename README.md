@@ -179,6 +179,8 @@ Attributes are interfaces directly accessing properties and fields through `getc
 |`chemicalparent`|`AbstractChemical`|parent chemical without delocalized isotopes replacement| 
 |`isotopomersisotopes`|`Vector{Pair{String, Int}}`|delocalized isotopes replacement of isotopomers|
 |`isotopomerstate`|`Int`|isotopomers state, i.e. equivalent number of isotope|
+|`groupedisotopomersisotopes`|`Vector{Vector{Pair{String, Int}}}`|delocalized isotopes replacements of each isotopomers|
+|`groupedisotopomersabundance`|`AbstractFloat`|abundance of each isotopomers|
 |`chemicalentity`|`AbstractChemical`|a single chemical entity representing the chemical| 
 |`chemicalspecies`|`Vector{<: AbstractChemical}`|multiple chemical entities having shared properties| 
 |`chemicaltransitions`|`Vector{<: AbstractChemical}`|chemical entities analyzed in each stage of instrumental analysis|

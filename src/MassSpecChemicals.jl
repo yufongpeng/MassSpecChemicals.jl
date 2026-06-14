@@ -49,7 +49,7 @@ export
     chemicalformula, chemicalelements, chemicalname, chemicalabbr, chemicalsmiles, ioncore, ionadduct, ncore, charge, ncharge, retentiontime,
     mmi, molarmass, mz, 
     chemicalentity, chemicalspecies, chemicalpair, 
-    chemicalparent, isotopomersisotopes,
+    chemicalparent, isotopomersisotopes, groupedisotopomersisotopes, groupedisotopomersabundance,
     analyzedchemical, detectedchemical, detectedelements, detectedcharge, detectedisotopes,
     inputchemical, outputchemical,
     seriesanalyzedchemical, seriesanalyzedisotopes, seriesanalyzedcharge, seriesanalyzedelements, 
@@ -106,6 +106,8 @@ The following attributes are optional, but generic functions are defined.
 * `chemicalparent -> AbstractChemical`: parent chemical without delocalized isotopes replacement
 * `isotopomersisotopes -> Vector{Pair{String, Int}}`: delocalized isotopes replacement of isotopomers
 * `isotopomerstate -> Int`: isotopomers state, i.e. equivalent number of isotope
+* `groupedisotopomersisotopes -> Vector{Vector{Pair{String, Int}}}`: delocalized isotopes replacements of each isotopomers
+* `groupedisotopomersabundance -> AbstractFloat`: abundance of each isotopomers
 * `chemicalentity -> AbstractChemical`: a single chemical entity representing the chemical
 * `chemicalspecies -> Vector{<: AbstractChemical}`: multiple chemical entities having shared properties. 
 * `chemicaltransition -> Vector{<: AbstractChemical}`: chemical entities analyzed in each stage of instrumental analysis.  
@@ -143,18 +145,18 @@ The following atributes are implemented.
 * `chemicalabbr -> String`: abbreviation
 * `charge -> Int`: charge state; positive for cation, negative for anion.
 * `ncharge -> Int`: number of charges
+* `mmi -> AbstractFloat`: monoisotopic mass
+* `molarmass -> AbstractFloat`: molar mass
 * `chemicalparent -> AbstractChemical`: parent scheme without delocalized isotopes replacement
 * `isotopomersisotopes -> Vector{Pair{String, Int}}`: delocalized isotopes replacement of isotopomers
 * `isotopomerstate -> Int`: isotopomers state, i.e. equivalent number of isotope
-* `chemicalentity -> AbstractChemical`: a single chemical entity involved in scheme
-* `detectedchemical -> AbstractChemical`: a single chemical entity directly detected in the very ending of instrumental analysis. 
-* `seriesanalyzedchemical -> Vector{<: AbstractChemical}`: chemical entities directly analyzed in each stage of instrumental analysis.
-* `detectedcharge -> Int`: charge of detected chemical
-* `detectedelements -> Vector{Pair{String, Int}}`: elements of detected chemical
-* `detectedisotopes -> Vector{Pair{String, Int}}`: isotopes replacement of detected chemical
-* `seriesanalyzedcharge -> Vector{Int}`: charge of sereially analyzed chemicals
-* `seriesanalyzedelements -> Vector{Vector{Pair{String, Int}}}`: elements of sereially analyzed chemicals
-* `seriesanalyzedisotopes -> Vector{Vector{Pair{String, Int}}}`: isotopes replacements of sereially analyzed chemicals
+* `groupedisotopomersisotopes -> Vector{Vector{Pair{String, Int}}}`: delocalized isotopes replacements of each isotopomers
+* `groupedisotopomersabundance -> AbstractFloat`: abundance of each isotopomers
+
+Specific Methods for the attributes are defined for other intrinsic scheme type on different scheme level
+* Entity Level: attribute of the elemental scheme
+* Species Level: attribute of the scheme itself
+* Transition Level: only apply to schema in `ChemicalTransition`; `Species Level` for each scheme
 """
 abstract type AbstractScheme <: AbstractChemicalsSchema end
 # mt, ccs 

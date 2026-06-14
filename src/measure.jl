@@ -3,12 +3,11 @@ charge(isotopomers::Isotopomers; kwargs...) = charge(chemicalparent(isotopomers)
 charge(isotopomers::Groupedisotopomers; kwargs...) = charge(chemicalparent(isotopomers); kwargs...)
 charge(ct::ChemicalTransition; kwargs...) = charge(chemicalentity(ct); kwargs...) 
 
-charge(sch::AbstractCompleteScheme; kwargs...) = charge(elementalscheme(sch); kwargs...)
-charge(loss::ElementalScheme{false}; kwargs...) = charge(loss.chemical; kwargs...)
-charge(gain::ElementalScheme{true}; kwargs...) = -charge(gain.chemical; kwargs...)
-charge(x::IsotopomerizedSchema) = charge(x.parent)
-charge(x::ChemicalSchema) = sum(charge(k) * v for (k, v) in zip(x.schema, x.number))
-charge(x::Groupedisotopomerizedschema) = charge(x.parent)
+charge(x::ElementalScheme{false}; loss = false, kwargs...) = charge(x.chemical; loss = !loss, kwargs...) 
+charge(x::ElementalScheme{true}; loss = false, kwargs...) = charge(x.chemical; loss, kwargs...) 
+charge(x::IsotopomerizedSchema; kwargs...) = charge(chemicalparent(x); kwargs...)
+charge(x::ChemicalSchema; kwargs...) = sum(charge(k; kwargs...) * v for (k, v) in zip(x.schema, x.number))
+charge(x::Groupedisotopomerizedschema; kwargs...) = charge(chemicalparent(x); kwargs...)
 
 retentiontime(isobars::Isobars; kwargs...) = _isobar_species_attr(retentiontime, isobars; kwargs...)
 retentiontime(isotopomers::Isotopomers; kwargs...) = retentiontime(chemicalparent(isotopomers); kwargs...)
@@ -18,87 +17,110 @@ retentiontime(ct::ChemicalTransition; kwargs...) = retentiontime(chemicalentity(
 msstage(isobars::Isobars{<: ChemicalTransition}; kwargs...) = only(unique(msstage.(chemicalspecies(isobars); kwargs...)))
 msstage(ct::ChemicalTransition; kwargs...) = length(ct.transition)
 
-_isobar_species_attr(fn, isobars::Isobars, args...; kwargs...) = mean(fn.(chemicalspecies(isobars), args...), weights(isobars.abundance))
+_isobar_species_attr(fn, isobars::Isobars, args...; kwargs...) = mean(fn.(chemicalspecies(isobars), args...; kwargs...), weights(isobars.abundance))
 
 """
-    mmi(formula::AbstractString, net_charge = 0) -> AbstractFloat
-    mmi(elements, net_charge = 0) -> AbstractFloat
+    mmi(formula::AbstractString, net_charge = 0; loss = false) -> AbstractFloat
+    mmi(elements, net_charge = 0; loss = false) -> AbstractFloat
 
 Monoisotopic mass of formula, and elements.
 """
-function mmi(elements::Union{<: Vector{<: Pair}, <: Dict}, net_charge = 0)
+function mmi(elements::Union{<: Vector{<: Pair}, <: Dict}, net_charge = 0; loss = false)
     # Vector of el => #el
     weight = 0.0
     for (el, n) in elements
         weight += elements_mass()[el] * n
     end
     weight -= net_charge * ME
-    weight
+    loss ? -weight : weight
 end
 
-function deltammi(elements::Union{<: Vector{<: Pair}, <: Dict}, net_charge = 0)
-    weight = 0.0
-    for (el, n) in elements
-        weight += elements_mass()[el] * n
-        weight -= elements_mass()[parent_element(el)] * n
-    end
-    weight -= net_charge * ME
-    weight
-end
+# function deltammi(elements::Union{<: Vector{<: Pair}, <: Dict}, net_charge = 0)
+#     weight = 0.0
+#     for (el, n) in elements
+#         weight += elements_mass()[el] * n
+#         weight -= elements_mass()[parent_element(el)] * n
+#     end
+#     weight -= net_charge * ME
+#     weight
+# end
 
-function mmi(formula::AbstractString, net_charge = 0)
+function mmi(formula::AbstractString, net_charge = 0; loss = false)
     # if any prefix number
     n = match(r"^[0-9]+", formula)
     if isnothing(n)
-        mmi(chemicalelements(formula), net_charge)
+        mmi(chemicalelements(formula), net_charge; loss)
     else
         formula = replace(formula, n.match => "")
-        mmi(chemicalelements(formula), net_charge) * parse(Int, n.match)
+        mmi(chemicalelements(formula), net_charge; loss) * parse(Int, n.match)
     end
 end
 
-mmi(isobars::Isobars) = _isobar_species_attr(mmi, isobars)
-mmi(isotopomers::Groupedisotopomers) = mmi(chemicalparent(isotopomers)) + mean([sum([(mmi(x) - mmi(elements_parents()[x])) * n for (x, n) in iso]; init = 0) for iso in isotopomers.isotopes], weights(isotopomers.abundance))
-mmi(isotopomers::Isotopomers) = mmi(chemicalelements(isotopomers), charge(isotopomers))
-mmi(ct::ChemicalTransition) = mmi(analyzedchemical(ct))
+element_mmi(x) = elements_mass()[x]
+
+function _mass_isotope(isotopes; loss = false, kwargs...) 
+    m = sum([(element_mmi(x) - element_mmi(elements_parents()[x])) * n for (x, n) in isotopes]; init = 0)
+    loss ? -m : m
+end
+function _mass_isotope(isotopes, abundance; loss = false, kwargs...) 
+    m = mean([sum([(element_mmi(x) - element_mmi(elements_parents()[x])) * n for (x, n) in iso]; init = 0) for iso in isotopes], weights(abundance))
+    loss ? -m : m
+end
+
+mmi(isobars::Isobars; kwargs...) = _isobar_species_attr(mmi, isobars; kwargs...)
+mmi(x::Isotopomers; kwargs...) = mmi(chemicalparent(x); kwargs...) + _mass_isotope(x.isotopes; kwargs...)
+mmi(x::Groupedisotopomers; kwargs...) = mmi(chemicalparent(x); kwargs...) + _mass_isotope(x.isotopes, x.abundance; kwargs...)
+mmi(ct::ChemicalTransition; kwargs...) = mmi(analyzedchemical(ct); kwargs...)
+
+mmi(x::ElementalScheme{false}; loss = false, kwargs...) = mmi(x.chemical; loss = !loss, kwargs...) 
+mmi(x::ElementalScheme{true}; loss = false, kwargs...) = mmi(x.chemical; loss, kwargs...)
+mmi(x::ChemicalSchema; kwargs...) = sum(mmi(k; kwargs...) * v for (k, v) in zip(x.schema, x.number)) 
+mmi(x::IsotopomerizedSchema; kwargs...) = mmi(chemicalparent(x); kwargs...) + _mass_isotope(x.isotopes; kwargs...)
+mmi(x::Groupedisotopomerizedschema; kwargs...) = mmi(chemicalparent(x); kwargs...) + _mass_isotope(x.isotopes, x.abundance; kwargs...)
 
 """
-    molarmass(formula::AbstractString, net_charge = 0) -> AbstractFloat
-    molarmass(elements, net_charge = 0) -> AbstractFloat
+    molarmass(formula::AbstractString, net_charge = 0; loss = false) -> AbstractFloat
+    molarmass(elements, net_charge = 0; loss = false) -> AbstractFloat
 
 Molar mass of formula, and elements.
 """
-function molarmass(elements::Union{<: Vector{<: Pair}, <: Dict}, net_charge = 0)
+function molarmass(elements::Union{<: Vector{<: Pair}, <: Dict}, net_charge = 0; loss = false)
     # Vector of el => #el
     weight = 0.0
     for (el, n) in elements
-        if iselement(string(el))
-            for i in elements_isotopes()[string(el)]
+        if iselement(el)
+            for i in elements_isotopes()[el]
                 weight += elements_mass()[i] * n * elements_abundance()[i]
             end
         else
-            weight += elements_mass()[string(el)] * n
+            weight += elements_mass()[el] * n
         end
     end
     weight -= net_charge * ME
-    weight
+    loss ? -weight : weight
 end
 
-function molarmass(formula::AbstractString, net_charge = 0)
+function molarmass(formula::AbstractString, net_charge = 0; loss = false)
     # if any prefix number
     n = match(r"^[0-9]+", formula)
     if isnothing(n)
-        molarmass(chemicalelements(formula), net_charge)
+        molarmass(chemicalelements(formula), net_charge; loss)
     else
         formula = replace(formula, n.match => "")
-        molarmass(chemicalelements(formula), net_charge) * parse(Int, n.match)
+        molarmass(chemicalelements(formula), net_charge; loss) * parse(Int, n.match)
     end
 end
 
-molarmass(isobars::Isobars) = _isobar_species_attr(molarmass, isobars)
-molarmass(isotopomers::Groupedisotopomers) = molarmass(chemicalparent(isotopomers)) + mean([sum([(molarmass(x) - molarmass(elements_parents()[x])) * n for (x, n) in iso]; init = 0) for iso in isotopomers.isotopes], weights(isotopomers.abundance))
-molarmass(isotopomers::Isotopomers) = molarmass(chemicalelements(isotopomers), charge(isotopomers))
-molarmass(ct::ChemicalTransition) = molarmass(analyzedchemical(ct))
+molarmass(isobars::Isobars; kwargs...) = _isobar_species_attr(molarmass, isobars; kwargs...)
+molarmass(x::Isotopomers; kwargs...) = molarmass(chemicalparent(x); kwargs...) + _mass_isotope(x.isotopes; kwargs...)
+molarmass(x::Groupedisotopomers; kwargs...) = molarmass(chemicalparent(x); kwargs...) + _mass_isotope(x.isotopes, x.abundance; kwargs...)
+molarmass(ct::ChemicalTransition; kwargs...) = molarmass(analyzedchemical(ct); kwargs...)
 
-mz(ct::ChemicalTransition) = mz(analyzedchemical(ct))
-mz(ct::ChemicalTransition, adduct) = mz(analyzedchemical(ct), adduct)
+molarmass(x::ElementalScheme{false}; loss = false, kwargs...) = molarmass(x.chemical; loss = !loss, kwargs...) 
+molarmass(x::ElementalScheme{true}; loss = false, kwargs...) = molarmass(x.chemical; loss, kwargs...) 
+molarmass(x::ChemicalSchema; kwargs...) = sum(molarmass(k; kwargs...) * v for (k, v) in zip(x.schema, x.number))
+molarmass(x::IsotopomerizedSchema; kwargs...) = molarmass(chemicalparent(x); kwargs...) + _mass_isotope(x.isotopes; kwargs...)
+molarmass(x::Groupedisotopomerizedschema; kwargs...) = molarmass(chemicalparent(x); kwargs...) + _mass_isotope(x.isotopes, x.abundance; kwargs...)
+
+mz(ct::ChemicalTransition; kwargs...) = mz(analyzedchemical(ct); kwargs...)
+mz(ct::ChemicalTransition, adduct; kwargs...) = mz(analyzedchemical(ct), adduct; kwargs...)

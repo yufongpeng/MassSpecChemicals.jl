@@ -34,7 +34,7 @@ function seriesisotopomerize(transitions::Vector{<: AbstractChemicalsSchema}, el
     @inbounds map(els) do el
         ChemicalTransition(map(enumerate(transitions)) do (i, trans)
             (islossscheme(trans) || isgainscheme(trans)) && i == firstindex(transitions) && throw(ArgumentError("$(typeof(trans)) cannot be input chemical."))
-            islossscheme(trans) ? isotopomerize(trans, collect(loss_elements(el[i - 1], el[i]))) : isotopomerize(trans, el[i])
+            islossscheme(trans) ? isotopomerize(trans, collect(loss_elements(el[i], el[i - 1]))) : isotopomerize(trans, el[i])
         end
         )
     end
@@ -384,7 +384,7 @@ function isotopologues_elements_ms2(it1, element_precursor_dictionary, element_p
             element_product_is, proportion_product_is = isotopes_proportion(element, element_product_dictionary, element_precursor_dictionary, abundance * proportion, proportion_cutoff)
             mass_product_is = map(mmi, element_product_is) 
             id = sortperm(mass_product_is)
-            (; Element = loss ? [filter(!iselement ∘ first, loss_elements(element, x)) for x in element_product_is[id]] : element_product_is[id], 
+            (; Element = loss ? [filter(!iselement ∘ first, loss_elements(x, element)) for x in element_product_is[id]] : element_product_is[id], 
             Mass = mass_product_is[id], 
             Abundance = proportion_product_is[id])
         end

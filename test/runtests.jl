@@ -44,25 +44,26 @@ end
         @test @test_noerror test_show(lossserine)
         @test chemicalname(lossserine) == "Loss_Serine"
         @test chemicalabbr(lossserine) == "-Ser"
-        @test chemicalformula(lossserine) == chemicalformula(chemicalelements(lossserine); ischemical = false, loss = true)
+        @test chemicalformula(lossserine) == chemicalformula(chemicalelements(lossserine); ischemical = false)
         # chemicalgain
         @test @test_noerror test_show(ChemicalGain(Ammonia()))
         @test chemicalname(ChemicalGain(Ammonia())) == "Gain_Ammonia"
         @test chemicalabbr(ChemicalGain(Ammonia())) == "+NH3"
-        @test chemicalformula(ChemicalGain(Ammonia())) == chemicalformula(chemicalelements(ChemicalGain(Ammonia())); ischemical = false, loss = true)
+        @test chemicalformula(ChemicalGain(Ammonia())) == chemicalformula(chemicalelements(ChemicalGain(Ammonia())); ischemical = false)
         # mix 
         @test @test_noerror test_show(losshserine)
         @test chemicalname(losshserine) == "Loss_[Serine+H]+"
         @test chemicalabbr(losshserine) == "-[Ser+H]+"
-        @test chemicalformula(losshserine) == chemicalformula(chemicalelements(losshserine); ischemical = false, loss = true)
+        @test chemicalformula(losshserine) == chemicalformula(chemicalelements(losshserine); ischemical = false)
         @test @test_noerror test_show(losshserinegainwater)
         @test chemicalname(losshserinegainwater) == "Loss_[Serine+H]+|Gain_Water"
         @test chemicalabbr(losshserinegainwater) == "[-Ser-H+H2O]-"
-        @test chemicalformula(losshserinegainwater) == chemicalformula(chemicalelements(losshserinegainwater); ischemical = false, loss = true)
+        @test chemicalformula(losshserinegainwater) == chemicalformula(chemicalelements(losshserinegainwater); ischemical = false)
         @test @test_noerror test_show(losshserinegaincolossco)
         @test chemicalname(losshserinegaincolossco) == "Loss_[Serine+H]+|+[CO]-[CO]"
         @test chemicalabbr(losshserinegaincolossco) == "[-Ser-H+CO-CO]-"
-        @test chemicalformula(losshserinegaincolossco) == chemicalformula(chemicalelements(losshserinegaincolossco); ischemical = false, loss = true)
+        @test chemicalformula(losshserinegaincolossco) == chemicalformula(chemicalelements(losshserinegaincolossco); ischemical = false)
+        @test isempty(isotopomersisotopes(losshserinegaincolossco))
         # mmi, mz 
         @test isnan(mz(cglc))
         @test isapprox(mz(icpsi1[1]), mz(icps[1]))
@@ -137,7 +138,7 @@ end
         @test chemicalname(ips[1]) == "[(PS 18:0/20:4)-Ser-H]-"
         @test chemicalname(ionadduct(first(ipsi1))) == "Loss_[Serine[D3,13C3]+H]+"
         @test chemicalabbr(ionadduct(first(ipsi1))) == "-[Ser[D3,13C3]+H]+"
-        @test chemicalformula(ionadduct(first(ipsi1))) == chemicalformula(chemicalelements(ionadduct(first(ipsi1))); ischemical = false, loss = true)
+        @test chemicalformula(ionadduct(first(ipsi1))) == chemicalformula(chemicalelements(ionadduct(first(ipsi1))); ischemical = false)
         @test chemicalformula(ps) != chemicalformula(cps) 
         @test chemicalformula(ipsi1[2]; unique = true) == chemicalformula(icpsi1[2]) 
         @test MSC.unique_elements(chemicalelements(ipsi1[1])) ==  MSC.unique_elements(vcat(chemicalelements(ioncore(ipsi1[1])), chemicalelements(ionadduct(ipsi1[1]); loss = false))) 
@@ -172,6 +173,8 @@ end
         # chemicalstructure  
         @test !ischemicalequal(ChemicalGain(Proton()), lossserine)
         @test !ischemicalequal(cp1, lossserine)
+        @test !ischemicalequal(losshserinegaincolossco, lossserine)
+        @test !ischemicalequal(ChemicalLoss(Proton()), ionadduct(AdductIon(psi2.fa1, ChemicalLoss(Proton()))))
         @test ischemicalequal(chemicalentity(cp2), chemicalentity(cp3))
         @test ischemicalequal(analyzedchemical(cp2), analyzedchemical(cp3))
         @test ischemicalequal(detectedchemical(cp2), detectedchemical(cp3))
@@ -186,7 +189,7 @@ end
         @test detectedisotopes(itit12.Chemical[1]) == last(seriesanalyzedisotopes(itit12.Chemical[1]))
         @test detectedisotopes(itit12.Chemical[11]) == last(seriesanalyzedisotopes(itit12.Chemical[11]))
         @test detectedcharge(itit12.Chemical[11]) == last(seriesanalyzedcharge(itit12.Chemical[11]))
-        @test MSC.dictionary_elements(seriesanalyzedelements(cp5)[2]) == MSC.dictionary_elements(MSC.loss_elements(chemicalelements(cp5), chemicalelements(chemicaltransition(cp5)[2])))
+        @test MSC.dictionary_elements(seriesanalyzedelements(cp5)[2]) == MSC.dictionary_elements(MSC.gain_elements(chemicalelements(cp5), chemicalelements(chemicaltransition(cp5)[2])))
         @test MSC.dictionary_elements(seriesanalyzedelements(sp5)[2]) == MSC.dictionary_elements(chemicalelements(isotopomerize(completescheme(ipsi1[1], outputchemical(sp1)), ["[13C]" => 5])))
         @test MSC.dictionary_elements.(chemicalelements.(seriesanalyzedchemical(itit12.Chemical[11]))) == MSC.dictionary_elements.(chemicalelements.(seriesanalyzedchemical(itit12.Chemical[11])))
     end
@@ -278,7 +281,7 @@ end
         @test isapprox(molarmass(pt1.Chemical[1]), 6 * molarmass("C") + 13 * molarmass("H") + 6 * molarmass("O") - MSC.ME)
         # other attr
         @test chemicalabbr(pt1.Chemical[1]) == "Isobars[[Glc+H]+]"
-        @test chemicalsmiles(pt1.Chemical[1]) == ""
+        @test isempty(chemicalsmiles(pt1.Chemical[1]))
         @test isapprox(charge(pt1.Chemical[2]), 1)
         @test getchemicalproperty(pt1.Chemical[2], :chemicals) == pt1.Chemical[2].chemicals
         @test getchemicalproperty(pt1.Chemical[2], :abundance) == pt1.Chemical[2].abundance
@@ -321,7 +324,9 @@ end
         @test all(isapprox.(mmi.(git3.Chemical), git3.MZ1; rtol = 20e-6))
         @test all(isapprox.(mz.(git3.Chemical), git3.MZ1; rtol = 20e-6))
         @test isapprox(mz(git3.Chemical[2], "[M-Ser-H]-"), mz(git3.Chemical[2]))
+        @test isapprox(molarmass(git3.Chemical[2]), molarmass(git3.Chemical[2]))
         @test charge(git3.Chemical[2]) == -1
+        @test isempty(chemicalsmiles(git3.Chemical[2]))
         @test chemicalparent(chemicalentity(gitit13.Chemical[4])) == chemicalentity(chemicalparent(gitit13.Chemical[4]))
         @test ischemicalequal(git3.Chemical[2], git3.Chemical[2])
         @test ischemicalequal(git3.Chemical[1], git3.Chemical[1].parent)
@@ -329,9 +334,27 @@ end
     end
     @testset "IsotopomerizedSchema" begin 
         @test @test_noerror test_show(itit12.Chemical[11])
+        @test chemicalabbr(itit12.Chemical[5]) == join(chemicalabbr.(chemicaltransition(itit12.Chemical[5])), " -> ") 
+        @test chemicalname(itit12.Chemical[5]) == join(chemicalname.(chemicaltransition(itit12.Chemical[5])), " -> ") 
+        @test chemicalformula(chemicaltransition(itit12.Chemical[5])[2]) == chemicalformula(chemicalelements(chemicaltransition(itit12.Chemical[5])[2]))
+        @test isotopomersisotopes(chemicaltransition(itit12.Chemical[5])[2]) == filter(!iselement ∘ first, chemicalelements(chemicaltransition(itit12.Chemical[5])[2]))
+        @test ischemicalequal(chemicaltransition(itit12.Chemical[1])[2], chemicaltransition(itit12.Chemical[2])[2])
+        @test !ischemicalequal(chemicaltransition(itit12.Chemical[1])[2], chemicaltransition(itit12.Chemical[2])[3])
+        # # mmi, mz
+        @test isapprox(sum(mmi, chemicaltransition(itit12.Chemical[5])), itit12.MZ3[5]; rtol = 20e-6)
+        @test isapprox(sum(molarmass, chemicaltransition(itit12.Chemical[5])), molarmass(detectedchemical(itit12.Chemical[5])); rtol = 20e-6)
     end
     @testset "Groupedisotopomerizedchema" begin 
         @test @test_noerror test_show(gitit12.Chemical[7])
+        @test chemicalabbr(gitit12.Chemical[6]) == join(chemicalabbr.(chemicaltransition(gitit12.Chemical[6])), " -> ")
+        @test chemicalname(gitit12.Chemical[6]) == join(chemicalname.(chemicaltransition(gitit12.Chemical[6])), " -> ")
+        @test chemicalformula(chemicaltransition(gitit12.Chemical[6])[2]) == chemicalformula(chemicalelements(chemicaltransition(gitit12.Chemical[6])[2]))
+        @test isotopomersisotopes(chemicaltransition(gitit12.Chemical[6])[2]) == filter(!iselement ∘ first, chemicalelements(chemicaltransition(gitit12.Chemical[6])[2]))
+        @test ischemicalequal(chemicaltransition(itit12.Chemical[1])[2], chemicaltransition(gitit12.Chemical[1])[2])
+        @test !ischemicalequal(chemicaltransition(gitit12.Chemical[4])[2], chemicaltransition(gitit12.Chemical[7])[2])
+        # # mmi, mz
+        @test isapprox(sum(mmi, chemicaltransition(gitit12.Chemical[6])), gitit12.MZ3[6]; rtol = 20e-6)
+        @test isapprox(sum(molarmass, chemicaltransition(gitit12.Chemical[6])), molarmass(detectedchemical(gitit12.Chemical[6])); rtol = 20e-6)
     end
     @testset "CoelutingIsobars" begin 
         @test @test_noerror test_show(ci1)
