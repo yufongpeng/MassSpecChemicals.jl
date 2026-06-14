@@ -7,7 +7,7 @@
         @test chemicalformula(["C" => -2, "H" => -5, "O" => -1, "H" => -1]; unique = false, ischemical = false, loss = false) == "-C2H5OH"
         @test chemicalformula(["C" => 2, "H" => 5, "O" => 1, "H" => 1, "C" => -1, "O" => -1]; unique = false, loss = false) == "CH6"
         @test chemicalformula(["C" => -2, "H" => -5, "O" => -1, "H" => -1, "C" => 1, "O" => 1, "F" => 1]; unique = false, ischemical = false, loss = false) == "-C2H5OH+COF"
-        @test chemicalformula(MSC.dictionary_elements(["C" => -2, "H" => -5, "O" => -1, "H" => -1, "C" => 1, "O" => 1, "F" => 1]); ischemical = false, loss = false) == "-CH6+F"
+        @test chemicalformula(MSC.dictionary_elements(Dictionary, ["C" => -2, "H" => -5, "O" => -1, "H" => -1, "C" => 1, "O" => 1, "F" => 1]); ischemical = false, loss = false) == "-CH6+F"
 
     end
     @testset "getchemicalproperty" begin
