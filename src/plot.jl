@@ -141,7 +141,7 @@ function spectrum_id(mz_lower, mz_upper, spectrum, np)
 end
 
 """
-    plot_resolving_power([mz_range = nothing,] ms::AbstractMSAnalyzer; n = 1000, kwargs...)
+    plot_resolving_power([mz_range = nothing,] ms::AbstractMSAnalyzer; n = 1000, label = msanalyzer_name(ms), kwargs...)
 
 Plot the function of m/z to resolving_power.
 
@@ -150,12 +150,12 @@ Plot the function of m/z to resolving_power.
 
 Other keyword arguments can controls the settings of plot.
 """
-plot_resolving_power(mz_range, ms::AbstractMSAnalyzer; n = 1000, kwargs...) = 
-    _plot_resolving_power(mz_range, ms; n, kwargs...)
-plot_resolving_power(ms::AbstractMSAnalyzer; n = 1000, kwargs...) = plot_resolving_power(nothing, ms; n, kwargs...)
+plot_resolving_power(mz_range, ms::AbstractMSAnalyzer; n = 1000, label = msanalyzer_name(ms), kwargs...) = 
+    _plot_resolving_power(mz_range, ms; n, label, kwargs...)
+plot_resolving_power(ms::AbstractMSAnalyzer; n = 1000, label = msanalyzer_name(ms), kwargs...) = plot_resolving_power(nothing, ms; n, label, kwargs...)
 
 """
-    plot_resolving_power!([mz_range = nothing,] ms::AbstractMSAnalyzer; n = 1000, kwargs...)
+    plot_resolving_power!([mz_range = nothing,] ms::AbstractMSAnalyzer; n = 1000, label = msanalyzer_name(ms), kwargs...)
 
 Plot the function of m/z to resolving_power to an existing figure.
 
@@ -164,11 +164,11 @@ Plot the function of m/z to resolving_power to an existing figure.
 
 Other keyword arguments can controls the settings of plot.
 """
-plot_resolving_power!(mz_range, ms::AbstractMSAnalyzer; n = 1000, kwargs...) = 
-    _plot_resolving_power(mz_range, ms; n, kwargs..., fn = plot!)
-plot_resolving_power!(ms::AbstractMSAnalyzer; n = 1000, kwargs...) = plot_resolving_power!(nothing, ms; n, kwargs...)
+plot_resolving_power!(mz_range, ms::AbstractMSAnalyzer; n = 1000, label = msanalyzer_name(ms), kwargs...) = 
+    _plot_resolving_power(mz_range, ms; n, label, kwargs..., fn = plot!)
+plot_resolving_power!(ms::AbstractMSAnalyzer; n = 1000, label = msanalyzer_name(ms), kwargs...) = plot_resolving_power!(nothing, ms; n, label, kwargs...)
 
-function _plot_resolving_power(mz_range, ms::AbstractMSAnalyzer; fn = plot, n = 1000, kwargs...)
+function _plot_resolving_power(mz_range, ms::AbstractMSAnalyzer; fn = plot, n = 1000, label = msanalyzer_name(ms), kwargs...)
     if isnothing(mz_range)
         mz_range = ms.mz
     end
@@ -181,19 +181,18 @@ function _plot_resolving_power(mz_range, ms::AbstractMSAnalyzer; fn = plot, n = 
     y = resolving_power.(Ref(ms), x)
     kwargs = Dict(kwargs...)
     respow_kwargs!(kwargs)
-    fn(x, y; kwargs...)
+    fn(x, y; label, kwargs...)
 end
 
 function respow_kwargs!(kwargs)
     get!(kwargs, :xlabel, "m/z")
     get!(kwargs, :ylabel, "Resolution (m/Δm)")
     get!(kwargs, :title, "Resolving Power")
-    get!(kwargs, :label, nothing)
     kwargs
 end
 
 """
-    plot_window(window::AbstractWindow; fwhm = 0.7, binsize = 0.01, nbin_multiplier = 1, height = 0.01, kwargs...)
+    plot_window(window::AbstractWindow; fwhm = 0.7, binsize = 0.01, nbin_multiplier = 1, height = 0.01, label = window_name(window), kwargs...)
 
 Plot the window function.
 
@@ -204,11 +203,11 @@ Plot the window function.
 
 Other keyword arguments can controls the settings of plot.
 """
-plot_window(window::AbstractWindow; fwhm = 0.7, binsize = 0.01, stepsize = 1, height = 0.01, kwargs...) = 
-    _plot_window(window; fwhm, binsize, stepsize, height)
+plot_window(window::AbstractWindow; fwhm = 0.7, binsize = 0.01, stepsize = 1, height = 0.01, label = window_name(window), kwargs...) = 
+    _plot_window(window; fwhm, binsize, stepsize, height, label, kwargs...)
 
 """
-    plot_window!(window::AbstractWindow; fwhm = 0.7, binsize = 0.01, nbin_multiplier = 1, height = 0.01, kwargs...)
+    plot_window!(window::AbstractWindow; fwhm = 0.7, binsize = 0.01, nbin_multiplier = 1, height = 0.01, label = window_name(window), kwargs...)
 
 Plot the window function to an existing figure.
 
@@ -219,21 +218,20 @@ Plot the window function to an existing figure.
 
 Other keyword arguments can controls the settings of plot.
 """
-plot_window!(window::AbstractWindow; fwhm = 0.7, binsize = 0.01, stepsize = 1, height = 0.01, kwargs...) = 
-    _plot_window(window; fn = plot!, fwhm, binsize, stepsize, height)
+plot_window!(window::AbstractWindow; fwhm = 0.7, binsize = 0.01, stepsize = 1, height = 0.01, label = window_name(window), kwargs...) = 
+    _plot_window(window; fn = plot!, fwhm, binsize, stepsize, height, label, kwargs...)
 
-function _plot_window(window::AbstractWindow; fn = plot, fwhm = 0.7, binsize = 0.01, stepsize = 1, height = 0.01, kwargs...)
+function _plot_window(window::AbstractWindow; fn = plot, fwhm = 0.7, binsize = 0.01, stepsize = 1, height = 0.01, label = window_name(window), kwargs...)
     y = discrete_window(window, fwhm, binsize, stepsize, height)
     x = (eachindex(y) .- (length(y) ÷ 2 + 1)) .* binsize
     kwargs = Dict(kwargs...)
     window_kwargs!(kwargs)
-    fn(x, y; kwargs...)
+    fn(x, y; label, kwargs...)
 end
 
 function window_kwargs!(kwargs)
     get!(kwargs, :xlabel, "m/z")
     get!(kwargs, :ylabel, "Transmission")
     get!(kwargs, :title, "Window")
-    get!(kwargs, :label, nothing)
     kwargs
 end

@@ -40,14 +40,9 @@ Gaussian window.
 * `σ2`: variance
 """
 struct GaussianWindow <: AbstractWindow end
-struct GaussianDilatedWindow <: AbstractWindow
-    taperwidth
-    taperheight
-    min_fwhm
-end
-GaussianDilatedWindow(taperwidth, taperheight) = GaussianDilatedWindow(taperwidth, taperheight, taperwidth / (1 - sqrt(log(2, 1 / taperheight))))
-struct GaussianTailedUniformWindow <: AbstractWindow
-    taperwidth
+
+struct GaussianTailedUniformWindow{T} <: AbstractWindow
+    taperwidth::T
 end
 
 """
@@ -64,8 +59,8 @@ Tukey window with fixed width of taper.
 * `μ`: mean (center)
 * `fwhm`: full width at half maximum
 """
-struct FixedTaperTukeyWindow <: AbstractWindow 
-    taperwidth
+struct FixedTaperTukeyWindow{T} <: AbstractWindow 
+    taperwidth::T
 end
 
 """
@@ -79,8 +74,8 @@ Tukey window.
 * `μ`: mean (center)
 * `fwhm`: full width at half maximum
 """
-struct TukeyWindow <: AbstractWindow 
-    taperproportion
+struct TukeyWindow{T} <: AbstractWindow 
+    taperproportion::T
 end
 
 """
@@ -108,18 +103,6 @@ Rectangular window.
 * `fwhm`: full width at half maximum
 """
 struct RectWindow <: AbstractWindow end
-
-"""
-    DiscreteGaussianWindow <: ZeroCenteredtWindow 
-
-Discrete gaussian window.
-
-# Window Function
-    (::DiscreteGaussianWindow)(x, t)
-
-* `t`: variance
-"""
-struct DiscreteGaussianWindow <: ZeroCenteredtWindow end
 
 """
     SampledGaussianWindow <: ZeroCenteredtWindow 
@@ -152,7 +135,7 @@ struct SuperGaussianWindow{T} <: AbstractWindow
 end
 
 """
-    PowerCosineWindow <: AbstractWindow 
+    PowerCosineWindow{T} <: AbstractWindow 
 
 Power cosine (top half) window.
 
@@ -420,8 +403,6 @@ struct LocalMaxima <: AlgSpecPeak
     threshold::Real
 end 
 LocalMaxima() = LocalMaxima(0.1)
-
-struct FWHMMaxima <: AlgSpecPeak end 
 
 """
     CoelutingIsobars

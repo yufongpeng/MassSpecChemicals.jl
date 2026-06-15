@@ -1,18 +1,34 @@
 @info "Running tests for Spectrum and CoelutingIsobars"
 
+@testset "MS analyzer" begin 
+    @test all((q.window isa W for (q, W) in zip(qa, [MSC.SuperGaussianWindow, MSC.GaussianWindow, MSC.CosineWindow, MSC.TukeyWindow, MSC.RectWindow])))
+    @test all((q.window isa W for (q, W) in zip(qita, [MSC.GaussianWindow, MSC.SuperGaussianWindow])))
+    @test all((q.window isa W for (q, W) in zip(lita, [MSC.GaussianWindow, MSC.CosineWindow, MSC.TukeyWindow, MSC.RectWindow])))
+    for q in qa 
+        dw = MSC.discrete_window(q, [500.0], 0.0001, 1, 0.0001)
+        @test isapprox(0.0001 * (findlast(>=(0.5), first(dw)) - findfirst(>=(0.5), first(dw))), MSC.fwhm_mz(q, 500.0); rtol = 1e-3)
+    end
+    for q in msa 
+        dw = MSC.discrete_window(q, [500.0], 0.0001, 1, 0.0001)
+        isapprox(0.0001 * (findlast(>=(0.5), first(dw)) - findfirst(>=(0.5), first(dw))), MSC.fwhm_mz(q, 500.0); rtol = 1e-3)
+    end
+    for (ms, nm) in [Quadrupole() => "Quadrupole", QIT() => "Quadrupole Ion Trap", LIT() => "Linear Ion Trap", TOF() => "TOF", Orbitrap() => "Orbitrap", FTICR() => "FTICR"]
+        @test MSC.msanalyzer_name(ms) == nm
+    end
+    for (ms, nm) in zip(msa, ["MS-Analyzer with Uniform Window (Gaussian-Tailed)", "MS-Analyzer with Power Cosine Window", "MS-Analyzer with Tukey Window (Fixed Taper)"])
+        @test MSC.msanalyzer_name(ms) == nm
+    end
+    @test @test_noerror plot_window(MSC.GaussianWindow())
+    @test @test_noerror plot_window!(MSC.TukeyWindow(0.2))
+    @test @test_noerror plot_resolving_power((0, 1000), FTICR())
+    @test @test_noerror plot_resolving_power!((0, 1000), Orbitrap())
+end
+
 @testset "Spectrum" begin 
     @test @test_noerror test_show(spec1)
     @test isapprox(pt2.Abundance2[1], 20000)
     @test @test_noerror plot_spectrum((948.1, 951.5), spec2)
     @test @test_noerror plot_spectrum!((948.1, 951.5), spec2; deconvolution = true)
-    @test @test_noerror plot_window(MSC.GaussianWindow())
-    @test @test_noerror plot_window!(MSC.TukeyWindow(0.2))
-    @test @test_noerror plot_window!(MSC.CosineWindow())
-    @test @test_noerror plot_window!(MSC.SuperGaussianWindow(4))
-    @test @test_noerror plot_resolving_power((0, 1000), TOF())
-    @test @test_noerror plot_resolving_power!((0, 1000), Orbitrap())
-    @test @test_noerror plot_resolving_power!((0, 1000), FTICR())
-    @test MSC.fwhm_mz(QIT(), 100.0) == MSC.fwhm_mz(LIT(), 100.0)
 end
 
 @testset "CoelutingIsobars" begin 

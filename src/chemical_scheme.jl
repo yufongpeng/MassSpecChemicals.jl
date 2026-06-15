@@ -99,12 +99,15 @@ ionize(::Type{AdductIon}, chemical::Groupedisotopomers; adduct, ncore = 1, kwarg
 Add delocalized isotopic replacements `isotopes` to `chemical`.
 """
 isotopomerize(chemical::AbstractChemical, isotopes) = Isotopomers(chemical, isotopes)
-isotopomerize(chemical::Isotopomers, isotopes) = Isotopomers(chemical.parent, collect(gain_elements(chemical.isotopes, isotopes)))
+isotopomerize(chemical::Isotopomers, isotopes) = Isotopomers(chemical.parent, gain_elements(chemical.isotopes, isotopes))
 isotopomerize(sch::StructuralElementalScheme, isotopes) = StructuralElementalScheme(structuralscheme(sch), isotopomerize(elementalscheme(sch), isotopes))
 isotopomerize(sch::ElementalScheme{true}, isotopes) = ElementalScheme(true, isotopomerize(sch.chemical, isotopes))
 isotopomerize(sch::ElementalScheme{false}, isotopes) = ElementalScheme(false, isotopomerize(sch.chemical, reverse_elements(isotopes, true)))
+# isotopomerize(sch::ElementalScheme{false}, isotopes::Tuple) = ElementalScheme(false, isotopomerize(sch.chemical, loss_elements(isotopes...)))
 isotopomerize(sch::ChemicalSchema, isotopes) = IsotopomerizedSchema(sch, isotopes)
-isotopomerize(sch::IsotopomerizedSchema, isotopes) = IsotopomerizedSchema(sch.parent, collect(gain_elements(sch.isotopes, isotopes)))
+# isotopomerize(sch::ChemicalSchema, isotopes::Tuple) = IsotopomerizedSchema(sch, loss_elements(last(isotopes), first(isotopes)))
+isotopomerize(sch::IsotopomerizedSchema, isotopes) = IsotopomerizedSchema(sch.parent, gain_elements(sch.isotopes, isotopes))
+# isotopomerize(sch::IsotopomerizedSchema, isotopes::Tuple) = IsotopomerizedSchema(sch.parent, loss_elements!(gain_elements(sch.isotopes, last(isotopes), first(isotopes))))
 isotopomerize(sch::T, isotopes) where {T<:AbstractScheme} = throw(ArgumentError("Cannot add isotopes information to $T."))
 
 """

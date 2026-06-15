@@ -33,9 +33,9 @@ jobs:
           - x64
         exclude:
           - os: macOS-latest
-            arch: x86
+            arch: x64
           - os: windows-latest
-            arch: x86
+            arch: x64
             version: 'nightly'
         include:
           - os: macOS-latest

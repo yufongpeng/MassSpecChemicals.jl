@@ -1,4 +1,31 @@
-# GQ1 
+@info "Defining MS analyzer"
+
+qa = [
+    Quadrupole(; fwhm = 1.4),
+    Quadrupole(; fwhm = 0.7), 
+    Quadrupole(500.0; offset = 0.1, taperproportion = 1),
+    Quadrupole(500.0; taperproportion = 0.5),
+    Quadrupole(500.0; taperproportion = 0)
+]
+
+qita = [
+    QIT(),
+    QIT(500.0), 
+]
+
+lita = [
+    LIT(),
+    LIT(500.0; offset = 0.1, taperproportion = 1),
+    LIT(500.0; taperproportion = 0.5),
+    LIT(500.0; taperproportion = 0)
+]
+
+msa = [
+    MSAnalyzer(MSC.GaussianTailedUniformWindow(0.5), 500.0, 0.1, x -> 1.0, 0.1, 0.1),
+    MSAnalyzer(MSC.PowerCosineWindow(0.5), 500.0, 0.1, x -> 1.0, 0.1, 0.1),
+    MSAnalyzer(MSC.FixedTaperTukeyWindow(0.2), 500.0, 0.1, x -> 1.0, 0.1, 0.1),
+]
+
 @info "Defining chemical and product table"
 
 GQ1 = Chemical("GQ1b 18:1;O2/18:0", "C106H182N6O55")

@@ -45,7 +45,7 @@ msanalyzer_name(::LinearIonTrap) = "Linear Ion Trap"
 msanalyzer_name(::TOF) = "TOF"
 msanalyzer_name(::Orbitrap) = "Orbitrap"
 msanalyzer_name(::FTICR) = "FTICR"
-msanalyzer_name(::MSAnalyzer) = "MS-Analyzer"
+msanalyzer_name(x::MSAnalyzer{T}) where T = string("MS-Analyzer with ", window_name(x.window))
 
 """
     resolving_power(ms::AbstractMSAnalyzer, mz::Real) -> Real
@@ -74,18 +74,19 @@ function sgaussian_norm!(u::AbstractVector, ν::AbstractRange, t)
     u
 end
 
-beseel_max(::Type{Float64}) = 713.0
-beseel_max(::Type{Float32}) = Float32(91)
-dgaussian_norm(ν::Real, t::T) where T = (t = min(t, beseel_max(T)); exp(-t) * besseli(ν, t))
-dgaussian_norm(ν::AbstractRange, t::T) where T = dgaussian!(zeros(T, length(ν)), ν, t)
-function dgaussian_norm!(u::AbstractVector, ν::AbstractRange, t) 
-    t = min(t, beseel_max(T))
-    u = besseli!(u, ν, t)
-    f = exp(-t)
-    u .*= f 
-end
+"""
+    window_name(ms::AbstractWindow) -> String
 
-(::DiscreteGaussianWindow)(ν, t) = dgaussian_norm(ν, t)
+Common name of the window.
+"""
+window_name(::GaussianWindow) = "Gaussian Window"
+window_name(::GaussianTailedUniformWindow) = "Uniform Window (Gaussian-Tailed)"
+window_name(::FixedTaperTukeyWindow) = "Tukey Window (Fixed Taper)"
+window_name(::TukeyWindow) = "Tukey Window"
+window_name(::CosineWindow) = "Cosine Window"
+window_name(::RectWindow) = "Rectangular Window"
+window_name(::PowerCosineWindow) = "Power Cosine Window"
+
 (::SampledGaussianWindow)(ν, t) = sgaussian_norm(ν, t)
 (::GaussianWindow)(x, μ, σ2) = gaussian_norm(x, μ, σ2)
 (f::SuperGaussianWindow)(x, μ, σ) = supergaussian_norm(x, μ, σ, f.power)
@@ -136,22 +137,6 @@ function (f::GaussianTailedUniformWindow)(x, μ, fwhm)
         gaussian_norm(p - plateau / 2, 0, taperwidth ^ 2 / log(256))
     else
         1
-    end
-end
-
-function (f::GaussianDilatedWindow)(x, μ, fwhm)
-    p = abs(x - μ) 
-    p == 0 && return 1
-    fwhm <= f.min_fwhm && return sgaussian_norm(p, fwhm ^ 2 / log(256))
-    a = (fwhm - f.min_fwhm) / 2
-    w = (fwhm - f.taperwidth) / 2
-    t = p / w
-    if t > 1
-        sgaussian_norm(p - a, f.min_fwhm ^ 2 / log(256))
-    elseif a > 0.75 * w && p ^ 2 <= (3w - 4a) / (4a - 2w)
-        1
-    else
-        sgaussian_norm((a - w / 2) * t ^ 4 + (1.5 * w - 2 * a) * t ^ 2, f.min_fwhm ^ 2 / log(256))
     end
 end
 
@@ -252,44 +237,6 @@ function discrete_window(window::GaussianTailedUniformWindow, fwhm, binsize, nbi
     vcat(reverse(k), ones(2 * taperstart), k[begin + 1:end])
 end
 
-function discrete_window(window::GaussianDilatedWindow, fwhm, binsize, nbin_multiplier, height)
-    fwhm <= window.min_fwhm && return discrete_window(SampledGaussianWindow(), fwhm, binsize, nbin_multiplier, height)
-    taperstart = ceil(Int, (fwhm - window.taperwidth) / 2 / binsize)
-    offset = rem(taperstart, nbin_multiplier)
-    hwhm = window.min_fwhm / 2
-    bsqrtt = hwhm / binsize
-    t = bsqrtt ^ 2 / log(4)
-    ihwhml = floor(Int, hwhm / binsize)
-    ihwhmr = ceil(Int, hwhm / binsize)
-    ihwhmr = ihwhmr > ihwhml ? ihwhmr : ihwhml + 1
-    t = estimate_t(SampledGaussianWindow(), bsqrtt, ihwhml, ihwhmr)
-    dfwtm = round(Int, sqrt(2t * log(1 / height))) + 1
-    p, r = divrem(dfwtm, nbin_multiplier)
-    dfwtm = r == offset ? dfwtm : r > offset ? (p + 1) * nbin_multiplier + offset : p * nbin_multiplier + offset
-    if taperstart > 1
-        new_min_fwhm = sqrt(t * log(256)) * binsize # fwhm - 2a
-        a = ceil(Int, (fwhm - new_min_fwhm) / 2 / binsize)
-        p = (0:(taperstart - 1)) ./ taperstart
-        f1 = a - taperstart / 2
-        f2 = 1.5 * taperstart - 2 * a
-        f = @. sgaussian_norm(f1 * p ^ 4 + f2 * p ^ 2, t)
-    else
-        a = 0 
-        f = [1]
-    end
-    k = SampledGaussianWindow()((taperstart - a):dfwtm + taperstart - a, t)
-    k = reverse(vcat(f, k))
-    m = 0
-    for i in eachindex(k)
-        if k[i] >= m 
-            m = k[i]
-        else
-            k[i] = m
-        end
-    end
-    vcat(k, reverse(k[begin:end - 1]))
-end
-
 discrete_window(window::GaussianWindow, fwhm, binsize, nbin_multiplier, height) = discrete_window(SampledGaussianWindow(), fwhm, binsize, nbin_multiplier, height)
 function discrete_window(window::SuperGaussianWindow, fwhm, binsize, nbin_multiplier, height)
     hwhm = fwhm / 2
@@ -319,30 +266,6 @@ end
 
 function discrete_window(window::SampledGaussianWindow, fwhm, binsize, nbin_multiplier, height)
     k = _discrete_window(window, fwhm, binsize, nbin_multiplier, height)
-    vcat(reverse(k), k[begin + 1:end])
-end
-
-function discrete_window(window::DiscreteGaussianWindow, fwhm::T, binsize, nbin_multiplier, height) where T 
-    hwhm = fwhm / 2
-    bsqrtt = hwhm / binsize
-    t = (bsqrtt / log(4)) ^ 2
-    if t > bessel_max(T)
-        delta = sqrt(t / beseel_max(T))
-        dfwtm = sqrt(2t * log(1 / height)) + delta
-        p, r = divrem(dfwtm, nbin_multiplier * delta)
-        dfwtm = r > 0 ? (p + 1) * nbin_multiplier * delta - r : dfwtm
-        t = beseel_max(T)
-        k = map(x -> window(x, t), 0:delta:dfwtm)
-    else
-        ihwhml = floor(Int, hwhm / binsize)
-        ihwhmr = ceil(Int, hwhm / binsize)
-        ihwhmr = ihwhmr > ihwhml ? ihwhmr : ihwhml + 1
-        t = estimate_t(window, bsqrtt, ihwhml, ihwhmr)
-        dfwtm = round(Int, sqrt(2t * log(1 / height))) + 1
-        p, r = divrem(dfwtm, nbin_multiplier)
-        dfwtm = r > 0 ? (p + 1) * nbin_multiplier : dfwtm
-        k = window(0:dfwtm, t)
-    end
     vcat(reverse(k), k[begin + 1:end])
 end
 
@@ -423,88 +346,4 @@ function find_nearest_peak(alg::LocalMaxima, convolution, i, k)
         nothing 
     end
     id
-    # lm, _ = findmin(convolution[id - ihwhm : id])
-    # rm, _ = findmin(convolution[id : id + ihwhm])
-    # if lm > 0.75 * convolution[id] || rm > 0.75 * convolution[id]
-    #     nothing 
-    # else
-    #     id
-    # end
-end
-
-function find_nearest_peak(::FWHMMaxima, convolution, i, k)
-    j = findfirst(>(0.5), k)
-    ihwhm = floor(Int, length(k) / 2) - j + 1
-    range = i - ihwhm : i + ihwhm
-    _, v = findmax(convolution[range])
-    mbin = range[v]
-    n = ihwhm * 2
-    if mbin == i - ihwhm
-        while n > 0 && convolution[mbin] < convolution[mbin - 1]
-            mbin -= 1
-            n -= 1
-            if n == 0
-                mbin = nothing
-                break 
-            end
-            if mbin == firstindex(convolution)
-                break 
-            end
-        end
-    elseif mbin == i + ihwhm
-        while n > 0 && convolution[mbin] < convolution[mbin + 1]
-            mbin += 1
-            n -= 1
-            if n == 0
-                mbin = nothing
-                break 
-            end
-            if mbin == lastindex(convolution)
-                break 
-            end
-        end
-    else
-        lrange = mbin - ihwhm : mbin
-        rrange = mbin : mbin + ihwhm
-        lm, lmbin = findmin(convolution[lrange])
-        rm, rmbin = findmin(convolution[rrange])
-        lmbin = lrange[lmbin]
-        rmbin = rrange[rmbin]
-        if lm > 0.6 * convolution[mbin]
-            while n > 0 && convolution[lmbin] < convolution[lmbin - 1]
-                lmbin -= 1
-                n -= 1
-                if lmbin == firstindex(convolution)
-                    break 
-                end
-            end
-            if convolution[lmbin] < convolution[mbin]
-                lmbin = -Inf
-            end
-        else
-            lmbin = -Inf
-        end
-        if rm > 0.6 * convolution[mbin]
-            while n > 0 && convolution[rmbin] < convolution[rmbin + 1]
-                rmbin += 1
-                n -= 1
-                if rmbin == lastindex(convolution)
-                    break 
-                end
-            end
-            if convolution[rmbin] < convolution[mbin]
-                rmbin = Inf
-            end
-        else
-            rmbin = Inf
-        end
-        if isinf(rmbin) && isinf(lmbin)
-            mbin = mbin
-        elseif rmbin - mbin > mbin - lmbin
-            mbin = lmbin 
-        else
-            mbin = rmbin
-        end
-    end
-    mbin
 end
