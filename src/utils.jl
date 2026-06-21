@@ -364,3 +364,92 @@ vectorize(x::AbstractVector) = x
 # vectorize(x::AbstractVector, n::Int) = n == lastindex(x) ? x : n > lastindex(x) ? vcat(x, repeat([last(x)], n - lastindex(x))) : x[begin:begin + n - 1]
 vectorize(x) = [x]
 vectorize(x, n) = repeat([x], n)
+
+# stirling_approx(n) = (n + 0.5) * log2(n) - n * log2(exp(1)) + (log2(2) + log2(pi))/2
+const log2exp = log2(exp(1))
+const halflog2pi = (log2(2) + log2(pi))/2
+const log2typemaxint = log2(typemax(Int))
+
+stirling_approx(n) = (n + 0.5) * log2(max(n, 1)) 
+function stirling_approx_multinomial(x::AbstractVector) 
+    s = sum(>(1), x)
+    s == 1 ? 0 : stirling_approx(sum(x)) - sum(stirling_approx, x) - halflog2pi * (s - 1)
+end
+function stirling_approx_multinomial(x...) 
+    s = sum(>(1), x)
+    s == 1 ? 0 : stirling_approx(sum(x)) - sum(stirling_approx, x) - halflog2pi * (s - 1)
+end
+stirling_approx_factorial(n, k) = (n + 0.5) * log2(max(n, 1)) - (k + 0.5) * log2(max(k, 1)) + (n - k) * log2exp
+
+check_overflow_multinomial(x) = false
+check_overflow_multinomial(x...) = stirling_approx_multinomial(x...) > log2typemaxint
+check_overflow_multinomial(x::AbstractVector) = stirling_approx_multinomial(x) > log2typemaxint
+check_overflow_factorial(n, k) = stirling_approx_factorial(n, k) > log2typemaxint
+
+function safe_multinomial(precise::Bool, x::AbstractVector)
+    if precise || check_overflow_multinomial(x)
+        multinomial(big.(x)...)
+    else
+        safe_multinomial(x)
+    end
+end
+
+function safe_multinomial(x::AbstractVector)
+    try 
+        multinomial(x...)
+    catch
+        multinomial(big.(x)...)
+    end
+end
+    
+safe_multinomial(x) = 1
+safe_multinomial(precise::Bool, x) = 1
+function safe_multinomial(precise::Bool, x...)
+    if precise || check_overflow_multinomial(x...)
+        multinomial(big.(x)...)
+    else
+        safe_multinomial(x...)
+    end
+end
+
+function safe_multinomial(x...)
+    try 
+        multinomial(x...)
+    catch
+        multinomial(big.(x)...)
+    end
+end
+
+function safe_factorial(precise::Bool, n, k)
+    if n == k 
+        1
+    elseif precise || check_overflow_factorial(n, k)
+        factorial(big(n), k)
+    else
+        try 
+            factorial(n, k)
+        catch
+            factorial(big(n), k)
+        end
+    end
+end
+
+function safe_factorial(n, k)
+    try 
+        factorial(n, k)
+    catch
+        factorial(big(n), k)
+    end
+end
+
+function safe_proportion_multinomial(precise::Bool, en, pre, pn, pro, rn, res)
+    if precise || check_overflow_multinomial(en, pre)
+        multinomial(big.(x)...)
+    else
+        try 
+            multinomial(x...)
+        catch
+            multinomial(big.(x)...)
+        end
+    end
+end

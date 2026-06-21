@@ -35,16 +35,6 @@ function mmi(elements::Union{<: Vector{<: Pair}, <: Dict}, net_charge = 0; loss 
     loss ? -weight : weight
 end
 
-# function deltammi(elements::Union{<: Vector{<: Pair}, <: Dict}, net_charge = 0)
-#     weight = 0.0
-#     for (el, n) in elements
-#         weight += elements_mass()[el] * n
-#         weight -= elements_mass()[parent_element(el)] * n
-#     end
-#     weight -= net_charge * ME
-#     weight
-# end
-
 function mmi(formula::AbstractString, net_charge = 0; loss = false)
     # if any prefix number
     n = match(r"^[0-9]+", formula)
@@ -59,11 +49,11 @@ end
 element_mmi(x) = elements_mass()[x]
 
 function _mass_isotope(isotopes; loss = false, kwargs...) 
-    m = sum([(element_mmi(x) - element_mmi(elements_parents()[x])) * n for (x, n) in isotopes]; init = 0)
+    m = sum((element_mmi(x) - element_mmi(elements_parents()[x])) * n for (x, n) in isotopes; init = 0)
     loss ? -m : m
 end
 function _mass_isotope(isotopes, abundance; loss = false, kwargs...) 
-    m = mean([sum([(element_mmi(x) - element_mmi(elements_parents()[x])) * n for (x, n) in iso]; init = 0) for iso in isotopes], weights(abundance))
+    m = mean([sum((element_mmi(x) - element_mmi(elements_parents()[x])) * n for (x, n) in iso; init = 0) for iso in isotopes], weights(abundance))
     loss ? -m : m
 end
 
@@ -77,6 +67,8 @@ mmi(x::ElementalScheme{true}; loss = false, kwargs...) = mmi(x.chemical; loss, k
 mmi(x::ChemicalSchema; kwargs...) = sum(mmi(k; kwargs...) * v for (k, v) in zip(x.schema, x.number)) 
 mmi(x::IsotopomerizedSchema; kwargs...) = mmi(chemicalparent(x); kwargs...) + _mass_isotope(x.isotopes; kwargs...)
 mmi(x::Groupedisotopomerizedschema; kwargs...) = mmi(chemicalparent(x); kwargs...) + _mass_isotope(x.isotopes, x.abundance; kwargs...)
+
+vec_mmi_fix(x, y; kwargs...) = [mmi(m) + y for m in x]
 
 """
     molarmass(formula::AbstractString, net_charge = 0; loss = false) -> AbstractFloat

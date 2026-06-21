@@ -10,6 +10,7 @@ function isotopeelements(elements, isotopes)
     for (k, v) in isotopes
         e = get(elements_parents(), k, k) 
         k == e && continue 
+        v == 0 && continue
         elements[e] -= v 
         get!(elements, k, 0)
         elements[k] += v 
@@ -186,13 +187,17 @@ end
     unique_elements(elements::Dict) -> Dict
     unique_elements(elements::Dictionary) -> Dictionary
 
-Elements container with no duplicated element keys.
+Elements container with no duplicated element keys or zeros.
 """
-function unique_elements(elements::Vector{<: Pair})
-    collect(pairs(filter!(!=(0), groupsum(first, last, elements))))
-end
-unique_elements(elements::Dict) = elements
-unique_elements(elements::Dictionary) = elements
+unique_elements(elements::T) where T = unique_elements(T, elements)
+unique_elements(::Type{Dictionary}, elements) = filter!(!=(0), dictionary_elements(Dictionary, elements))
+unique_elements(::Type{Dict}, elements) = Dict(pairs(unique_elements(Dictionary, elements)))
+unique_elements(::Type{<: Vector{<: Pair}}, elements) = collect(pairs(unique_elements(Dictionary, elements)))
+unique_elements(::Type{Dict}, elements::Dict) = filter(x -> last(x) != 0, elements)
+unique_elements(::Type{<: Vector{<: Pair}}, elements::Dict) = filter!(x -> last(x) != 0, collect(elements))
+unique_elements(::Type{Dictionary}, elements::Dictionary) = filter(!=(0), elements)
+
+sort_unique_elements(x) = sort!(unique_elements(x))
 
 """
     dictionary_elements([Dicttype = Dict], elements::Vector{<: Pair}) -> Dicttype
@@ -203,7 +208,7 @@ Create a dictionary from element-number pairs. As elements can be duplicated in 
 """
 dictionary_elements(elements) = dictionary_elements(Dict, elements)
 dictionary_elements(::Type{Dict}, elements::Vector{<: Pair}) = Dict(pairs(dictionary_elements(Dictionary, elements)))
-dictionary_elements(::Type{Dictionary}, elements::Vector{<: Pair}) = filter!(!=(0), groupsum(first, last, elements))
+dictionary_elements(::Type{Dictionary}, elements::Vector{<: Pair}) = groupsum(first, last, elements)
 dictionary_elements(::Type{Dict}, elements::Dict) = elements
 dictionary_elements(::Type{Dictionary}, elements::Dict) = Dictionary(keys(elements), values(elements))
 dictionary_elements(::Type{Dict}, elements::Dictionary) = Dict(pairs(elements))

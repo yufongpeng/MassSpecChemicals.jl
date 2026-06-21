@@ -318,20 +318,20 @@ function Fragmentation(producttable::Table, mztable::Table; threading = nothing,
                 transmission = sum(producttable.Proportion[pid])
                 )
         end
-        Table(; (map(propertynames(first(t))) do p
-            p => ChainedVector(getproperty.(t, p))
-        end)...)
+        Table(; (p => ChainedVector(getproperty.(t, p)) for p in propertynames(first(t)))...)
     else
-        vcat(map(gmztable) do precursor_table 
+        t = Vector{Table}(undef, length(gmztable))
+        for (i, precursor_table) in enumerate(gmztable)
             pid = findfirst(==(first(precursor_table.ID)), id)
-            TandemIsotopologues(chemicalparent(first(precursor_table.Chemical)); 
+            t[i] = TandemIsotopologues(chemicalparent(first(precursor_table.Chemical)); 
                 threshold,
                 precursor_table,
                 product = producttable.Product[pid],
                 proportion = producttable.Proportion[pid],
                 transmission = sum(producttable.Proportion[pid])
-                )
-        end...)
+            )
+        end
+        Table(; (p => ChainedVector(getproperty.(t, p)) for p in propertynames(first(t)))...)
     end
 end
 Fragmentation(producttable::Table, spec::Spectrum; threshold = rcrit(1e-4)) = Fragmentation(producttable, spec.table; threshold)
