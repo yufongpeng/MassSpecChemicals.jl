@@ -18,9 +18,9 @@ function isotopologues_elements_ms2(it1, element_precursor_dictionary, element_p
         use_max = false
         if isnothing(i) 
             _, i = findmax(it1.Abundance)
-            p = maximal_combination(it1.Element[i], element_product_dictionary, it1.Abundance[i] * it1.Preab[i]; precise)
+            p = maximal_combination(it1.Element[i], element_product_dictionary, it1.Abundance[i] * it1.Preab[i] * proportion; precise)
         else
-            p = it1.Abundance[i] * it1.Preab[i]
+            p = it1.Abundance[i] * it1.Preab[i] * proportion
         end
         use_max = isotopologue_combination(first(it1.Element), element_product_dictionary, first(it1.Preab); precise) < min_propotion()
         msfix = mmi(element_product)
@@ -33,9 +33,9 @@ function isotopologues_elements_ms2(it1, element_precursor_dictionary, element_p
                 element_product_dictionary[e] = m
             end
         end
-        proportion_cutoff = p * minimum(makecrit_value(crit(threshold), abundance)) / abundance * proportion
+        proportion_cutoff = p * minimum(makecrit_value(crit(threshold), abundance)) / abundance
         @inbounds data = map(eachindex(it1.Element)) do idp
-            element_product_is, mass_product_is, proportion_product_is, preab_product_is, use_max = isotopologues_proportion(it1.Element[idp], element_product_dictionary, swap, element_isotope_pair, msfix, it1.Abundance[idp] * it1.Preab[idp] * proportion, proportion_cutoff, use_max, true, iter, precise)
+            element_product_is, mass_product_is, proportion_product_is, preab_product_is, use_max = isotopologues_proportion(it1.Element[idp], element_product_dictionary, swap, element_isotope_pair, msfix, (it1.Abundance[idp] * proportion, it1.Preab[idp]), proportion_cutoff, use_max, true, iter, precise)
             id = sortperm(mass_product_is)
             if loss 
                 isotopes_precursor = it1.Isotope[idp]
@@ -132,11 +132,11 @@ end
 function isotopologues_proportion(precursor_dictionary::Dict, element_product_dictionary::Dict, swap, element_isotope_pair, msfix, abundance_factor, threshold, use_max, preiter, iter, precise)
     if preiter
         if !use_max
-            first_proportion = isotopologue_combination(precursor_dictionary, element_product_dictionary, abundance_factor; precise)
+            first_proportion = isotopologue_combination(precursor_dictionary, element_product_dictionary, *(abundance_factor...); precise)
         end
-        if use_max || first_proportion / abundance_factor < min_propotion()
+        if use_max || first_proportion / first(abundance_factor) < min_propotion()
             use_max = true
-            first_proportion, element_product_dictionary = maximal_combination_elements(precursor_dictionary, element_product_dictionary, abundance_factor; precise)
+            first_proportion, element_product_dictionary = maximal_combination_elements(precursor_dictionary, element_product_dictionary, *(abundance_factor...); precise)
         end
     else
         if !use_max

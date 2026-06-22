@@ -1,4 +1,4 @@
-const MIN_PROPORTION = 1e-6
+const MIN_PROPORTION = 1e-3
 min_propotion() = MIN_PROPORTION
 
 """

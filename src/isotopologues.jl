@@ -388,6 +388,7 @@ function TandemIsotopologues_precursor(transition, precursor_info, id, abundance
         end
         itp = iters[ip - 1] ? (; Element = el, Isotope = isotopes_precursor, Abundance = getproperty(precursor_table, colab), Preab = precursor_table.Preab) : 
             (; Element = el, Isotope = isotopes_precursor, Abundance = getproperty(precursor_table, colab))
+            # itp = (; Element = el, Isotope = isotopes_precursor, Abundance = getproperty(precursor_table, colab))
         precursor_table = TandemIsotopologues_product(precursor_table, itp, id[begin:ip], precursor_info[ip - 1], precursor_info[ip], transition[ip], abundance[ip] / abundance[ip - 1], abundance[ip], Total(), threshold, iters[ip]; precise) 
     end
     precursor_table
