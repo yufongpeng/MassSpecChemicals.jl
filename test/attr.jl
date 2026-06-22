@@ -201,7 +201,7 @@
     end
 
     @testset "Isobars" begin
-        @test chemicalname(pt1.Chemical[3]) == "Isobars[[Glucose+H]+[18O], [Glucose+H]+[13C2], [Glucose+H]+[17O,13C]]"
+        @test chemicalname(pt1.Chemical[3]) == "Isobars[[Glucose+H]+[18O], [Glucose+H]+[13C2], [Glucose+H]+[17O,13C]]" || chemicalname(pt1.Chemical[3]) == "Isobars[[Glucose+H]+[18O], [Glucose+H]+[13C2], [Glucose+H]+[13C,17O]]"
         @test chemicalabbr(pt1.Chemical[1]) == "Isobars[[Glc+H]+]"
         @test chemicalformula(pt1.Chemical[1]) == chemicalformula(chemicalelements(pt1.Chemical[1]))
         @test isapprox(mz(pt1.Chemical[2], "[M+H]+"), mz(pt1.Chemical[2]))

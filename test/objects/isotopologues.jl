@@ -54,6 +54,7 @@ else
 end
 
 TandemIsotopologues("C297H388O74N68S2" => "C124H194O37N34S"; abtype = :total)
+Fragmentation(Table(; Chemical = ["[C297H388O74N68S2]+"], Product = [["[C124H194O37N34S]+"]]), Isotopologues("[C297H388O74N68S2]+"))
 TandemIsotopologues("C297H388O74N68S2" => "C124H194O37N34S" => "C62H87O19N17S"; abtype = :total)
 TandemIsotopologues("C297H388O74N68S2"; product = ["C124H194O37N34S"], abtype = :total)
 Isotopologues("C297H388O74N68S2" => "C124H194O37N34S"; abtype = :total)
