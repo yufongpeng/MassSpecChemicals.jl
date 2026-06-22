@@ -24,6 +24,8 @@ msa = [
     MSAnalyzer(MSC.GaussianTailedUniformWindow(0.5), 500.0, 0.1, x -> 1.0, 0.1, 0.1),
     MSAnalyzer(MSC.PowerCosineWindow(0.5), 500.0, 0.1, x -> 1.0, 0.1, 0.1),
     MSAnalyzer(MSC.FixedTaperTukeyWindow(0.2), 500.0, 0.1, x -> 1.0, 0.1, 0.1),
+    MSAnalyzer(MSC.RectWindow(), 500.0, 0.1, x -> 1.0, 0.1, 0.1),
+    MSAnalyzer(MSC.CosineWindow(), 500.0, 0.1, x -> 1.0, 0.1, 0.1)
 ]
 
 @info "Defining chemical and product table"

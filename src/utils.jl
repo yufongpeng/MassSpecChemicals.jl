@@ -441,15 +441,3 @@ function safe_factorial(n, k)
         factorial(big(n), k)
     end
 end
-
-function safe_proportion_multinomial(precise::Bool, en, pre, pn, pro, rn, res)
-    if precise || check_overflow_multinomial(en, pre)
-        multinomial(big.(x)...)
-    else
-        try 
-            multinomial(x...)
-        catch
-            multinomial(big.(x)...)
-        end
-    end
-end

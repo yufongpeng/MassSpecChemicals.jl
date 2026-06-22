@@ -159,6 +159,7 @@
     end
 
     @testset "Isotopomers" begin
+        @test Isotopomers(icglc[1], "C5H12O6[13C]") == it1.Chemical[2]
         @test @test_noerror test_show(it3.Chemical[2])
         @test chemicalname(it3.Chemical[2]) == string(chemicalname(chemicalparent(it3.Chemical[2])), "[13C]")
         @test chemicalabbr(it3.Chemical[2]) == string(chemicalabbr(chemicalparent(it3.Chemical[2])), "[13C]")
@@ -258,6 +259,7 @@
     end
 
     @testset "IsotopomerizedSchema" begin
+        @test IsotopomerizedSchema(chemicaltransition(itit12.Chemical[2])[2].parent, "-H2OO[13C]") == chemicaltransition(itit12.Chemical[5])[2]
         @test @test_noerror test_show(itit12.Chemical[5])
         @test chemicalabbr(itit12.Chemical[5]) == join(chemicalabbr.(chemicaltransition(itit12.Chemical[5])), " -> ")
         @test chemicalname(itit12.Chemical[5]) == join(chemicalname.(chemicaltransition(itit12.Chemical[5])), " -> ")

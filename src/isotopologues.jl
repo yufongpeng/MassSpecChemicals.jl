@@ -1,8 +1,8 @@
 """
-    Isotopologues(chemical; abundance = 1, abtype = :max, threshold = rcrit(1e-4))
-    Isotopologues(formula_name; chemicalparser, abundance = 1, abtype = :max, threshold = rcrit(1e-4))
-    Isotopologues(chemicaltransition; abundance = 1, abtype = :max, threshold = rcrit(1e-4)) 
-    Isotopologues(formula_name_pair; chemicalparser, abundance = 1, abtype = :max, threshold = rcrit(1e-4)) 
+    Isotopologues(chemical; abundance = 1, abtype = :max, threshold = rcrit(1e-4), precise = false)
+    Isotopologues(formula_name; chemicalparser, abundance = 1, abtype = :max, threshold = rcrit(1e-4), precise = false)
+    Isotopologues(chemicaltransition; abundance = 1, abtype = :max, threshold = rcrit(1e-4), precise = false) 
+    Isotopologues(formula_name_pair; chemicalparser, abundance = 1, abtype = :max, threshold = rcrit(1e-4), precise = false) 
     Isotopologues(tbl; threading = nothing, chemicalparser, threshold = rcrit(1e-4), kwargs...)
     Isotopologues(chemicals; kwargs...)
 
@@ -27,6 +27,7 @@ Only isotopic abundance of parent elements are considered, and isotopes are view
     * `:total`: sum of total isotopologues.
 * `threshold` can be a number or criteria, representing the lower limit of abundance (absolute and/or relative to maximal value of each spectrum). 
 * `threading`: force to use multiple threads (`true`) or single thread (`false`); `nothing` lets the program determine. 
+* `precise`: whether using `Bigfloat` for abundance computation.
 
 For MS/MS transition, product can be any scheme, including `<:AbstractStructuralScheme`, `<:AbstractStructuralScheme` or formula starting with `-` or `+` (See `ChemicalExpressionParser` for valid string). Gain scheme can only used in the last MS stage.
 
@@ -227,10 +228,10 @@ Isotopologues(::Isobars; kwargs...) = throw(ArgumentError("`Isobars` is not supp
 Isotopologues(::Isotopomers; kwargs...) = throw(ArgumentError("`Isotopomers` is not supported by `Isotopologues.`"))
 
 """
-    TandemIsotopologues(chemical; chemicalparser, product = nothing, proportion = nothing, abundance = 1, abtype = :max, threshold = rcrit(1e-4))
-    TandemIsotopologues(formula_name; chemicalparser, product = nothing, proportion = nothing, abundance = 1, abtype = :max, threshold = rcrit(1e-4))
-    TandemIsotopologues(chemicaltransition; chemicalparser, product = nothing, proportion = nothing, abundance = 1, abtype = :max, threshold = rcrit(1e-4)) 
-    TandemIsotopologues(formula_name_pair; chemicalparser, product = nothing, proportion = nothing, abundance = 1, abtype = :max, threshold = rcrit(1e-4)) 
+    TandemIsotopologues(chemical; chemicalparser, product = nothing, proportion = nothing, abundance = 1, abtype = :max, threshold = rcrit(1e-4), precise = false)
+    TandemIsotopologues(formula_name; chemicalparser, product = nothing, proportion = nothing, abundance = 1, abtype = :max, threshold = rcrit(1e-4), precise = false)
+    TandemIsotopologues(chemicaltransition; chemicalparser, product = nothing, proportion = nothing, abundance = 1, abtype = :max, threshold = rcrit(1e-4), precise = false)
+    TandemIsotopologues(formula_name_pair; chemicalparser, product = nothing, proportion = nothing, abundance = 1, abtype = :max, threshold = rcrit(1e-4), precise = false)
     TandemIsotopologues(tbl; threading = nothing, chemicalparser, threshold = rcrit(1e-4), kwargs...)
     TandemIsotopologues(chemicals; kwargs...)
 
@@ -260,6 +261,7 @@ It can also be column `Abundance` in `tbl`.
 * `transmission`: transmission rate between precursors (MS/MS transition). It is utlized when all elements of `abundance` are used out. It can also be column `Transmission` in `tbl`.
 * `proportion::Vector`: proportion of fragmentation relative to precursor. It can also be column `Proportion` in `tbl`.
 * `threading`: force to use multiple threads (`true`) or single thread (`false`); `nothing` lets the program determine. 
+* `precise`: whether using `Bigfloat` for abundance computation.
 
 For MS/MS precursor-product pairs, product can be neutral loss/gain or ion loss/gain, including `AbstractElementalScheme`, `AbstractStructuralScheme` and formula starting with `-` or `+` (See `ChemicalExpressionParser` for valid string). 
 

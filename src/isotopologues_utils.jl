@@ -378,10 +378,32 @@ end
 
 pair_last_abundance(x) = elements_abundance()[last(x)]
 
+"""
+    element_mass_delta(old_element, new_element)
+
+Mass of `new_element` minus mass of `old_element`.
+"""
 element_mass_delta(old_element, new_element) = elements_mass()[new_element] - elements_mass()[old_element]
+
+"""
+    parent_mass_delta(element)
+
+Mass of `element` minus mass of parent element of `element`.
+"""
 parent_mass_delta(e) = elements_mass()[e] - elements_mass()[parent_element(e)]
+
+"""
+    parent_mass_delta(elements::Vector{Pair{String, Int}})
+
+Sum of mass of each element in `elements` minus mass of their parent elements.
+"""
 deltammi(x) = isempty(x) ? float(0) : sum(k -> last(k) * parent_mass_delta(first(k)), x)
 
+"""
+    update_abundance(prev_abundance, old_element, new_element, nold, nnew, n; precise = false)
+
+Update of `prev_abundance` after `n` `old_element` replaced by `new_element`. `nold` and `nnew` are number of elements before replacing.
+"""
 function update_abundance(prev_abundance, old_element, new_element, nold, nnew, delta; precise = false)
     x = get(elements_abundance(), old_element, 1)
     y = get(elements_abundance(), new_element, 1)
@@ -396,17 +418,26 @@ function update_abundance(prev_abundance, old_element, new_element, nold, nnew, 
     precise ? prev_abundance * (big(y) / x) ^ delta : convert(float(Int), prev_abundance * (y / x) ^ delta)
 end
 
+"""
+    update_proportion(prev_proportion, nold, nnew, n; precise = false) 
+    
+Update of `prev_proportion` after `n` elements replacing. `nold` and `nnew` are number of elements before replacing.
+"""
 function update_proportion(prev_proportion, nold, nnew, delta; precise = false) 
     delta == 1 && return precise ?  prev_proportion * (big(nold) / (nnew + 1)) : prev_proportion * (nold / (nnew + 1))
-    f = precise ? factorial(big(nold), nold - delta) / factorial(big(nnew + delta), nnew) : try 
-        factorial(nold, nold - delta) / factorial(nnew + delta, nnew)
-    catch 
-        factorial(big(nold), nold - delta) / factorial(big(nnew + delta), nnew)
+    if precise || (nold > nnew + delta ? check_overflow_factorial(nold, nold - delta) : check_overflow_factorial(nnew + delta, nnew))
+        prev_proportion *= factorial(big(nold), nold - delta) / factorial(big(nnew + delta), nnew)
+    else
+        prev_proportion *= safe_factorial(nold, nold - delta) / safe_factorial(nnew + delta, nnew)
     end
     precise ? prev_proportion * float(f) : prev_proportion * convert(float(Int), f)
 end
 
+"""
+    update_inverse_proportion(prev_inverse_proportion, nold, nnew, delta; precise = false)
 
+Update of `prev_inverse_proportion` after `n` elements replacing. `nold` and `nnew` are number of elements before replacing.
+"""
 function update_inverse_proportion(prev_proportion, nold, nnew, delta; precise = false)
     delta == 1 && return precise ? prev_proportion * (big(nnew + 1) / nold) : prev_proportion * ((nnew + 1) / nold)
     # take care of large numbers
