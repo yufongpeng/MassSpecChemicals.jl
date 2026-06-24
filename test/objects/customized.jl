@@ -104,10 +104,10 @@ function chemicalelements(m::FattyAcid; kwargs...)
         "O"     => 2
     ])
 end
-chemicaln13C(m::FattyAcid; kwargs...) = getchemicalproperty(m, :n13C)
-chemicalncb(m::FattyAcid; kwargs...) = getchemicalproperty(m, :ncb)
-chemicalnD(m::FattyAcid; kwargs...) = getchemicalproperty(m, :nD)
-chemicalndb(m::FattyAcid; kwargs...) = getchemicalproperty(m, :ndb)
+chemicaln13C(m::FattyAcid; kwargs...) = getchemicalproperty(m, :n13C, 0)
+chemicalncb(m::FattyAcid; kwargs...) = getchemicalproperty(m, :ncb, 0)
+chemicalnD(m::FattyAcid; kwargs...) = getchemicalproperty(m, :nD, 0)
+chemicalndb(m::FattyAcid; kwargs...) = getchemicalproperty(m, :ndb, 0)
 
 function chemicalelements(m::DiacylPS; kwargs...)
     fa1 = chemicalelements(m.fa1)

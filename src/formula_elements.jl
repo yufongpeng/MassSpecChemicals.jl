@@ -1,6 +1,6 @@
 chemicalformula(cc::Chemical; unique = false, kwargs...) = chemicalformula(cc.elements; unique, kwargs...)
 chemicalformula(cc::FormulaChemical; unique = false, kwargs...) = chemicalformula(cc.elements; unique, kwargs...)
-chemicalformula(isobars::Isobars; kwargs...) = chemicalformula(chemicalentity(isobars); kwargs...)
+chemicalformula(isobars::Isobars; kwargs...) = chemicalformula(chemicalentity(isobars); kwargs...)::String
 function chemicalformula(x::Isotopomers; kwargs...) 
     elements = dictionary_elements(Dictionary, chemicalelements(chemicalparent(x); loss = false))
     chemicalformula(isotopeelements(elements, x.isotopes); kwargs...)
@@ -10,18 +10,20 @@ function isotopeelements(elements, isotopes)
     for (k, v) in isotopes
         e = get(elements_parents(), k, k) 
         k == e && continue 
+        v == 0 && continue
         elements[e] -= v 
         get!(elements, k, 0)
         elements[k] += v 
     end
     elements
 end
+isotopeelements_vec(elements, isotopes) = collect(pairs(isotopeelements(elements, isotopes)))
 
 function chemicalformula(x::Groupedisotopomers; kwargs...) 
     elements = dictionary_elements(Dictionary, chemicalelements(chemicalparent(x); loss = false))
     chemicalformula(isotopeelements(elements, first(x.isotopes)); kwargs...)
 end
-chemicalformula(ct::ChemicalTransition; kwargs...) = chemicalformula(chemicalentity(ct); kwargs...)
+chemicalformula(ct::ChemicalTransition; kwargs...) = chemicalformula(chemicalentity(ct); kwargs...)::String
 
 chemicalformula(sch::AbstractCompleteScheme; kwargs...) = chemicalformula(elementalscheme(sch); kwargs...)
 chemicalformula(sch::ElementalScheme{false}; loss = false, kwargs...) = chemicalformula(sch.chemical; loss = !loss, kwargs..., ischemical = false)
@@ -54,35 +56,35 @@ reverse_elements(x::Dictionary, loss) = loss ? Dictionary(keys(x), [-v for v in 
 
 chemicalelements(cc::Chemical; loss = false, kwargs...) = reverse_elements(cc.elements, loss)
 chemicalelements(cc::FormulaChemical; loss = false, kwargs...) = reverse_elements(cc.elements, loss)
-chemicalelements(isobars::Isobars; kwargs...) = chemicalelements(chemicalentity(isobars); kwargs...)
+chemicalelements(isobars::Isobars; kwargs...) = chemicalelements(chemicalentity(isobars); kwargs...)::Vector{Pair{String, Int}}
 function chemicalelements(x::Isotopomers; loss = false, kwargs...) 
     elements = dictionary_elements(Dictionary, chemicalelements(chemicalparent(x); kwargs..., loss = false))
-    reverse_elements(collect(pairs(isotopeelements(elements, x.isotopes))), loss)
+    reverse_elements(isotopeelements_vec(elements, x.isotopes), loss)
 end
 
 function chemicalelements(x::Groupedisotopomers; loss = false, kwargs...) 
     elements = dictionary_elements(Dictionary, chemicalelements(chemicalparent(x); kwargs..., loss = false))
-    reverse_elements(collect(pairs(isotopeelements(elements, first(x.isotopes)))), loss)
+    reverse_elements(isotopeelements_vec(elements, first(x.isotopes)), loss)
 end
-chemicalelements(ct::ChemicalTransition; loss = false, kwargs...) = chemicalelements(chemicalentity(ct); loss, kwargs...)
+chemicalelements(ct::ChemicalTransition; loss = false, kwargs...) = chemicalelements(chemicalentity(ct); loss, kwargs...)::Vector{Pair{String, Int}}
 
 chemicalelements(sch::AbstractCompleteScheme; kwargs...) = chemicalelements(elementalscheme(sch); kwargs...)
 chemicalelements(sch::ElementalScheme{false}; loss = false, kwargs...) = chemicalelements(sch.chemical; loss = !loss, kwargs...) 
 chemicalelements(sch::ElementalScheme{true}; loss = false, kwargs...) = chemicalelements(sch.chemical; loss, kwargs...) 
 function chemicalelements(x::IsotopomerizedSchema; loss = false, kwargs...)
     elements = dictionary_elements(Dictionary, chemicalelements(chemicalparent(x); kwargs..., loss = false))
-    reverse_elements(collect(pairs(isotopeelements(elements, x.isotopes))), loss)
+    reverse_elements(isotopeelements_vec(elements, x.isotopes), loss)
 end
 chemicalelements(x::ChemicalSchema; kwargs...) = vcat((repeat(chemicalelements(k; kwargs...), v) for (k, v) in zip(x.schema, x.number))...)
 function chemicalelements(x::Groupedisotopomerizedschema; loss = false, kwargs...) 
     elements = dictionary_elements(Dictionary, chemicalelements(chemicalparent(x); kwargs..., loss = false))
-    reverse_elements(collect(pairs(isotopeelements(elements, first(x.isotopes)))), loss)
+    reverse_elements(isotopeelements_vec(elements, first(x.isotopes)), loss)
 end
 
-isotopomersisotopes(isobars::Isobars; kwargs...) = isotopomersisotopes(chemicalentity(isobars); kwargs...)
+isotopomersisotopes(isobars::Isobars; kwargs...) = isotopomersisotopes(chemicalentity(isobars); kwargs...)::Vector{Pair{String, Int}}
 isotopomersisotopes(isotopomers::Isotopomers; loss = false, kwargs...) = reverse_elements(isotopomers.isotopes, loss)
 isotopomersisotopes(isotopomers::Groupedisotopomers; loss = false, kwargs...) = reverse_elements(first(isotopomers.isotopes), loss)
-isotopomersisotopes(ct::ChemicalTransition; kwargs...) = isotopomersisotopes(chemicalentity(ct); kwargs...)
+isotopomersisotopes(ct::ChemicalTransition; kwargs...) = isotopomersisotopes(chemicalentity(ct); kwargs...)::Vector{Pair{String, Int}}
 
 isotopomersisotopes(sch::ElementalScheme{true}; loss = false, kwargs...) = isotopomersisotopes(sch.chemical; loss, kwargs...)
 isotopomersisotopes(sch::ElementalScheme{false}; loss = false, kwargs...) = isotopomersisotopes(sch.chemical; loss = !loss, kwargs...)
@@ -178,7 +180,7 @@ function chemicalelements(formula::AbstractString; loss = false, kwargs...)
             isempty(fn) || push!(v, [elements_decodes()[k] => v * (loss ? 1 : -1) for (k, v) in parse_compound(encode_isotopes(fn))])
         end
     end
-    vcat(v...)
+    vcat(v...)::Vector{Pair{String, Int}}
 end
 
 """
@@ -186,13 +188,17 @@ end
     unique_elements(elements::Dict) -> Dict
     unique_elements(elements::Dictionary) -> Dictionary
 
-Elements container with no duplicated element keys.
+Elements container with no duplicated element keys or zeros.
 """
-function unique_elements(elements::Vector{<: Pair})
-    collect(pairs(filter!(!=(0), groupsum(first, last, elements))))
-end
-unique_elements(elements::Dict) = elements
-unique_elements(elements::Dictionary) = elements
+unique_elements(elements::T) where T = unique_elements(T, elements)
+unique_elements(::Type{Dictionary}, elements) = filter!(!=(0), dictionary_elements(Dictionary, elements))
+unique_elements(::Type{Dict}, elements) = Dict(pairs(unique_elements(Dictionary, elements)))
+unique_elements(::Type{<: Vector{<: Pair}}, elements) = collect(pairs(unique_elements(Dictionary, elements)))
+unique_elements(::Type{Dict}, elements::Dict) = filter(x -> last(x) != 0, elements)
+unique_elements(::Type{<: Vector{<: Pair}}, elements::Dict) = filter!(x -> last(x) != 0, collect(elements))
+unique_elements(::Type{Dictionary}, elements::Dictionary) = filter(!=(0), elements)
+
+sort_unique_elements(x) = sort!(unique_elements(x))
 
 """
     dictionary_elements([Dicttype = Dict], elements::Vector{<: Pair}) -> Dicttype
@@ -203,7 +209,7 @@ Create a dictionary from element-number pairs. As elements can be duplicated in 
 """
 dictionary_elements(elements) = dictionary_elements(Dict, elements)
 dictionary_elements(::Type{Dict}, elements::Vector{<: Pair}) = Dict(pairs(dictionary_elements(Dictionary, elements)))
-dictionary_elements(::Type{Dictionary}, elements::Vector{<: Pair}) = filter!(!=(0), groupsum(first, last, elements))
+dictionary_elements(::Type{Dictionary}, elements::Vector{<: Pair}) = groupsum(first, last, elements)
 dictionary_elements(::Type{Dict}, elements::Dict) = elements
 dictionary_elements(::Type{Dictionary}, elements::Dict) = Dictionary(keys(elements), values(elements))
 dictionary_elements(::Type{Dict}, elements::Dictionary) = Dict(pairs(elements))

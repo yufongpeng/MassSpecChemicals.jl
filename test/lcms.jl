@@ -15,7 +15,7 @@
     for (ms, nm) in [Quadrupole() => "Quadrupole", QIT() => "Quadrupole Ion Trap", LIT() => "Linear Ion Trap", TOF() => "TOF", Orbitrap() => "Orbitrap", FTICR() => "FTICR"]
         @test MSC.msanalyzer_name(ms) == nm
     end
-    for (ms, nm) in zip(msa, ["MS-Analyzer with Uniform Window (Gaussian-Tailed)", "MS-Analyzer with Power Cosine Window", "MS-Analyzer with Tukey Window (Fixed Taper)"])
+    for (ms, nm) in zip(msa, ["MS-Analyzer with Uniform Window (Gaussian-Tailed)", "MS-Analyzer with Power Cosine Window", "MS-Analyzer with Tukey Window (Fixed Taper)", "MS-Analyzer with Rectangular Window", "MS-Analyzer with Cosine Window"])
         @test MSC.msanalyzer_name(ms) == nm
     end
     @test @test_noerror plot_window(MSC.GaussianWindow())

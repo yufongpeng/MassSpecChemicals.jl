@@ -249,3 +249,34 @@ function pre_parse_chemical(chemicalparser::ChemicalTransitionParser, pre, name:
     end
     vcat(pre, post...), precursorcharge
 end
+
+
+"""
+    parse_adduct([adductparser::AbstractAdductParser,] adduct; kwargs...) 
+
+Parse string into `NamedTuple` or `Tuple` using `adductparser`. 
+The default `AdductParser` determines the number of core first (`"[2M+...]"` for 2 cores), and then searches string in `scheme_name()`, or parses the string using `adductparser.chemicalparser`.
+"""
+parse_adduct(adduct; kwargs...) = parse_adduct(AdductParser(), adduct; kwargs...)
+parse_adduct(adductparser::AdductParser, adduct::AbstractScheme; kwargs...) = return_adduct(adductparser, adduct, 1)
+function parse_adduct(adductparser::AdductParser, adduct::AbstractString; kwargs...) 
+    nm, sch = split(adduct, "M"; limit = 2)
+    nm = nm[begin + 1:end]
+    ncore = isempty(nm) ? 1 : parse(Int, nm)
+    sch = string("[", sch)
+    adduct = haskey(scheme_name(), sch) ? scheme_name()[sch] : parse_chemical(adductparser.chemicalparser, sch)
+    return_adduct(adductparser, adduct, ncore) 
+end
+
+return_adduct(::AdductParser{true}, adduct, ncore) = (adduct, ncore)
+return_adduct(::AdductParser{false}, adduct, ncore) = (; adduct, ncore)
+
+parse_adduct(x::Tuple; kwargs...) = x
+parse_adduct(::AdductParser{true}, x::Tuple; kwargs...) = x
+parse_adduct(x::NamedTuple; kwargs...) = x
+parse_adduct(::AdductParser{false}, x::NamedTuple; kwargs...) = x
+parse_adduct(::AdductParser{true}, x::NamedTuple; kwargs...) = Tuple(x)
+
+# parse_adduct(adduct::AbstractChemicalScheme) = (adduct, 1)
+# parse_adduct(::AbstractAdductParser, adduct::AbstractChemicalScheme) = (adduct, 1)
+

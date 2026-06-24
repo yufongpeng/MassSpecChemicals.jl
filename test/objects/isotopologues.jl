@@ -34,32 +34,59 @@ ti = time()
 itl = Isotopologues("C494H776O148N136S4"; abtype = :total)
 te = time()
 if te - ti > 1
-    @info "`Isotopologues` takes too much time for chemical ≈ 10 kDa. Skip tests for larger chemicals and transitions."
+    @info "`Isotopologues` takes too much time for chemical ≈ 10 kDa. Skip tests for larger chemicals."
 else
     ti = time()
     itl = Isotopologues("C1482H2328O444N408S12"; abtype = :total)
     te = time()
     if te - ti > 2
-        @info "`Isotopologues` takes too much time for chemical ≈ 30 kDa. Skip tests for larger chemicals and transitions."
+        @info "`Isotopologues` takes too much time for chemical ≈ 30 kDa. Skip tests for larger chemicals."
     else
         ti = time()
         itl = Isotopologues("C2964H4656O888N816S24"; abtype = :total)
         te = time()
         if te - ti > 5
-            @info "`Isotopologues` takes too much time for chemical ≈ 50 kDa. Skip tests for larger chemicals and transitions."
+            @info "`Isotopologues` takes too much time for chemical ≈ 50 kDa. Skip tests for larger chemicals."
         else
             itl = Isotopologues("C4940H7760O1480N1360S40"; abtype = :total)
-            TandemIsotopologues("C494H776O148N136S4" => "C247H388O74N68S2"; abtype = :total)
-            Isotopologues("C494H776O148N136S4" => "C247H388O74N68S2"; abtype = :total)
-            ti = time()
-            itll = Isotopologues("C494H776O148N136S4" => "C247H388O74N68S2"; abtype = :max)
-            te = time()
-            if te - ti > 2
-                @info "`Isotopologues` takes too much time for transitions ≈ 10 kDa -> 5 kDa. Skip tests for larger transitions."
-            else
-                itll = TandemIsotopologues("C988H1552O296N272S8" => "C494H776O148N136S4"; abtype = :max)
-                itll = Isotopologues("C988H1552O296N272S8" => "C494H776O148N136S4"; abtype = :max)
-            end
+        end
+    end
+end
+
+TandemIsotopologues("C297H388O74N68S2" => "C124H194O37N34S"; abtype = :total)
+Fragmentation(Table(; Chemical = ["[C297H388O74N68S2]+"], Product = [["[C124H194O37N34S]+"]]), Isotopologues("[C297H388O74N68S2]+"))
+TandemIsotopologues("C297H388O74N68S2" => "C124H194O37N34S" => "C62H87O19N17S"; abtype = :total)
+TandemIsotopologues("C297H388O74N68S2"; product = ["C124H194O37N34S"], abtype = :total)
+Isotopologues("C297H388O74N68S2" => "C124H194O37N34S"; abtype = :total)
+ti = time()
+itll1 = TandemIsotopologues("C297H388O74N68S2" => "C124H194O37N34S"; abtype = :total)
+itll2 = TandemIsotopologues("C297H388O74N68S2"; product = ["C124H194O37N34S"], abtype = :total)
+itll3 = Isotopologues("C297H388O74N68S2" => "C124H194O37N34S"; abtype = :total)
+te = time()
+if te - ti > 1
+    @info "`Isotopologues` and `TandemIsotopologues` takes too much time for transitions ≈ 5 kDa -> 3 kDa. Skip tests for larger transitions."
+else
+    Fragmentation(Table(; Chemical = ["[C494H776O148N136S4]+"], Product = [["[C247H388O74N68S2]+"]]), Isotopologues("[C494H776O148N136S4]+"))
+    ti = time()
+    itll1 = TandemIsotopologues("C494H776O148N136S4" => "C247H388O74N68S2"; abtype = :total)
+    itll2 = TandemIsotopologues("C494H776O148N136S4"; product = ["C247H388O74N68S2"], abtype = :total)
+    itll3 = Isotopologues("C494H776O148N136S4" => "C247H388O74N68S2"; abtype = :total)
+    te = time()
+    if te - ti > 2
+        @info "`Isotopologues` takes too much time for transitions ≈ 10 kDa -> 5 kDa. Skip tests for larger chemicals and transitions."
+    else
+        Fragmentation(Table(; Chemical = ["[C988H1552O296N272S8]+"], Product = [["[C494H776O148N136S4]+"]]), Isotopologues("[C988H1552O296N272S8]+"))
+        ti = time()
+        itll1 = TandemIsotopologues("C988H1552O296N272S8" => "C494H776O148N136S4"; abtype = :max)
+        itll2 = TandemIsotopologues("C988H1552O296N272S8"; product = ["C494H776O148N136S4"], abtype = :max)
+        itll3 = Isotopologues("C988H1552O296N272S8" => "C494H776O148N136S4"; abtype = :max)
+        te = time()
+        if te - ti > 5
+            @info "`Isotopologues` takes too much time for transitions ≈ 20 kDa -> 10 kDa. Skip tests for larger chemicals and transitions."
+        else
+            itll1 = TandemIsotopologues("C1482H2328O444N408S12" => "C741H1164O222N204S6"; abtype = :max)
+            itll2 = TandemIsotopologues("C1482H2328O444N408S12"; product = ["C741H1164O222N204S6"], abtype = :max)
+            itll3 = Isotopologues("C1482H2328O444N408S12" => "C741H1164O222N204S6"; abtype = :max)
         end
     end
 end

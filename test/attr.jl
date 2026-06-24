@@ -1,7 +1,8 @@
 @testset "Attributes" begin
     @testset "Basic chemicalformula and elements" begin 
-        @test MSC.gain_elements(["D" => 5], MSC.dictionary_elements(Dictionary, Dictionary(["H"], [5]))) == MSC.unique_elements(MSC.loss_elements(["D" => 5, "H" => 10], MSC.dictionary_elements(Dictionary, Dict("H" => 5))))
-        @test MSC.gain_elements(Dictionary(["D"], [5]), MSC.dictionary_elements(Dict, Dictionary(["H"], [5]))) == MSC.loss_elements(MSC.dictionary_elements(Dictionary, ["D" => 5, "H" => 10]), MSC.dictionary_elements(Dict, Dict("H" => 5)))
+        @test MSC.gain_elements(["D" => 5], MSC.dictionary_elements(Dictionary, Dictionary(["H"], [5]))) == MSC.unique_elements(MSC.loss_elements(["D" => 5, "H" => 10], MSC.unique_elements(Dictionary, Dict("H" => 5))))
+        @test MSC.gain_elements(Dictionary(["D"], [5]), MSC.dictionary_elements(Dict, Dictionary(["H"], [5]))) == MSC.loss_elements(MSC.unique_elements(Dictionary, ["D" => 5, "H" => 10]), MSC.dictionary_elements(Dict, Dict("H" => 5)))
+        @test MSC.gain_elements(MSC.unique_elements(Vector{Pair}, Dictionary(["D"], [5])), MSC.unique_elements(Dict, Dictionary(["H"], [5]))) == MSC.unique_elements(Vector{Pair}, MSC.loss_elements(MSC.unique_elements(Dictionary, Dictionary(["D", "H"], [5, 10])), MSC.unique_elements(Vector{Pair}, Dict("H" => 5))))
         @test chemicalformula(["C" => 2, "H" => 5, "O" => 1, "H" => 1]; unique = false) == "C2H5OH"
         @test chemicalformula(["C" => 2, "H" => 5, "O" => 1, "H" => 1]; unique = false, ischemical = false) == "+C2H5OH"
         @test chemicalformula(["C" => -2, "H" => -5, "O" => -1, "H" => -1]; unique = false, ischemical = false, loss = false) == "-C2H5OH"
@@ -111,7 +112,7 @@
 
     @testset "Custom chemical types" begin
         @test chemicalname(glc) == "D-Glucose"
-        @test MSC.dictionary_elements(chemicalelements(glc)) == Dict("C" => 6, "H" => 12, "O" => 6)
+        @test MSC.unique_elements(chemicalelements(glc)) == ["C" => 6, "H" => 12, "O" => 6]
         @test chemicalformula(glc; unique = true) == "C6H12O6"
         @test chemicalsmiles(glc) == ""
 
@@ -158,13 +159,14 @@
     end
 
     @testset "Isotopomers" begin
+        @test Isotopomers(icglc[1], "C5H12O6[13C]") == it1.Chemical[2]
         @test @test_noerror test_show(it3.Chemical[2])
         @test chemicalname(it3.Chemical[2]) == string(chemicalname(chemicalparent(it3.Chemical[2])), "[13C]")
         @test chemicalabbr(it3.Chemical[2]) == string(chemicalabbr(chemicalparent(it3.Chemical[2])), "[13C]")
         @test chemicalname(itit14.Chemical[2]; bracket = true) == chemicalabbr(itit14.Chemical[2])
         @test chemicalname(itit13.Chemical[4]; bracket = true) == chemicalabbr(itit13.Chemical[4])
         @test chemicalformula(it3.Chemical[2]) == chemicalformula(chemicalelements(it3.Chemical[2]); ischemical = true)
-        @test MSC.gain_elements(["D" => 5], isotopomersisotopes(it3.Chemical[2])) == filter(!iselement ∘ first, chemicalelements(it3.Chemical[2]))
+        @test MSC.gain_elements(["D" => 5], isotopomersisotopes(it3.Chemical[2])) == filter(x -> !iselement(first(x)) && last(x) != 0, chemicalelements(it3.Chemical[2]))
         @test chemicalparent(it3.Chemical[2]) == it3.Chemical[2].parent
         @test all(isapprox.(mmi.(it3.Chemical), it3.MZ1; rtol = 20e-6))
         @test all(isapprox.(mz.(it3.Chemical), it3.MZ1; rtol = 20e-6))
@@ -200,7 +202,7 @@
     end
 
     @testset "Isobars" begin
-        @test chemicalname(pt1.Chemical[3]) == "Isobars[[Glucose+H]+[18O], [Glucose+H]+[13C2], [Glucose+H]+[13C,17O]]"
+        @test chemicalname(pt1.Chemical[3]) == "Isobars[[Glucose+H]+[18O], [Glucose+H]+[13C2], [Glucose+H]+[17O,13C]]" || chemicalname(pt1.Chemical[3]) == "Isobars[[Glucose+H]+[18O], [Glucose+H]+[13C2], [Glucose+H]+[13C,17O]]"
         @test chemicalabbr(pt1.Chemical[1]) == "Isobars[[Glc+H]+]"
         @test chemicalformula(pt1.Chemical[1]) == chemicalformula(chemicalelements(pt1.Chemical[1]))
         @test isapprox(mz(pt1.Chemical[2], "[M+H]+"), mz(pt1.Chemical[2]))
@@ -257,11 +259,12 @@
     end
 
     @testset "IsotopomerizedSchema" begin
+        @test IsotopomerizedSchema(chemicaltransition(itit12.Chemical[2])[2].parent, "-H2OO[13C]") == chemicaltransition(itit12.Chemical[5])[2]
         @test @test_noerror test_show(itit12.Chemical[5])
         @test chemicalabbr(itit12.Chemical[5]) == join(chemicalabbr.(chemicaltransition(itit12.Chemical[5])), " -> ")
         @test chemicalname(itit12.Chemical[5]) == join(chemicalname.(chemicaltransition(itit12.Chemical[5])), " -> ")
         @test chemicalformula(chemicaltransition(itit12.Chemical[5])[2]) == chemicalformula(chemicalelements(chemicaltransition(itit12.Chemical[5])[2]))
-        @test isotopomersisotopes(chemicaltransition(itit12.Chemical[5])[2]) == filter(!iselement ∘ first, chemicalelements(chemicaltransition(itit12.Chemical[5])[2]))
+        @test MSC.unique_elements(Dict, isotopomersisotopes(chemicaltransition(itit12.Chemical[5])[2])) == MSC.dictionary_elements(filter(!iselement ∘ first, chemicalelements(chemicaltransition(itit12.Chemical[5])[2])))
         @test ischemicalequal(chemicaltransition(itit12.Chemical[1])[2], chemicaltransition(itit12.Chemical[2])[2])
         @test !ischemicalequal(chemicaltransition(itit12.Chemical[1])[2], chemicaltransition(itit12.Chemical[2])[3])
         @test ischemicalequal(chemicaltransition(itit12.Chemical[1])[2], chemicalparent(chemicaltransition(itit12.Chemical[1])[2]))
@@ -277,7 +280,7 @@
         @test chemicalabbr(gitit12.Chemical[6]) == join(chemicalabbr.(chemicaltransition(gitit12.Chemical[6])), " -> ")
         @test chemicalname(gitit12.Chemical[6]) == join(chemicalname.(chemicaltransition(gitit12.Chemical[6])), " -> ")
         @test chemicalformula(chemicaltransition(gitit12.Chemical[6])[2]) == chemicalformula(chemicalelements(chemicaltransition(gitit12.Chemical[6])[2]))
-        @test isotopomersisotopes(chemicaltransition(gitit12.Chemical[6])[2]) == filter(!iselement ∘ first, chemicalelements(chemicaltransition(gitit12.Chemical[6])[2]))
+        @test MSC.unique_elements(isotopomersisotopes(chemicaltransition(gitit12.Chemical[6])[2])) == MSC.unique_elements(filter(!iselement ∘ first, chemicalelements(chemicaltransition(gitit12.Chemical[6])[2])))
         @test groupedisotopomersabundance(chemicaltransition(gitit12.Chemical[6])[2]) == chemicaltransition(gitit12.Chemical[6])[2].abundance
         @test chemicalparent.(chemicaltransition(gitit12.Chemical[5])) == chemicalparent.(chemicaltransition(gitit12.Chemical[1]))
         @test ischemicalequal(gitit12.Chemical[5], gitit12.Chemical[5])

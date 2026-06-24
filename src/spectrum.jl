@@ -20,7 +20,7 @@ function Ionization(mztable::Table; adduction = AdductIon, threading = nothing, 
         adduct = map(vectorize, mztable.Adduct)
         delete!(kwargs, :adduct)
     elseif haskey(kwargs, :adduct)
-        adduct = vectorize(kwargs[:adduct]), length(mztable)
+        adduct = vectorize(kwargs[:adduct], length(mztable))
         delete!(kwargs, :adduct)
     else
         throw(ArgumentError("Require adducts information. Use column `Adduct` of the table or keyword arguments `adduct`."))
@@ -32,6 +32,8 @@ function Ionization(mztable::Table; adduction = AdductIon, threading = nothing, 
     elseif haskey(kwargs, :abundance)
         abundance = vectorize(kwargs[:abundance], length(mztable))
         delete!(kwargs, :abundance)
+    else
+        abundance = [1.0 for _ in eachindex(mztable)]
     end
     if :Proportion in propertynames(mztable)
         proportion = mztable.Proportion
@@ -39,6 +41,8 @@ function Ionization(mztable::Table; adduction = AdductIon, threading = nothing, 
     elseif haskey(kwargs, :proportion)
         proportion = vectorize(kwargs[:proportion], length(mztable))
         delete!(kwargs, :proportion)
+    else
+        proportion = [[1.0] for _ in eachindex(mztable)]
     end
     proportion = map(vectorize, proportion)
     id = vcat(([(i, j) for j in eachindex(adduct[i])] for i in eachindex(mztable))...)
@@ -264,9 +268,12 @@ Fragmentation of `precursor_table.Chemical` or `spectrum.table.Chemical` into `p
 * `threshold` can be a number or criteria, representing the lower limit of abundance (absolute and/or relative to maximal value of each spectrum). 
 * `threading`: force to use multiple threads (`true`) or single thread (`false`); `nothing` lets the program determine. 
 """
-function Fragmentation(producttable::Table, mztable::Table; threading = nothing, threshold = rcrit(1e-4))
+function Fragmentation(producttable::Table, mztable::Table; chemicalparser = ChemicalExpressionParser(), threading = nothing, threshold = rcrit(1e-4))
     # group -> precursor_table, elements_precursor
     if !in(:ID, propertynames(producttable)) && in(:Chemical, propertynames(producttable))
+        if eltype(producttable.Chemical) <: AbstractString
+            producttable = Table(producttable; Chemical = [parse_chemical(chemicalparser, x) for x in producttable.Chemical])
+        end
         producttable = match_chemical(mztable, producttable; colexp = :Chemical, collib = :Chemical)
     elseif !in(:ID, propertynames(producttable))
         throw(ArgumentError("No column `ID` or `Chemical` in product_table."))
@@ -290,6 +297,9 @@ function Fragmentation(producttable::Table, mztable::Table; threading = nothing,
         return Table(; ID = mztable.ID, Chemical = mztable.Chemical, mspre..., [Symbol(string("MZ", n + 1)) => getproperty(mztable, :MZ1)]..., abpre..., [Symbol(string("Abundance", n + 1)) => getproperty(mztable, :Abundance1)]...) 
     end
     :Product in propertynames(producttable) || throw(ArgumentError("No column `Product` in product_table."))
+    if eltype(first(producttable.Product)) <: AbstractString
+        producttable = Table(producttable; Product = [[parse_chemical(chemicalparser, y) for y in x] for x in producttable.Product])
+    end
     allequal(msstage, mztable.Chemical) || throw(ArgumentError("Chemicals have to be in the same MS stage."))
     all(x -> all(y -> msstage(y) < 2, x), producttable.Product) || throw(ArgumentError("Products should not be MS/MS pairs."))
     if !in(:Proportion, propertynames(producttable))
@@ -318,20 +328,20 @@ function Fragmentation(producttable::Table, mztable::Table; threading = nothing,
                 transmission = sum(producttable.Proportion[pid])
                 )
         end
-        Table(; (map(propertynames(first(t))) do p
-            p => ChainedVector(getproperty.(t, p))
-        end)...)
+        Table(; (p => ChainedVector(getproperty.(t, p)) for p in propertynames(first(t)))...)
     else
-        vcat(map(gmztable) do precursor_table 
+        t = Vector{Table}(undef, length(gmztable))
+        for (i, precursor_table) in enumerate(gmztable)
             pid = findfirst(==(first(precursor_table.ID)), id)
-            TandemIsotopologues(chemicalparent(first(precursor_table.Chemical)); 
+            t[i] = TandemIsotopologues(chemicalparent(first(precursor_table.Chemical)); 
                 threshold,
                 precursor_table,
                 product = producttable.Product[pid],
                 proportion = producttable.Proportion[pid],
                 transmission = sum(producttable.Proportion[pid])
-                )
-        end...)
+            )
+        end
+        Table(; (p => ChainedVector(getproperty.(t, p)) for p in propertynames(first(t)))...)
     end
 end
 Fragmentation(producttable::Table, spec::Spectrum; threshold = rcrit(1e-4)) = Fragmentation(producttable, spec.table; threshold)
@@ -413,7 +423,7 @@ end
 function bin_offset(outmass, binmass, binsize, nbin_multiplier)
     x = round(Int, (outmass - binmass) / binsize)
     # x == 0 ? 1 : x > 0 ? x + 1 : nbin_multiplier + x + 1
-    x == 0 ? 0 : x > 0 ? nbin_multiplier - x : - x
+    x == 0 ? x : x > 0 ? nbin_multiplier - x : -x
 end
 
 function binnify(mass, binsize, init = first(mass))
