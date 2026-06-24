@@ -4,13 +4,15 @@
     @testset "Combinatorics" begin 
         @test MSC.safe_factorial(Val(false), 1, 1) == 1
         @test MSC.safe_factorial(1, 1) == 1
-        @test isapprox(MassSpecChemicals.safe_factorial(Val(false), 10, 3), factorial(10, 3))
-        @test isapprox(MassSpecChemicals.safe_factorial(Val(false), 50, 3), MassSpecChemicals.safe_factorial(Val(true), 50, 3))
-        @test isapprox(MassSpecChemicals.safe_multinomial(Val(false), [50, 50]), MassSpecChemicals.safe_multinomial(Val(false), 50, 50))
-        @test isapprox(MassSpecChemicals.safe_multinomial(Val(true), [50, 50]), MassSpecChemicals.safe_multinomial(Val(true), 50, 50))
-        @test MassSpecChemicals.safe_multinomial(Val(false), 50) == 1
-        @test MassSpecChemicals.safe_multinomial(50) == 1
-        @test isapprox(MassSpecChemicals.safe_multinomial(Val(false), [10, 10]), MassSpecChemicals.safe_multinomial(Val(false), 10, 10))
+        @test isapprox(MSC.safe_factorial(50, 50), factorial(50, 50))
+        @test isapprox(MSC.safe_factorial(Val(false), 10, 3), factorial(10, 3))
+        @test isapprox(MSC.safe_factorial(Val(false), 50, 3), MSC.safe_factorial(Val(true), 50, 3))
+        @test isapprox(MSC.safe_multinomial(Val(false), [50, 50]), MSC.safe_multinomial(Val(false), 50, 50))
+        @test isapprox(MSC.safe_multinomial(Val(true), [50, 50]), MSC.safe_multinomial(Val(true), 50, 50))
+        @test MSC.safe_multinomial(Val(false), 50) == MSC.safe_multinomial(Val(true), 50)
+        @test MSC.safe_multinomial(50) == 1
+        @test isapprox(MSC.safe_multinomial(50, 50), MSC.safe_multinomial([50, 50]))
+        @test isapprox(MSC.safe_multinomial(Val(false), [10, 10]), MSC.safe_multinomial(Val(false), 10, 10))
     end
     @testset "New elements" begin 
         m = [23.98504168, 24.985836966, 25.982592972]

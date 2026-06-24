@@ -14,7 +14,7 @@ Ionization of `chemicaltable.Chemical`. The returned table contains isotopologue
 """
 function Ionization(mztable::Table; adduction = AdductIon, threading = nothing, chemicalparser = ChemicalExpressionParser(), adductparser = AdductParser(), threshold = rcrit(1e-4), kwargs...)
     :Chemical in propertynames(mztable) || throw(ArgumentError("No column `Chemical` in input table."))
-    chemical = parse_chemical.(Ref(chemicalparser), mztable.Chemical; kwargs...)
+    chemical = eltype(mztable.Chemical) <: AbstractChemical ? mztable.Chemical : parse_chemical.(Ref(chemicalparser), mztable.Chemical; kwargs...)
     kwargs = Dict(kwargs...)
     if :Adduct in propertynames(mztable)
         adduct = map(vectorize, mztable.Adduct)
@@ -42,23 +42,26 @@ function Ionization(mztable::Table; adduction = AdductIon, threading = nothing, 
         proportion = vectorize(kwargs[:proportion], length(mztable))
         delete!(kwargs, :proportion)
     else
-        proportion = [[1.0] for _ in eachindex(mztable)]
+        proportion = [repeat([1.0], length(first(adduct))) for _ in eachindex(mztable)]
     end
     proportion = map(vectorize, proportion)
     id = vcat(([(i, j) for j in eachindex(adduct[i])] for i in eachindex(mztable))...)
     rn = min(length(id), Threads.nthreads())
     if isnothing(threading)
-        threading = mean(mmi, mztable.Chemical) * sqrt(-log2(min(1, minimum(makecrit_value(crit(threshold), 1))))) * (rn - 1) > 100000 
+        ab = mean(abundance)
+        s = mean(length(chemicalelements(x)) for x in mztable.Chemical)
+        b = mean(mean(last, chemicalelements(x)) for x in mztable.Chemical)
+        b = sum(b ^ (1/x) for x in 1:msstage(first(mztable.Chemical)))
+        # println((0.02b + 0.2sqrt(-2 * b * log2(min(1, minimum(makecrit_value(crit(threshold), ab)) / ab)))) ^ 1.2s * (rn - 1))
+        threading = (0.02b + 0.2sqrt(-2b * log2(min(1, minimum(makecrit_value(crit(threshold), ab)) / ab)))) ^ 1.2s * (rn - 1) > 1e6
     end
     if threading
         t = Vector{Table}(undef, length(id))
         Threads.@threads for k in eachindex(t)
-            i, j = t[k]
+            i, j = id[k]
             t[k] = Isotopologues(ionize(adduction, chemical[i]; adduct[i][j]...); kwargs..., id = (k, ), abundance = abundance[i] * proportion[i][j], threshold)
         end
-        tbl = Table(; (map(propertynames(t[1])) do p
-            p => ChainedVector(getproperty.(t, p))
-        end)...)
+        tbl = Table(; (p => ChainedVector(getproperty.(t, p)) for p in propertynames(t[1]))...)
     else
         tbl = Table(vcat((Isotopologues(ionize(adduction, chemical[i]; adduct[i][j]...); kwargs..., id = (k, ), abundance = abundance[i] * proportion[i][j], threshold) for (k, (i, j)) in enumerate(id))...))
     end
@@ -68,6 +71,10 @@ function Ionization(mztable::Table; adduction = AdductIon, threading = nothing, 
     id = findall(>=(abundance_cutoff), ab)
     tbl[id]
 end
+
+Ionization(v::Vector; kwargs...) = Ionization(Table(; Chemical = v); kwargs...) 
+Ionization(::Isobars; kwargs...) = throw(ArgumentError("`Isobars` is not supported by `Ionization`."))
+Ionization(::Isotopomers; kwargs...) = throw(ArgumentError("`Isotopomers` is not supported by `Ionization`."))
 
 """
     MSScan([msanalyzer = TOF(),] mztable; min_bin_fwhm = 50) -> Union{Spectrum, Nothing}
@@ -271,7 +278,7 @@ Fragmentation of `precursor_table.Chemical` or `spectrum.table.Chemical` into `p
 function Fragmentation(producttable::Table, mztable::Table; chemicalparser = ChemicalExpressionParser(), threading = nothing, threshold = rcrit(1e-4))
     # group -> precursor_table, elements_precursor
     if !in(:ID, propertynames(producttable)) && in(:Chemical, propertynames(producttable))
-        if eltype(producttable.Chemical) <: AbstractString
+        if !(eltype(producttable.Chemical) <: AbstractChemical)
             producttable = Table(producttable; Chemical = [parse_chemical(chemicalparser, x) for x in producttable.Chemical])
         end
         producttable = match_chemical(mztable, producttable; colexp = :Chemical, collib = :Chemical)
@@ -297,7 +304,7 @@ function Fragmentation(producttable::Table, mztable::Table; chemicalparser = Che
         return Table(; ID = mztable.ID, Chemical = mztable.Chemical, mspre..., [Symbol(string("MZ", n + 1)) => getproperty(mztable, :MZ1)]..., abpre..., [Symbol(string("Abundance", n + 1)) => getproperty(mztable, :Abundance1)]...) 
     end
     :Product in propertynames(producttable) || throw(ArgumentError("No column `Product` in product_table."))
-    if eltype(first(producttable.Product)) <: AbstractString
+    if any(x -> !(eltype(x) <: AbstractChemical), producttable.Product)
         producttable = Table(producttable; Product = [[parse_chemical(chemicalparser, y) for y in x] for x in producttable.Product])
     end
     allequal(msstage, mztable.Chemical) || throw(ArgumentError("Chemicals have to be in the same MS stage."))
@@ -312,7 +319,14 @@ function Fragmentation(producttable::Table, mztable::Table; chemicalparser = Che
     gmztable = group(getproperty(:ID), mztable)
     rn = min(length(gmztable), Threads.nthreads())
     if isnothing(threading)
-        threading = (mean(mmi ∘ first ∘ getproperty(:Chemical), gmztable)) ^ (msstage(first(mztable.Chemical))) * sqrt(-log2(min(1, minimum(makecrit_value(crit(threshold), 1))))) * (rn - 1) > 100000
+        colab = lastcolnum(propertynames(mztable), "Abundance")
+        ab = mean(getproperty(mztable, colab))
+        s = mean(length(chemicalelements(first(x.Chemical))) for x in gmztable)
+        b = mean(mean(last, chemicalelements(first(x.Chemical))) for x in gmztable)
+        b = sum(b ^ (1/x) for x in 1:(msstage(first(mztable.Chemical)) + 1))
+        np = mean(length(x) for x in producttable.Product)
+        # println((0.02b + 0.2sqrt(-2 * b * log2(min(1, minimum(makecrit_value(crit(threshold), ab)) / ab)))) ^ 1.2s * (rn - 1))
+        threading = np * (0.02b + 0.2sqrt(-2b * log2(min(1, minimum(makecrit_value(crit(threshold), ab)) / ab)))) ^ 1.2s * (rn - 1) > 1e6
     end
     if threading
         t = Vector{Table}(undef, length(gmztable))

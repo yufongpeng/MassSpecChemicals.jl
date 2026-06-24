@@ -41,5 +41,15 @@
         factorial(d2["C"] + d2["[13C]"], d2["C"]) / factorial(d2["[13C]"]) * 
         factorial(d1["O"] + d1["[17O]"] - d2["O"] - get(d2, "[17O]", 0), d1["O"] - d2["O"]) / factorial(d1["[17O]"] - get(d2, "[17O]", 0))
     )
+    @test isapprox(itit17.Abundance2[14], 
+        big(MSC.elements_abundance()["C"]) ^ (d1["C"]) * big(MSC.elements_abundance()["[13C]"]) ^ d1["[13C]"] * 
+        big(MSC.elements_abundance()["H"]) ^ d1["H"] * 
+        big(MSC.elements_abundance()["N"]) ^ get(d1, "N", 0) * 
+        big(MSC.elements_abundance()["O"]) ^ (d1["O"]) * big(MSC.elements_abundance()["[17O]"]) ^ d1["[17O]"] * 
+        big(MSC.elements_abundance()["P"]) ^ d1["P"] * 
+        factorial(big(d2["C"] + d2["[13C]"]), d2["C"]) / factorial(big(d2["[13C]"])) * 
+        factorial(big(d1["O"] + d1["[17O]"] - d2["O"] - get(d2, "[17O]", 0)), d1["O"] - d2["O"]) / factorial(big(d1["[17O]"] - get(d2, "[17O]", 0)));
+        rtol = 1e-10
+    )
     @test isapprox(itl.Abundance1[begin], isotopicabundance(itl.Chemical[begin]); rtol = 1e-6)
 end

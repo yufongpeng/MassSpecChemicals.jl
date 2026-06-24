@@ -50,7 +50,6 @@ function isotopologues_elements_ms2(precise::Val, it1, element_precursor_diction
     else
         element_product_dictionary = get_element_dictinonary(element_product)
         i = findfirst(x -> all(iselement, keys(x)), it1.Element)
-        # use_max = false
         if isnothing(i) 
             _, j = findmax(it1.Abundance)
             p = maximal_proportion(precise, it1.Element[j], element_product_dictionary, it1.Abundance[j] * proportion)

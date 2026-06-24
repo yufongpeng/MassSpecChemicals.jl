@@ -109,8 +109,6 @@ end
 zero_center_interval(val::Missing; LB = Closed, RB = Closed) = missing
 zero_center_interval(val::IntervalSet; LB = Closed, RB = Closed) = val
 
-# real_interval(center, delta; LB = Closed, RB = Closed) = zero_center_interval(delta; LB, RB) + center
-
 """
     makecrit_value(crit::Criteria, x) -> Tuple
 
@@ -225,16 +223,7 @@ Conversion of abundance type for normalization before maximal value filtering.
 """
 preabtype(x::AbstractAbundance) = x
 preabtype(::List) = Total()
-# preabundance(::AbstractAbundance, abundance, threshold, element_dictionary = nothing) = abundance
-# preabundance(x::List, abundance, threshold, element_dictionary) = preabundance(x, abundance, threshold, sum(last, element_dictionary))
-# preabundance(x::List, abundance, threshold, element_dictionary::AbstractVector) = preabundance(x, abundance, threshold, sum(x -> sum(last, x), element_dictionary))
-# function preabundance(::List, abundance, threshold, n::Int) 
-#     # approximation by [13C] isotope
-#     m = minimum(makecrit_value(crit(threshold), abundance))
-#     p = 0.011
-#     σ = 4p * (1 - p)
-#     2 * abundance / (1 - (m / abundance * n * sqrt(σ * π / 2 * n)) ^ σ)
-# end
+
 """
     dopostnormalize(::AbstractAbundance)
 
@@ -397,7 +386,8 @@ function safe_multinomial(x::Vector{Int})
 end
     
 safe_multinomial(::T) where T = one(T)
-safe_multinomial(::Val, ::T) where T = one(T)
+safe_multinomial(::Val{true}, ::T) where T = one(T)
+safe_multinomial(::Val{false}, ::T) where T = one(T)
 safe_multinomial(::Val{true}, x...) = multinomial(big.(x)...)
 safe_multinomial(::Val{false}, x...) = check_overflow_multinomial(x...) ? multinomial(big.(x)...) : safe_multinomial(x...)
 

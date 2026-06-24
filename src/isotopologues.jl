@@ -189,10 +189,14 @@ function Isotopologues(mztable::Table; threading = nothing, chemicalparser = Che
         mztable = Table(mztable; abundance = collect.(getproperties(mztable, colab)))
         push!(vec_key, :abundance)
         delete!(kwargs, :abundance)
+        ab = mean(mean, mztable.abundance)
     elseif haskey(kwargs, :abundance)
         mztable = Table(mztable; abundance = vectorize(get(kwargs, :abundance, nothing), length(mztable)))
         push!(vec_key, :abundance)
         delete!(kwargs, :abundance)
+        ab = mean(mean, mztable.abundance)
+    else
+        ab = 1.0
     end
     if !in(:ID, propertynames(mztable))
         msn = msstage(first(mztable.Chemical)) - 1
@@ -200,16 +204,18 @@ function Isotopologues(mztable::Table; threading = nothing, chemicalparser = Che
     end
     rn = min(length(mztable), Threads.nthreads())
     if isnothing(threading)
-        threading = mean(mmi, mztable.Chemical) ^ (msstage(first(mztable.Chemical))) * sqrt(-log2(min(1, minimum(makecrit_value(crit(threshold), 1))))) * (rn - 1) > 100000 
+        s = mean(length(chemicalelements(x)) for x in mztable.Chemical)
+        b = mean(mean(last, chemicalelements(x)) for x in mztable.Chemical)
+        b = sum(b ^ (1/x) for x in 1:msstage(first(mztable.Chemical)))
+        # println((0.02b + 0.2sqrt(-2 * b * log2(min(1, minimum(makecrit_value(crit(threshold), ab)) / ab)))) ^ 1.2s * (rn - 1))
+        threading = (0.02b + 0.2sqrt(-2b * log2(min(1, minimum(makecrit_value(crit(threshold), ab)) / ab)))) ^ 1.2s * (rn - 1) > 1e6
     end
     if threading
         t = Vector{Table}(undef, length(mztable))
         Threads.@threads for i in eachindex(t)
             t[i] = Isotopologues(mztable.Chemical[i]; kwargs..., id = mztable.ID[i], [k => getproperty(mztable, k)[i] for k in vec_key]..., threshold)
         end
-        tbl = Table(; (map(propertynames(t[1])) do p
-            p => ChainedVector(getproperty.(t, p))
-        end)...)
+        tbl = Table(; (p => ChainedVector(getproperty.(t, p)) for p in propertynames(t[1]))...)
     else
         tbl = Table(vcat((Isotopologues(r.Chemical; kwargs..., id = r.ID, [k => getproperty(r, k) for k in vec_key]..., threshold) for r in mztable)...))
     end
@@ -310,7 +316,7 @@ function TandemIsotopologues(input_chemical::AbstractChemical;
 
     precursor, element_precursor = last(precursor_info)
     product = parse_chemical.(Ref(chemicalparser), product)
-    all(x -> msstage(x) < 2, product) || throw(ArgumentError("Products should not be MS/MS pairs."))
+    all(x -> x isa AbstractScheme || msstage(x) < 2, product) || throw(ArgumentError("Products should not be MS/MS pairs."))
     proportion = if isnothing(proportion) 
         [1/length(product) for x in eachindex(product)]
     else
@@ -477,10 +483,14 @@ function TandemIsotopologues(mztable::Table; threading = nothing, chemicalparser
         mztable = Table(mztable; product = mztable.Product)
         push!(vec_key, :product)
         delete!(kwargs, :product)
+        np = mean(length(x) for x in mztable.product)
     elseif haskey(kwargs, :product)
         mztable = Table(mztable; product = vectorize(get(kwargs, :product, nothing), length(mztable)))
         push!(vec_key, :product)
         delete!(kwargs, :product)
+        np = mean(length(x) for x in mztable.product)
+    else
+        np = 1.0
     end
     # all(x -> all(y -> msstage(y) < 2, x), mztable.Product) || throw(ArgumentError("Products should not MS/MS pairs."))
     colab = allcolnum(propertynames(mztable), "Abundance"; error = false)
@@ -488,10 +498,14 @@ function TandemIsotopologues(mztable::Table; threading = nothing, chemicalparser
         mztable = Table(mztable; abundance = collect.(getproperties(mztable, colab)))
         push!(vec_key, :abundance)
         delete!(kwargs, :abundance)
+        ab = mean(mean, mztable.abundance)
     elseif haskey(kwargs, :abundance)
         mztable = Table(mztable; abundance = vectorize(get(kwargs, :abundance, nothing), length(mztable)))
         push!(vec_key, :abundance)
         delete!(kwargs, :abundance)
+        ab = mean(mean, mztable.abundance)
+    else
+        ab = 1.0
     end
     if :Transmission in propertynames(mztable)
         mztable = Table(mztable; transmission = mztable.Transmission)
@@ -517,16 +531,18 @@ function TandemIsotopologues(mztable::Table; threading = nothing, chemicalparser
     end
     rn = min(length(mztable), Threads.nthreads())
     if isnothing(threading)
-        threading = mean(mmi, mztable.Chemical) ^ (msstage(first(mztable.Chemical)) + 1) * sqrt(-log2(min(1, minimum(makecrit_value(crit(threshold), 1))))) * (rn - 1) > 100000
+        s = mean(length(chemicalelements(x)) for x in mztable.Chemical)
+        b = mean(mean(last, chemicalelements(x)) for x in mztable.Chemical)
+        b = sum(b ^ (1/x) for x in 1:msstage(first(mztable.Chemical)))
+        # println((0.02b + 0.2sqrt(-2 * b * log2(min(1, minimum(makecrit_value(crit(threshold), ab)) / ab)))) ^ 1.2s * (rn - 1))
+        threading = np * (0.02b + 0.2sqrt(-2b * log2(min(1, minimum(makecrit_value(crit(threshold), ab)) / ab)))) ^ 1.2s * (rn - 1) > 1e6
     end
     if threading
         t = Vector{Table}(undef, length(mztable))
         Threads.@threads for i in eachindex(t)
             t[i] = TandemIsotopologues(mztable.Chemical[i]; kwargs..., id = mztable.ID[i], [k => getproperty(mztable, k)[i] for k in vec_key]..., threshold)
         end
-        tbl = Table(; (map(propertynames(t[1])) do p
-            p => ChainedVector(getproperty.(t, p))
-        end)...)
+        tbl = Table(; (p => ChainedVector(getproperty.(t, p)) for p in propertynames(t[1]))...)
     else
         tbl = Table(vcat((TandemIsotopologues(r.Chemical; kwargs..., id = r.ID, [k => getproperty(r, k) for k in vec_key]..., threshold) for r in mztable)...))
     end

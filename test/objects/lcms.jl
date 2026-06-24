@@ -124,18 +124,27 @@ pt = Table(;
         [0.05, 0.15, 0.15, 0.3, 0.1, 0.3], 
         [0.05, 0.1, 0.4, 0.15, 0.4], 
         [0.1, 0.7], 
-        [0.2, 0.8], [0.8]
+        [0.8],
+        [0.2, 0.8], 
+        [0.8]
     ])
 IGQ1b = AdductIon(GQ1, "[M+2H]2+")
 IGD3 = AdductIon(GD3, "[M+H]+")
 ms0 = Table(; Chemical = [GQ1, GD3], Adduct = [["[M+2H]2+", "[M+H+Na]2+", "[M+2H-H2O]2+"], ["[M+H]+"]], Proportion = [[1, 0.1, 0.3], [1]], Abundance = [100000, 10000])
+ms1 = Table(; Chemical = repeat([GQ1, GD3], 1000))
 
 @info "Running HRMS and MS/MS"
 
+Ionization(repeat([GQ1, GD3], 1000); abundance = 10, proportion = [100, 10], adduct = ["[M+2H]2+", "[M+2H-H2O]2+"])
+Ionization(ms1; adduct = ["[M+2H]2+", "[M+2H-H2O]2+"])
+
 spec1 = @p ms0 |> Ionization(; abtype = :list) |> MSScan
-spec2 = @p spec1 |> Isolation(Quadrupole(1210.588728; fwhm = 1.3, offset = 0.3)) |> Fragmentation(pt) |> MSScan
-spec3 = @p spec2 |> Isolation(Quadrupole(948.3303; fwhm = 1.3, offset = 0.3)) |> Fragmentation(pt) |> MSScan
+spec2 = @p spec1 |> Isolation(Quadrupole(1210.588728; fwhm = 1.3, offset = 0.3)) |> Fragmentation(pt; threading = false) |> MSScan
+spec3 = @p spec2 |> Isolation(Quadrupole(948.3303; fwhm = 1.3, offset = 0.3)) |> Fragmentation(pt; threading = true) |> MSScan
 spec4 = @p spec3 |> AllIons((1000, 2000)) |> MSScan
+spec5 = @p spec3 |> Fragmentation(pt) |> MSScan
+spec6 = @p spec5 |> AllIons() |> MSScan
+spec7 = @p spec6 |> MSScan(Quadrupole())
 
 @info "Running SIM"
 
@@ -157,7 +166,7 @@ transitiontable = Table(;
         Quadrupole(200.0; fwhm = 0.7, digits = 1)
     ]
 )
-sim = SelectedIonMonitor(transitiontable, vcat(Isotopologues(IGQ1b; abtype = :input, abundance = 100000), Isotopologues(IGD3; abtype = :input, abundance = 10000)))
+sim = SelectedIonMonitor(transitiontable, MSScan(vcat(Isotopologues(IGQ1b; abtype = :input, abundance = 100000), Isotopologues(IGD3; abtype = :input, abundance = 10000))))
 pt2 = peak_table(sim)
 
 @info "Running CoelutingIsobars"

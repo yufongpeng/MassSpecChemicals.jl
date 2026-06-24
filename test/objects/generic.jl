@@ -52,15 +52,12 @@ push!(cpsi2.property, :structure => [
     ]
 ])
 
-# dimh = Adduct(2, "+H", 1)
-# test all default adduct 
-# icglcall = [AdductIon(cglc, k) for k in keys(MSC.ADDUCT_NAME)]
 @info "Defining generic adduct ions"
 
 icglc = [AdductIon(cglc, "[M+H]+"), AdductIon(cglc, "[M+H-H2O]+")]
 icgld = [AdductIon(cgld, "[M+H]+"), AdductIon(cgld, "[M+H-H2O]+")]
 icps = [ionize(cps; adduct = losshserine), AdductIon(cps, "[2M+H]+"), AdductIon(cps, "[M-H]-")]
-icpsi1 = [ionize(cpsi1; adduct = losshserine), AdductIon(cpsi1, "[2M+H]+"), AdductIon(cpsi1, "[M-H]-")]
+icpsi1 = [ionize(cpsi1, losshserine), AdductIon(cpsi1, "[2M+H]+"), AdductIon(cpsi1, "[M-H]-")]
 icpsi2 = [ionize(cpsi2; adduct = losshserine), AdductIon(cpsi2, "[2M+H]+"), AdductIon(cpsi2, "[M-H]-")]
 
 @info "Defining chemical transitions"
@@ -69,9 +66,9 @@ cp0 = ChemicalSeries(icps[3] => lossserine)
 cp1 = ChemicalSeries(icps[1], AdductIon(fa1, ChemicalLoss(Proton())))
 cp2 = ChemicalSeries(icps[3] => lossserine => outputchemical(cp1))
 cp3 = ChemicalSeries(icps[3], cp1)
-cp4 = ChemicalSeries(isotopomerize(icps[3], ["[13C]" => 5]) => isotopomerize(completescheme(icps[1], outputchemical(cp1)), ["[13C]" => 5]))
-cp5 = ChemicalSeries(isotopomerize(icpsi1[3], ["[13C]" => 5, "D" => 2]), ChemicalSeries(isotopomerize(completescheme(icpsi1[3], lossserine), ["D" => 1]), isotopomerize(completescheme(icpsi1[1], outputchemical(cp1)), ["[13C]" => 5])))
-pt1 = peak_table(MSScan(Isotopologues([icglc[1]]; abundance = 1e5, threshold = crit(1e1, 1e-2))))
+cp4 = ChemicalSeries(ionize(isotopomerize(icps[3], ["[13C]" => 5]); adduct = ElementalScheme(false, Proton())) => isotopomerize(completescheme(icps[1], outputchemical(cp1)), ["[13C]" => 5]))
+cp5 = ChemicalSeries(ionize(isotopomerize(isotopomerize(icpsi1[3], ["[13C]" => 5]), ["D" => 2]), ElementalScheme(false, Proton())), ChemicalSeries(isotopomerize(completescheme(icpsi1[3], lossserine), ["D" => 1]), isotopomerize(completescheme(icpsi1[1], outputchemical(cp1)), ["[13C]" => 5])))
+pt1 = peak_table(MSScan(Isotopologues(icglc[1]; abundance = 1e5, threshold = crit(1e1, 1e-2))))
 
 @info "Defining criteria"
 
