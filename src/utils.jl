@@ -373,28 +373,22 @@ const log2typemaxint = log2(typemax(Int))
 stirling_approx(n) = (n + 0.5) * log2(max(n, 1)) 
 function stirling_approx_multinomial(x::AbstractVector) 
     s = sum(>(1), x)
-    s == 1 ? 0 : stirling_approx(sum(x)) - sum(stirling_approx, x) - halflog2pi * (s - 1)
+    s == 1 ? 0.0 : stirling_approx(sum(x)) - sum(stirling_approx, x) - halflog2pi * (s - 1)
 end
 function stirling_approx_multinomial(x...) 
     s = sum(>(1), x)
-    s == 1 ? 0 : stirling_approx(sum(x)) - sum(stirling_approx, x) - halflog2pi * (s - 1)
+    s == 1 ? 0.0 : stirling_approx(sum(x)) - sum(stirling_approx, x) - halflog2pi * (s - 1)
 end
 stirling_approx_factorial(n, k) = (n + 0.5) * log2(max(n, 1)) - (k + 0.5) * log2(max(k, 1)) + (n - k) * log2exp
 
 check_overflow_multinomial(x) = false
 check_overflow_multinomial(x...) = stirling_approx_multinomial(x...) > log2typemaxint
-check_overflow_multinomial(x::AbstractVector) = stirling_approx_multinomial(x) > log2typemaxint
+check_overflow_multinomial(x::Vector{Int}) = stirling_approx_multinomial(x) > log2typemaxint
 check_overflow_factorial(n, k) = stirling_approx_factorial(n, k) > log2typemaxint
 
-function safe_multinomial(precise::Bool, x::AbstractVector)
-    if precise || check_overflow_multinomial(x)
-        multinomial(big.(x)...)
-    else
-        safe_multinomial(x)
-    end
-end
-
-function safe_multinomial(x::AbstractVector)
+safe_multinomial(::Val{true}, x::Vector{Int}) = multinomial(big.(x)...)
+safe_multinomial(::Val{false}, x::Vector{Int}) = check_overflow_multinomial(x) ? multinomial(big.(x)...) : safe_multinomial(x)
+function safe_multinomial(x::Vector{Int})
     try 
         multinomial(x...)
     catch
@@ -402,15 +396,10 @@ function safe_multinomial(x::AbstractVector)
     end
 end
     
-safe_multinomial(x) = 1
-safe_multinomial(precise::Bool, x) = 1
-function safe_multinomial(precise::Bool, x...)
-    if precise || check_overflow_multinomial(x...)
-        multinomial(big.(x)...)
-    else
-        safe_multinomial(x...)
-    end
-end
+safe_multinomial(::T) where T = one(T)
+safe_multinomial(::Val, ::T) where T = one(T)
+safe_multinomial(::Val{true}, x...) = multinomial(big.(x)...)
+safe_multinomial(::Val{false}, x...) = check_overflow_multinomial(x...) ? multinomial(big.(x)...) : safe_multinomial(x...)
 
 function safe_multinomial(x...)
     try 
@@ -420,21 +409,11 @@ function safe_multinomial(x...)
     end
 end
 
-function safe_factorial(precise::Bool, n, k)
-    if n == k 
-        1
-    elseif precise || check_overflow_factorial(n, k)
-        factorial(big(n), k)
-    else
-        try 
-            factorial(n, k)
-        catch
-            factorial(big(n), k)
-        end
-    end
-end
-
-function safe_factorial(n, k)
+safe_factorial(x::Val, n::T, k) where T = n == k ? one(T) : _safe_factorial(x, n, k)
+_safe_factorial(::Val{true}, n, k) = factorial(big(n), k)
+_safe_factorial(::Val{false}, n, k) = check_overflow_factorial(n, k) ? factorial(big(n), k) : _safe_factorial(n, k)
+safe_factorial(n::T, k) where T = n == k ? one(T) : _safe_factorial(n, k)
+function _safe_factorial(n, k)
     try 
         factorial(n, k)
     catch

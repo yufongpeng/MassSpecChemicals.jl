@@ -423,7 +423,7 @@ end
 function bin_offset(outmass, binmass, binsize, nbin_multiplier)
     x = round(Int, (outmass - binmass) / binsize)
     # x == 0 ? 1 : x > 0 ? x + 1 : nbin_multiplier + x + 1
-    x == 0 ? 0 : x > 0 ? nbin_multiplier - x : - x
+    x == 0 ? x : x > 0 ? nbin_multiplier - x : -x
 end
 
 function binnify(mass, binsize, init = first(mass))

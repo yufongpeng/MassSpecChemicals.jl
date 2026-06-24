@@ -1,23 +1,26 @@
 """
-    getchemicalproperty(chemical::AbstractChemicalsSchema, property::Symbol, default = nothing)
+    getchemicalproperty(chemical::AbstractChemicalsSchema, property::Symbol, default::Nothing[, type = Any]) -> Any
+    getchemicalproperty(chemical::AbstractChemicalsSchema, property::Symbol, default::T[, type = T]) -> T
 
 Get property from `chemical`. 
 
-This function defaults to finds the property, and returns `default` If it is not available.
+This function defaults to finds the property, and returns `default` If it is not available. The return value is asserted to be type `type`.
 
 For type `Chemical` and properties other than `name`, `elements` and `formula`, it iterates through `chemical.property`. If no matched property name is found, it returns `default`.
 
 For type `AbstractAdductIon`, it searches for properties of itself and then the properties of core chemical without specialized methods.
 """
-getchemicalproperty(chemical::AbstractChemicalsSchema, property::Symbol, default = nothing) = hasproperty(chemical, property) ? getproperty(chemical, property) : default 
-getchemicalproperty(adduct_ion::AbstractAdductIon, property::Symbol, default) = hasproperty(adduct_ion, property) ? getproperty(adduct_ion, property) : getchemicalproperty(ioncore(adduct_ion), property, default)
-getchemicalproperty(chemical::AbstractChemicalWrapper, property::Symbol, default = nothing) = hasproperty(chemical, property) ? getproperty(chemical, property) : hasproperty(chemical.chemical, property) ? getproperty(chemical.chemical, property) : default 
-function getchemicalproperty(chemical::Union{Chemical, FormulaChemical}, property::Symbol, default)
-    hasproperty(chemical, property) && return getproperty(chemical, property)
+getchemicalproperty(chemical::AbstractChemicalsSchema, property::Symbol, default::T) where T = getchemicalproperty(chemical, property, default, T)
+getchemicalproperty(chemical::AbstractChemicalsSchema, property::Symbol, default::Nothing) = getchemicalproperty(chemical, property, default, Any)
+getchemicalproperty(chemical::AbstractChemicalsSchema, property::Symbol, default, ::Type{T}) where T = hasproperty(chemical, property) ? getproperty(chemical, property)::T : default::T 
+getchemicalproperty(adduct_ion::AbstractAdductIon, property::Symbol, default, type::Type{T})  where T = hasproperty(adduct_ion, property) ? getproperty(adduct_ion, property)::T : getchemicalproperty(ioncore(adduct_ion), property, default, type)
+getchemicalproperty(chemical::AbstractChemicalWrapper, property::Symbol, default, ::Type{T}) where T = hasproperty(chemical, property) ? getproperty(chemical, property)::T : hasproperty(chemical.chemical, property) ? getproperty(chemical.chemical, property)::T : default::T 
+function getchemicalproperty(chemical::Union{Chemical, FormulaChemical}, property::Symbol, default, ::Type{T}) where T
+    hasproperty(chemical, property) && return getproperty(chemical, property)::T
     for (p, v) in chemical.property
-        p == property && return v
+        p == property && return v::T
     end
-    return default
+    default::T
 end
 
 """
@@ -246,7 +249,7 @@ chemicalsmiles(adduct_ion::AbstractAdductIon; kwargs...) = chemicalsmiles(ioncor
 chemicalsmiles(chemical::AbstractChemicalWrapper; kwargs...) = chemicalsmiles(chemical.chemical; kwargs...)
 
 """
-    ioncore(adduct_ion::AbstractAdductIon{S, T}; kwargs...) -> Union{S, Nothing}
+    ioncore(adduct_ion::AbstractAdductIon{S, T}; kwargs...) -> S
 
 The core chemical of `adduct_ion`. 
 
@@ -264,7 +267,7 @@ The core chemical of `adduct_ion`.
 ioncore(adduct_ion::AbstractAdductIon{S, T}; kwargs...) where {S, T} = getchemicalproperty(adduct_ion, :core, nothing)::S
 
 """
-    ionadduct(adduct_ion::AbstractAdductIon{S, T}; kwargs...) -> Union{T, Nothing}
+    ionadduct(adduct_ion::AbstractAdductIon{S, T}; kwargs...) -> T
 
 The adduct of `adduct_ion`. 
 
@@ -383,7 +386,7 @@ chemicalentity(chemical::AbstractChemical; kwargs...) = chemical
 chemicalentity(chemical::T; kwargs...) where {T <: AbstractChemicalWrapper} = T.name.wrapper(chemicalentity(chemical.chemical; kwargs...))
 
 """
-    elementalscheme(scheme::AbstractScheme; kwargs...) -> ElementalSchema
+    elementalscheme(scheme::AbstractScheme; kwargs...) -> Union{ElementalSchema, AbstractChemical}
 
 The elemental scheme of `scheme`. 
 
@@ -402,11 +405,11 @@ Attributes with Specific Methods marked as `Entity` indicate the `elementalschem
     * property: `:elementalscheme`
     * default: itself
 """
-elementalscheme(scheme::AbstractScheme; kwargs...) = getchemicalproperty(scheme, :elementalscheme, scheme)
+elementalscheme(scheme::AbstractScheme; kwargs...) = getchemicalproperty(scheme, :elementalscheme, scheme, Union{ElementalSchema, AbstractChemical})
 elementalscheme(scheme::AbstractStructuralScheme; kwargs...) = throw(ArgumentError("Structural scheme requires specific mapping to elemental scheme."))
 
 """
-    elementalscheme(scheme::AbstractScheme; kwargs...) -> AbstractScheme
+    structuralscheme(scheme::AbstractScheme; kwargs...) -> AbstractScheme
 
 The structural scheme of `scheme`. All elemental schema are regarded as structural schema as well.
 
@@ -422,10 +425,10 @@ The structural scheme of `scheme`. All elemental schema are regarded as structur
     * property: `:structuralscheme`
     * default: itself
 """
-structuralscheme(scheme::AbstractScheme; kwargs...) = getchemicalproperty(scheme, :structuralscheme, scheme)
+structuralscheme(scheme::AbstractScheme; kwargs...) = getchemicalproperty(scheme, :structuralscheme, scheme, AbstractScheme)
 
 """
-    chemicalspecies(chemical::AbstractChemical; kwargs...) -> Vector{<: AbstractChemical}
+    chemicalspecies(chemical::AbstractChemical; kwargs...) -> Vector{<:AbstractChemical}
 
 The chemical species (represented by a vector) from a chemical entity or chemical species. 
 
@@ -441,7 +444,7 @@ Attributes with Specific Methods marked as `Species` indicate the species are al
 chemicalspecies(chemical::AbstractChemical; kwargs...) = [chemical]
 
 """
-    chemicaltransition(chemical::AbstractChemical; kwargs...) -> Vector{<: AbstractChemical}
+    chemicaltransition(chemical::AbstractChemical; kwargs...) -> Vector{<:AbstractChemical}
 
 The chemical entities that are analyzed in each stage of instrumental analysis.
 
@@ -510,7 +513,7 @@ The delocalized isotopes replacement of isotopomers.
 # Keyword arguments
 * `loss` determines whether the chemical is part of chemical loss, and sign flips are propagated into elements.
 """
-isotopomersisotopes(cc::AbstractChemicalsSchema; loss = false, kwargs...) = loss ? -getchemicalproperty(cc, :isotopomersisotopes, Pair{String, Int}[]) : getchemicalproperty(cc, :isotopomersisotopes, Pair{String, Int}[])
+isotopomersisotopes(cc::AbstractChemicalsSchema; loss = false, kwargs...) = reverse_elements(getchemicalproperty(cc, :isotopomersisotopes, Pair{String, Int}[]), loss)
 isotopomersisotopes(cc::AbstractChemicalWrapper; loss = false, kwargs...) = isotopomersisotopes(cc.chemical; loss, kwargs...)
 isotopomersisotopes(sch::AbstractStructuralScheme; kwargs...) = throw(ArgumentError("`isotopomersisotopes` cannot be defined for structural scheme."))
 isotopomersisotopes(sch::AbstractCompleteScheme; loss = false, kwargs...) = isotopomersisotopes(elementalscheme(sch); loss, kwargs...) 
@@ -624,6 +627,11 @@ end
 The delocalized isotopes replacement of detected chemical. See `detectedchemical` for details.
 """
 detectedisotopes(cc::AbstractChemicalsSchema; kwargs...) = isotopomersisotopes(detectedchemical(cc); kwargs...)
+function detectedisotopes(sch::AbstractScheme; precursor = nothing, precursorisotopes = nothing, kwargs...) 
+    isnothing(precursor) && isnothing(precursorisotopes) && throw(ArgumentError("Scheme cannot be directly detected without precursor information."))
+    pre = isnothing(precursorisotopes) ? detectedisotopes(precursor; kwargs...) : precursorisotopes
+    gain_elements(pre, isotopomersisotopes(sch; kwargs...))
+end
 
 """
     detectedcharge(chemical::AbstractChemicalsSchema; kwargs...) -> Int
@@ -631,6 +639,10 @@ detectedisotopes(cc::AbstractChemicalsSchema; kwargs...) = isotopomersisotopes(d
 The charge state of detected chemical. See `detectedchemical` for details.
 """
 detectedcharge(cc::AbstractChemicalsSchema; kwargs...) = charge(detectedchemical(cc); kwargs...)
+function detectedcharge(sch::AbstractScheme; precursor = nothing, precursorcharge = nothing, kwargs...) 
+    isnothing(precursor) && isnothing(precursorcharge) && throw(ArgumentError("Scheme cannot be directly detected without precursor information."))
+    (isnothing(precursorcharge) ? detectedcharge(precursor; kwargs...) : precursorcharge) + charge(sch; kwargs...)
+end
 
 """
     detectedelements(chemical::AbstractChemicalsSchema); kwargs... -> Vector{Pair{String, Int}}
@@ -638,6 +650,10 @@ detectedcharge(cc::AbstractChemicalsSchema; kwargs...) = charge(detectedchemical
 The elements of detected chemical. See `detectedchemical` for details.
 """
 detectedelements(cc::AbstractChemicalsSchema; kwargs...) = chemicalelements(detectedchemical(cc); kwargs...)
+function detectedelements(sch::AbstractScheme; precursor = nothing, precursorelements = nothing, kwargs...) 
+    isnothing(precursor) && isnothing(precursorelements) && throw(ArgumentError("Scheme cannot be directly detected without precursor information."))
+    gain_elements(isnothing(precursorelements) ? detectedelements(precursor; kwargs...) : precursorelements, chemicalelements(sch; kwargs...))
+end
 
 # MS representation of chemical
 """

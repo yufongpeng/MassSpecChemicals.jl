@@ -2,18 +2,27 @@ abstract type AbstractChemicalParser end
 abstract type AbstractAdductParser end
 
 """
-    AdductParser <: AbstractAdductParser
+    AdductParser{T} <: AbstractAdductParser
     AdductParser() = AdductParser(ChemicalSchemeParser())
 
-Default adduct parser.
+Default adduct parser. `T` determines whether returning a tuple (`true`) or a named tuple (`false`). Namedtuple is useful for user input from a data table and ionization using `ionize`; tuple can be used for fixed adduct ion constructor interface.
 
 # Fields 
 * `chemicalparser::T`: chemical parser for each chemical scheme.
+
+# Constructor 
+* `AdductParser() = AdductParser{false}(ChemicalSchemeParser())`
+* `AdductParser(T::Bool) = AdductParser{T}(ChemicalSchemeParser())`
+* `AdductParser(parser::AbstractChemicalParser) = AdductParser{false}(parser)`
+* `AdductParser(T::Bool, parser::AbstractChemicalParser) = AdductParser{T}(parser)`
 """
-struct AdductParser <: AbstractAdductParser
+struct AdductParser{T} <: AbstractAdductParser
     chemicalparser::AbstractChemicalParser
 end
-AdductParser() = AdductParser(ChemicalSchemeParser())
+AdductParser() = AdductParser{false}(ChemicalSchemeParser())
+AdductParser(x::Bool) = AdductParser{x}(ChemicalSchemeParser())
+AdductParser(parser::AbstractChemicalParser) = AdductParser{false}(parser)
+AdductParser(x::Bool, parser::AbstractChemicalParser) = AdductParser{x}(parser)
 
 """
     FormulaChemicalParser <: AbstractChemicalParser

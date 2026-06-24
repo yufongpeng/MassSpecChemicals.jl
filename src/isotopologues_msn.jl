@@ -1,10 +1,11 @@
 # ==========================================================================================================================
 # Mid level MSn
-function isotopologues_elements_msn(element_dictionary_vec, msfix_vec, abundance, abtype, threshold; precise = false) 
+function isotopologues_elements_msn(precise::Val, element_dictionary_vec, msfix_vec, abundance, abtype, threshold) 
     max_dictionary_vec = map(maximal_elements, element_dictionary_vec)
-    max_proportion_vec = precise ? map(x -> isotopicabundance(x; precise), max_dictionary_vec) : map(isotopicabundance, max_dictionary_vec)
+    max_proportion_vec = map(x -> isotopicabundance(precise, x), max_dictionary_vec) 
     total, abundance_cutoff = abundance_threshold_msn(abtype, abundance, threshold, max_proportion_vec, element_dictionary_vec) 
-    tbls = map(isotopologues_elements_msx, element_dictionary_vec, msfix_vec, max_dictionary_vec, max_proportion_vec, [total for _ in eachindex(element_dictionary_vec)], [abundance_cutoff for _ in eachindex(element_dictionary_vec)], [precise for _ in eachindex(element_dictionary_vec)])
+    proportioon_cutoff = abundance_cutoff / total
+    tbls = map(isotopologues_elements_msx, element_dictionary_vec, msfix_vec, max_dictionary_vec, max_proportion_vec, [proportioon_cutoff for _ in eachindex(element_dictionary_vec)], [precise for _ in eachindex(element_dictionary_vec)])
     first(tbls).Abundance .*= total
     els = Vector{Vector{Pair{String, Int}}}[]
     abv = float(Int)[]
@@ -18,15 +19,15 @@ function isotopologues_elements_msn(element_dictionary_vec, msfix_vec, abundance
     (; Element = els[idm], Mass = mass[idm], Abundance = abv)
 end
 
-function isotopologues_elements_msx(element_dictionary, msfix, max_dictionary, max_proportion, abundance_factor, proportioon_cutoff, precise)
+function isotopologues_elements_msx(element_dictionary, msfix, max_dictionary, max_proportion, proportioon_cutoff, precise)
     isempty(element_dictionary) && return (; Element = [get_isotope_vec(element_dictionary)], Mass = [mmi(element_dictionary) + msfix], Abundance = [float(1)])
     element_isotope_pair = element_isotope_pairs(element_dictionary)
     element_chemical = [get_isotope_vec(max_dictionary)]
-    abundance_chemical = [max_proportion * abundance_factor]
+    abundance_chemical = [max_proportion]
     mass_chemical = [mmi(max_dictionary) + msfix]
     rec_addminusisotopes!(element_chemical, mass_chemical, abundance_chemical, max_dictionary, element_isotope_pair, 1, first(mass_chemical), first(abundance_chemical), proportioon_cutoff, true, true, precise)
     id = sortperm(abundance_chemical; rev = true)
-    (; Element = element_chemical[id], Mass = mass_chemical[id], Abundance = [abundance_chemical[i] / abundance_factor for i in id]) 
+    (; Element = element_chemical[id], Mass = mass_chemical[id], Abundance = abundance_chemical[id]) 
 end
 
 # ==========================================================================================================================

@@ -1,27 +1,28 @@
 # ==========================================================================================================================
 # Mid level MS1
-isotopologues_elements(x::AbstractString, abundance, abtype, threshold; normalize = true, precise = false) = 
-    isotopologues_elements(chemicalelements(x), abundance, abtype, threshold; normalize, precise)
-isotopologues_elements(input_element::Vector, abundance, abtype, threshold; normalize = true, precise = false) = 
-    isotopologues_elements(get_element_dictinonary_fixmass(input_element)..., abundance, abtype, threshold; normalize, precise)
-function isotopologues_elements(element_dictionary::Dict, msfix, abundance, abtype, threshold; normalize = true, precise = false)
+isotopologues_elements(precise::Val, x::AbstractString, abundance, abtype, threshold; normalize = true) = 
+    isotopologues_elements(precise, chemicalelements(x), abundance, abtype, threshold; normalize)
+isotopologues_elements(precise::Val, input_element::Vector, abundance, abtype, threshold; normalize = true) = 
+    isotopologues_elements(precise, get_element_dictinonary_fixmass(input_element)..., abundance, abtype, threshold; normalize)
+function isotopologues_elements(precise::Val, element_dictionary::Dict, msfix, abundance, abtype, threshold; normalize = true)
     abtype = abtyped(abtype)
     isempty(element_dictionary) && return (; Element = [element_dictionary], Mass = [mmi(element_dictionary)], Abundance = [abundance]) 
     element_isotope_pair = element_isotope_pairs(element_dictionary)
-    first_proportion = isotopicabundance(element_dictionary; precise)
+    first_proportion = isotopicabundance(precise, element_dictionary)
     max_dictionary = maximal_elements(element_dictionary)
-    max_proportion = isotopicabundance(max_dictionary; precise)
+    max_proportion = isotopicabundance(precise, max_dictionary)
     total, abundance_cutoff = abundance_threshold(abtype, abundance, threshold, first_proportion, max_proportion)
     if abtype == Input() && first_proportion / max_proportion < min_propotion() 
         throw(ArgumentError("Isotopic abundance of input chemical is too small; try use `abtype` other than `Input()` or larger threshold`"))
     end
     if max_proportion * abundance_cutoff / total / first_proportion ^ 2 > 1 
-        # abundance_cutoff / total << first_proportion
+        # max_proportion <-----------> first_proportion <--> threshold
         element_chemical = [get_isotope_vec(max_dictionary)]
         mass_chemical = [mmi(max_dictionary) + msfix]
         abundance_chemical = [total * max_proportion]
         rec_addminusisotopes!(element_chemical, mass_chemical, abundance_chemical, max_dictionary, element_isotope_pair, 1, first(mass_chemical), first(abundance_chemical), abundance_cutoff, true, true, precise)
     else
+        # max_proportion <--> first_proportion <---------> threshold
         element_chemical = [get_isotope_vec(element_dictionary)]
         mass_chemical = [mmi(element_dictionary) + msfix]
         abundance_chemical = [total * first_proportion]
@@ -41,33 +42,32 @@ function isotopologues_elements(element_dictionary::Dict, msfix, abundance, abty
     (; Element = element_chemical[id], Mass = mass_chemical[id], Abundance = abundance_chemical) 
 end
 
-isotopologues_elements_iter(x::AbstractString, abundance, abtype, threshold; normalize = true, precise = false) = 
-    isotopologues_elements_iter(chemicalelements(x), abundance, abtype, threshold; normalize, precise)
-isotopologues_elements_iter(input_element::Vector, abundance, abtype, threshold; normalize = true, precise = false) = 
-    isotopologues_elements_iter(get_element_dictinonary_fixmass(input_element)..., abundance, abtype, threshold; normalize, precise)
-function isotopologues_elements_iter(element_dictionary::Dict, msfix, abundance, abtype, threshold; normalize = true, precise = false)
+isotopologues_elements_iter(precise::Val, x::AbstractString, abundance, abtype, threshold; normalize = true) = 
+    isotopologues_elements_iter(precise, precise::Val, chemicalelements(x), abundance, abtype, threshold; normalize)
+isotopologues_elements_iter(precise::Val, input_element::Vector, abundance, abtype, threshold; normalize = true) = 
+    isotopologues_elements_iter(precise, get_element_dictinonary_fixmass(input_element)..., abundance, abtype, threshold; normalize)
+function isotopologues_elements_iter(precise::Val, element_dictionary::Dict, msfix, abundance, abtype, threshold; normalize = true)
     abtype = abtyped(abtype)
-    isempty(element_dictionary) && return (; Element = [element_dictionary], Mass = [mmi(element_dictionary)], Abundance = [abundance], Preab = [1.0]) 
+    isempty(element_dictionary) && return (; Element = [element_dictionary], Mass = [mmi(element_dictionary)], Abundance = [abundance], Preab = [one(abundance)]) 
     element_isotope_pair = element_isotope_pairs(element_dictionary)
-    first_proportion = isotopicabundance(element_dictionary; precise)
+    first_proportion = isotopicabundance(precise, element_dictionary)
     max_dictionary = maximal_elements(element_dictionary)
-    max_proportion = isotopicabundance(max_dictionary; precise)
+    max_proportion = isotopicabundance(precise, max_dictionary)
     total, abundance_cutoff = abundance_threshold(abtype, abundance, threshold, first_proportion, max_proportion)
     if abtype == Input() && first_proportion / max_proportion < min_propotion() 
         throw(ArgumentError("Isotopic abundance of input chemical is too small; try use `abtype` other than `Input()` or larger threshold`"))
     end
     if max_proportion * abundance_cutoff / total / first_proportion ^ 2 > 1 
-        # abundance_cutoff / total << first_proportion
         element_chemical = [get_isotope_vec(max_dictionary)]
         mass_chemical = [mmi(max_dictionary) + msfix]
         abundance_chemical = [total * max_proportion]
-        preab_chemical = [isotopologue_inverse_combination(max_dictionary; precise)]
+        preab_chemical = [isotopologue_inverse_combination(precise, max_dictionary)]
         rec_addminusisotopes_iter!(element_chemical, mass_chemical, abundance_chemical, preab_chemical, max_dictionary, element_isotope_pair, 1, first(mass_chemical), first(abundance_chemical), first(preab_chemical), abundance_cutoff, true, true, precise)
     else
         element_chemical = [get_isotope_vec(element_dictionary)]
         mass_chemical = [mmi(element_dictionary) + msfix]
         abundance_chemical = [total * first_proportion]
-        preab_chemical = [1.0]
+        preab_chemical = [one(first(abundance_chemical))]
         rec_addisotopes_iter!(element_chemical, mass_chemical, abundance_chemical, preab_chemical, element_dictionary, element_isotope_pair, 1, first(mass_chemical), first(abundance_chemical), first(preab_chemical), abundance_cutoff, precise)
     end
     abundance_chemical_normalize = normalize_abundance(abundance_chemical, abundance, preabtype(abtype), [Max(), Input(), Total()])
@@ -109,7 +109,7 @@ function rec_addisotopes!(
     end
     ne = get(element_dictionary, e, 0)
     if ne > 0
-        abundance = update_abundance(prev_abundance, e, i, ne, get(element_dictionary, i, 0), 1; precise)
+        abundance = update_abundance(precise, prev_abundance, e, i, ne, get(element_dictionary, i, 0), 1)
         max_abundance = max(max_abundance, abundance)
         current_state = (abundance >= threshold)
         rec_state = current_state || rec_state || (abundance >= prev_abundance)
@@ -163,7 +163,7 @@ function rec_addminusisotopes!(
     ne = get(element_dictionary, e, 0)
     ni = get(element_dictionary, i, 0)
     if backward && ni > 0 
-        abundance = update_abundance(prev_abundance, i, e, ni, ne, 1; precise)
+        abundance = update_abundance(precise, prev_abundance, i, e, ni, ne, 1)
         backward_abundance = max(max_abundance, abundance)
         backward_state = (abundance >= threshold)
         rec_state = backward_state || rec_state || (abundance >= prev_abundance)
@@ -191,7 +191,7 @@ function rec_addminusisotopes!(
     rec_state = false
     forward_abundance = prev_abundance
     if forward && ne > 0 
-        abundance = update_abundance(prev_abundance, e, i, ne, ni, 1; precise)
+        abundance = update_abundance(precise, prev_abundance, e, i, ne, ni, 1)
         forward_abundance = max(max_abundance, abundance)
         forward_state = (abundance >= threshold)
         rec_state = forward_state || rec_state || (abundance >= prev_abundance)
@@ -243,8 +243,8 @@ function rec_addisotopes_iter!(
     end
     ne = get(element_dictionary, e, 0)
     if ne > 0
-        abundance = update_abundance(prev_abundance, e, i, ne, get(element_dictionary, i, 0), 1; precise)
-        preab = update_inverse_proportion(prev_preab, ne, get(element_dictionary, i, 0), 1; precise)
+        abundance = update_abundance(precise, prev_abundance, e, i, ne, get(element_dictionary, i, 0), 1)
+        preab = update_inverse_proportion(precise, prev_preab, ne, get(element_dictionary, i, 0), 1)
         max_abundance = max(max_abundance, abundance)
         current_state = (abundance >= threshold)
         rec_state = current_state || rec_state || (abundance >= prev_abundance)
@@ -301,8 +301,8 @@ function rec_addminusisotopes_iter!(
     ne = get(element_dictionary, e, 0)
     ni = get(element_dictionary, i, 0)
     if backward && ni > 0 
-        abundance = update_abundance(prev_abundance, i, e, ni, ne, 1; precise)
-        preab = update_inverse_proportion(prev_preab, ni, ne, 1; precise)
+        abundance = update_abundance(precise, prev_abundance, i, e, ni, ne, 1)
+        preab = update_inverse_proportion(precise, prev_preab, ni, ne, 1)
         backward_abundance = max(max_abundance, abundance)
         backward_state = (abundance >= threshold)
         rec_state = backward_state || rec_state || (abundance >= prev_abundance)
@@ -331,8 +331,8 @@ function rec_addminusisotopes_iter!(
     rec_state = false
     forward_abundance = prev_abundance
     if forward && ne > 0 
-        abundance = update_abundance(prev_abundance, e, i, ne, ni, 1; precise)
-        preab = update_inverse_proportion(prev_preab, ne, ni, 1; precise)
+        abundance = update_abundance(precise, prev_abundance, e, i, ne, ni, 1)
+        preab = update_inverse_proportion(precise, prev_preab, ne, ni, 1)
         forward_abundance = max(max_abundance, abundance)
         forward_state = (abundance >= threshold)
         rec_state = forward_state || rec_state || (abundance >= prev_abundance)

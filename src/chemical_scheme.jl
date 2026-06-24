@@ -74,12 +74,16 @@ istransformedchemicalequal(x::StructuralElementalScheme, y::StructuralElementalS
 
 """
     ionize([constructor = AdductIon,] chemical; kwargs...) -> AbstractAdductIon
+    ionize([constructor = AdductIon,] chemical, adduct, ncore = 1; kwargs...) -> AbstractAdductIon
 
 Ionize `chemical` and wrap with `constructor`.
 """
 ionize(chemical::AbstractChemical; kwargs...) = ionize(AdductIon, chemical; kwargs...)
+ionize(chemical::AbstractChemical, adduct, ncore = 1; kwargs...) = ionize(AdductIon, chemical, adduct, ncore; kwargs...)
+
 """
     ionize(::Type{AdductIon}, chemical::AbstractChemical; adduct, ncore = 1, kwargs...) -> AdductIon
+    ionize(::Type{AdductIon}, chemical::AbstractChemical, adduct, ncore = 1; kwargs...) -> AdductIon
 
 Ionize `chemical` and wrap with `AdductIon`.
 
@@ -89,9 +93,15 @@ Ionize `chemical` and wrap with `AdductIon`.
 """
 ionize(::Type{AdductIon}, chemical::AbstractChemical; adduct, ncore = 1, kwargs...) = AdductIon(chemical, adduct, ncore)
 ionize(::Type{AdductIon}, chemical::AbstractAdductIon; adduct, ncore = 1, kwargs...) = AdductIon(ioncore(chemical), adduct, ncore)
-ionize(::Type{AdductIon}, chemical::Isobars; adduct, ncore = 1, kwargs...) = Isobars(ionize.(chemicalspecies(chemical); adduct, ncore, kwargs...), chemical.abundance)
-ionize(::Type{AdductIon}, chemical::Isotopomers; adduct, ncore = 1, kwargs...) = Isotopomers(ionize(chemicalparent(chemical); adduct, ncore, kwargs...), chemical.isotopes)
-ionize(::Type{AdductIon}, chemical::Groupedisotopomers; adduct, ncore = 1, kwargs...) = Groupedisotopomers(ionize(chemicalparent(chemical); adduct, ncore, kwargs...), chemical.state, chemical.isotope, chemical.isotopes, chemical.abundance)
+ionize(::Type{AdductIon}, chemical::Isobars; adduct, ncore = 1, kwargs...) = Isobars([ionize(x, adduct, ncore; kwargs...) for x in chemicalspecies(chemical)], chemical.abundance)
+ionize(::Type{AdductIon}, chemical::Isotopomers; adduct, ncore = 1, kwargs...) = Isotopomers(ionize(chemicalparent(chemical), adduct, ncore; kwargs...), chemical.isotopes)
+ionize(::Type{AdductIon}, chemical::Groupedisotopomers; adduct, ncore = 1, kwargs...) = Groupedisotopomers(ionize(chemicalparent(chemical), adduct, ncore; kwargs...), chemical.state, chemical.isotope, chemical.isotopes, chemical.abundance)
+
+ionize(::Type{AdductIon}, chemical::AbstractChemical, adduct, ncore = 1; kwargs...) = AdductIon(chemical, adduct, ncore)
+ionize(::Type{AdductIon}, chemical::AbstractAdductIon, adduct, ncore = 1; kwargs...) = AdductIon(ioncore(chemical), adduct, ncore)
+ionize(::Type{AdductIon}, chemical::Isobars, adduct, ncore = 1; kwargs...) = Isobars([ionize(x, adduct, ncore; kwargs...) for x in chemicalspecies(chemical)], chemical.abundance)
+ionize(::Type{AdductIon}, chemical::Isotopomers, adduct, ncore = 1; kwargs...) = Isotopomers(ionize(chemicalparent(chemical), adduct, ncore; kwargs...), chemical.isotopes)
+ionize(::Type{AdductIon}, chemical::Groupedisotopomers, adduct, ncore = 1; kwargs...) = Groupedisotopomers(ionize(chemicalparent(chemical), adduct, ncore; kwargs...), chemical.state, chemical.isotope, chemical.isotopes, chemical.abundance)
 
 """
     isotopomerize(chemical::AbstractChemicalsSchema, isotopes) -> AbstractChemicalsSchema
@@ -336,39 +346,35 @@ end
 detectedchemical(isobars::Isobars; kwargs...) = Isobars([detectedchemical(chemical; kwargs...) for chemical in chemicalspecies(isobars)], isobars.abundance)
 detectedchemical(isobars::Isobars{<: ChemicalTransition}; kwargs...) = Isobars([detectedchemical(chemical; kwargs...) for chemical in chemicalspecies(isobars)], isobars.abundance[:, end])
 
-function detectedisotopes(sch::AbstractScheme; precursor = nothing, precursorisotopes = nothing, kwargs...) 
-    isnothing(precursor) && isnothing(precursorisotopes) && throw(ArgumentError("Scheme cannot be directly detected without precursor information."))
-    pre = isnothing(precursorisotopes) ? detectedisotopes(precursor; kwargs...) : precursorisotopes
-    gain_elements(pre, isotopomersisotopes(sch; kwargs...))
-end
 detectedisotopes(sch::StructuralElementalScheme{T, <:AbstractChemical}; precursor = nothing, precursorisotopes = nothing, kwargs...) where T = isotopomersisotopes(sch; kwargs...)
-function detectedcharge(sch::AbstractScheme; precursor = nothing, precursorcharge = nothing, kwargs...) 
-    isnothing(precursor) && isnothing(precursorcharge) && throw(ArgumentError("Scheme cannot be directly detected without precursor information."))
-    (isnothing(precursorcharge) ? detectedcharge(precursor; kwargs...) : precursorcharge) + charge(sch; kwargs...)
-end
 detectedcharge(sch::StructuralElementalScheme{T, <:AbstractChemical}; precursor = nothing, precursorcharge = nothing, kwargs...) where T = charge(sch; kwargs...)
-function detectedelements(sch::AbstractScheme; precursor = nothing, precursorelements = nothing, kwargs...) 
-    isnothing(precursor) && isnothing(precursorelements) && throw(ArgumentError("Scheme cannot be directly detected without precursor information."))
-    gain_elements(isnothing(precursorelements) ? detectedelements(precursor; kwargs...) : precursorelements, chemicalelements(sch; kwargs...))
-end
 detectedelements(sch::StructuralElementalScheme{T, <:AbstractChemical}; precursor = nothing, precursorelements = nothing, kwargs...) where T = chemicalelements(sch; kwargs...)
 
 detectedchemical(ct::ChemicalTransition; kwargs...) = 
     detectedchemical(outputchemical(ct); precursor = @view(chemicaltransition(ct)[begin:end - 1]), kwargs...) 
 detectedchemical(ct::AbstractVector; kwargs...) = 
     detectedchemical(last(ct); precursor = @view(ct[begin:end - 1]), kwargs...) 
+    # detectedchemical(@view(chemicaltransition(ct)[begin:end - 1]), outputchemical(ct); kwargs...) 
+# detectedchemical(ct::AbstractVector; kwargs...) = 
+#     detectedchemical(@view(ct[begin:end - 1]), last(ct); kwargs...) 
+# function detectedchemical(ct::AbstractVector, sch::AbstractScheme; kwargs...)
+#     length(ct) == 1 && return detectedchemical(first(ct), sch; kwargs...)
+#     precursor = detectedchemical(@view(ct[begin:end - 1]), last(ct); kwargs...)
+#     detectedchemical(precursor, sch)
+# end
+# detectedchemical(ct::AbstractVector, chemical::AbstractChemical; kwargs...) = chemical
 detectedisotopes(ct::ChemicalTransition; kwargs...) = 
-    detectedisotopes(outputchemical(ct); precursor = @view(chemicaltransition(ct)[begin:end - 1]), kwargs...) 
+    detectedisotopes(outputchemical(ct); precursor = @view(chemicaltransition(ct)[begin:end - 1]), kwargs...)::Vector{Pair{String, Int}}
 detectedisotopes(ct::AbstractVector; kwargs...) = 
-    detectedisotopes(last(ct); precursor = @view(ct[begin:end - 1]), kwargs...) 
+    detectedisotopes(last(ct); precursor = @view(ct[begin:end - 1]), kwargs...)::Vector{Pair{String, Int}}
 detectedcharge(ct::ChemicalTransition; kwargs...) = 
-    detectedcharge(outputchemical(ct); precursor = @view(chemicaltransition(ct)[begin:end - 1]), kwargs...) 
+    detectedcharge(outputchemical(ct); precursor = @view(chemicaltransition(ct)[begin:end - 1]), kwargs...)::Int
 detectedcharge(ct::AbstractVector; kwargs...) = 
-    detectedcharge(last(ct); precursor = @view(ct[begin:end - 1]), kwargs...) 
+    detectedcharge(last(ct); precursor = @view(ct[begin:end - 1]), kwargs...)::Int
 detectedelements(ct::ChemicalTransition; kwargs...) = 
-    detectedelements(outputchemical(ct); precursor = @view(chemicaltransition(ct)[begin:end - 1]), kwargs...) 
+    detectedelements(outputchemical(ct); precursor = @view(chemicaltransition(ct)[begin:end - 1]), kwargs...)::Vector{Pair{String, Int}}
 detectedelements(ct::AbstractVector; kwargs...) = 
-    detectedelements(last(ct); precursor = @view(ct[begin:end - 1]), kwargs...) 
+    detectedelements(last(ct); precursor = @view(ct[begin:end - 1]), kwargs...)::Vector{Pair{String, Int}}
 
 # GenericChemical property search
 # structural -> complete, elemental -> complete

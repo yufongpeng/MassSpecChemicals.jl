@@ -90,45 +90,45 @@ window_name(::PowerCosineWindow) = "Power Cosine Window"
 (::SampledGaussianWindow)(ν, t) = sgaussian_norm(ν, t)
 (::GaussianWindow)(x, μ, σ2) = gaussian_norm(x, μ, σ2)
 (f::SuperGaussianWindow)(x, μ, σ) = supergaussian_norm(x, μ, σ, f.power)
-function (f::FixedTaperTukeyWindow)(x, μ, fwhm)
+function (f::FixedTaperTukeyWindow)(x, μ::S, fwhm::T) where {S, T}
     taperwidth = min(f.taperwidth, fwhm)
     p = abs(x - μ)
     plateau = fwhm - taperwidth
     if p > plateau / 2 + taperwidth
-        0
+        zero(promote_type(float(S), float(T)))
     elseif p > plateau / 2
         (cos(p * π / taperwidth) + 1) / 2
     else
-        1
+        one(promote_type(float(S), float(T)))
     end
 end
 
-function (f::TukeyWindow)(x, μ, fwhm)
+function (f::TukeyWindow)(x, μ::S, fwhm::T) where {S, T}
     width = fwhm / (2 - f.taperproportion)
     plateau = width * (1 - f.taperproportion)
     p = abs(x - μ) 
     if p > width
-        0
+        zero(promote_type(float(S), float(T)))
     elseif p > plateau
         taperwidth = width - plateau
         p = p - plateau
         (cos(p * π / taperwidth) + 1) / 2
     else
-        1
+        one(promote_type(float(S), float(T)))
     end
 end
 
-(::CosineWindow)(x, μ, fwhm) = abs(x - μ) > fwhm ? 0 : (cos(π * abs(x - μ) / fwhm) + 1) / 2
+(::CosineWindow)(x, μ::S, fwhm::T) where {S, T} = abs(x - μ) > fwhm ? zero(promote_type(float(S), float(T))) : (cos(π * abs(x - μ) / fwhm) + 1) / 2
 (::RectWindow)(x, μ, fwhm) = abs(x - μ) < fwhm / 2 ? 1 : 0
-function (f::PowerCosineWindow)(x, μ, fwhm)
+function (f::PowerCosineWindow)(x, μ::S, fwhm::T) where {S, T}
     p = (x - μ) * 2 / fwhm * acos(2 ^ (1 - 1 / f.power) - 1)
     # p = (x - μ) * 2 / fwhm
-    abs(p) > π ? 0 : (0.5 + cos(p) / 2) ^ f.power
+    abs(p) > π ? zero(promote_type(float(S), float(T))) : (0.5 + cos(p) / 2) ^ f.power
 end
     
-function (f::GaussianTailedUniformWindow)(x, μ, fwhm)
+function (f::GaussianTailedUniformWindow)(x, μ::S, fwhm::T) where {S, T}
     p = abs(x - μ) 
-    p == 0 && return 1
+    p == 0 && return zero(promote_type(float(S), float(T)))
     taperwidth = min(f.taperwidth, fwhm)
     plateau = fwhm - taperwidth
     if plateau == 0
@@ -136,7 +136,7 @@ function (f::GaussianTailedUniformWindow)(x, μ, fwhm)
     elseif p > plateau / 2
         gaussian_norm(p - plateau / 2, 0, taperwidth ^ 2 / log(256))
     else
-        1
+        one(promote_type(float(S), float(T)))
     end
 end
 
@@ -172,7 +172,7 @@ Discrete values of `window` with `fwhm` or `msanalyzer.window` at `mz` values (F
 function discrete_window(msanalyzer::AbstractMSAnalyzer, μ::Vector{T}, binsize, nbin_multiplier, height) where T
     fwhm_ref = fwhm_mz(msanalyzer, first(μ))
     window_ref = discrete_window(msanalyzer.window, fwhm_ref, binsize, nbin_multiplier, height)
-    windows = [Vector{T}() for _ in μ]
+    windows = Vector{Vector{T}}(undef, length(μ))
     for (i, m) in enumerate(μ)
         fwhm = fwhm_mz(msanalyzer, m)
         if fwhm - fwhm_ref < binsize * nbin_multiplier

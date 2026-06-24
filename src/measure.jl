@@ -1,7 +1,7 @@
 charge(isobars::Isobars; kwargs...) = charge(chemicalentity(isobars); kwargs...)
 charge(isotopomers::Isotopomers; kwargs...) = charge(chemicalparent(isotopomers); kwargs...)
 charge(isotopomers::Groupedisotopomers; kwargs...) = charge(chemicalparent(isotopomers); kwargs...)
-charge(ct::ChemicalTransition; kwargs...) = charge(chemicalentity(ct); kwargs...) 
+charge(ct::ChemicalTransition; kwargs...) = charge(chemicalentity(ct); kwargs...)::Int
 
 charge(x::ElementalScheme{false}; loss = false, kwargs...) = charge(x.chemical; loss = !loss, kwargs...) 
 charge(x::ElementalScheme{true}; loss = false, kwargs...) = charge(x.chemical; loss, kwargs...) 
@@ -27,7 +27,7 @@ Monoisotopic mass of formula, and elements.
 """
 function mmi(elements::Union{<: Vector{<: Pair}, <: Dict}, net_charge = 0; loss = false)
     # Vector of el => #el
-    weight = 0.0
+    weight = elements_mass()[""]
     for (el, n) in elements
         weight += elements_mass()[el] * n
     end
@@ -60,7 +60,7 @@ end
 mmi(isobars::Isobars; kwargs...) = _isobar_species_attr(mmi, isobars; kwargs...)
 mmi(x::Isotopomers; kwargs...) = mmi(chemicalparent(x); kwargs...) + _mass_isotope(x.isotopes; kwargs...)
 mmi(x::Groupedisotopomers; kwargs...) = mmi(chemicalparent(x); kwargs...) + _mass_isotope(x.isotopes, x.abundance; kwargs...)
-mmi(ct::ChemicalTransition; kwargs...) = mmi(analyzedchemical(ct); kwargs...)
+mmi(ct::ChemicalTransition; kwargs...) = mmi(analyzedchemical(ct); kwargs...)::float(Int)
 
 mmi(x::ElementalScheme{false}; loss = false, kwargs...) = mmi(x.chemical; loss = !loss, kwargs...) 
 mmi(x::ElementalScheme{true}; loss = false, kwargs...) = mmi(x.chemical; loss, kwargs...)
@@ -78,7 +78,7 @@ Molar mass of formula, and elements.
 """
 function molarmass(elements::Union{<: Vector{<: Pair}, <: Dict}, net_charge = 0; loss = false)
     # Vector of el => #el
-    weight = 0.0
+    weight = elements_mass()[""]
     for (el, n) in elements
         if iselement(el)
             for i in elements_isotopes()[el]
@@ -106,7 +106,7 @@ end
 molarmass(isobars::Isobars; kwargs...) = _isobar_species_attr(molarmass, isobars; kwargs...)
 molarmass(x::Isotopomers; kwargs...) = molarmass(chemicalparent(x); kwargs...) + _mass_isotope(x.isotopes; kwargs...)
 molarmass(x::Groupedisotopomers; kwargs...) = molarmass(chemicalparent(x); kwargs...) + _mass_isotope(x.isotopes, x.abundance; kwargs...)
-molarmass(ct::ChemicalTransition; kwargs...) = molarmass(analyzedchemical(ct); kwargs...)
+molarmass(ct::ChemicalTransition; kwargs...) = molarmass(analyzedchemical(ct); kwargs...)::float(Int)
 
 molarmass(x::ElementalScheme{false}; loss = false, kwargs...) = molarmass(x.chemical; loss = !loss, kwargs...) 
 molarmass(x::ElementalScheme{true}; loss = false, kwargs...) = molarmass(x.chemical; loss, kwargs...) 
@@ -114,5 +114,5 @@ molarmass(x::ChemicalSchema; kwargs...) = sum(molarmass(k; kwargs...) * v for (k
 molarmass(x::IsotopomerizedSchema; kwargs...) = molarmass(chemicalparent(x); kwargs...) + _mass_isotope(x.isotopes; kwargs...)
 molarmass(x::Groupedisotopomerizedschema; kwargs...) = molarmass(chemicalparent(x); kwargs...) + _mass_isotope(x.isotopes, x.abundance; kwargs...)
 
-mz(ct::ChemicalTransition; kwargs...) = mz(analyzedchemical(ct); kwargs...)
-mz(ct::ChemicalTransition, adduct; kwargs...) = mz(analyzedchemical(ct), adduct; kwargs...)
+mz(ct::ChemicalTransition; kwargs...) = mz(analyzedchemical(ct); kwargs...)::float(Int)
+mz(ct::ChemicalTransition, adduct; kwargs...) = mz(analyzedchemical(ct), adduct; kwargs...)::float(Int)
