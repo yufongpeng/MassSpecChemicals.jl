@@ -63,7 +63,8 @@ function Ionization(mztable::Table; adduction = AdductIon, threading = nothing, 
         end
         tbl = Table(; (p => ChainedVector(getproperty.(t, p)) for p in propertynames(t[1]))...)
     else
-        tbl = Table(vcat((Isotopologues(ionize(adduction, chemical[i]; adduct[i][j]...); kwargs..., id = (k, ), abundance = abundance[i] * proportion[i][j], threshold) for (k, (i, j)) in enumerate(id))...))
+        t = [Isotopologues(ionize(adduction, chemical[i]; adduct[i][j]...); kwargs..., id = (k, ), abundance = abundance[i] * proportion[i][j], threshold) for (k, (i, j)) in enumerate(id)]
+        tbl = Table(; (p => ChainedVector(getproperty.(t, p)) for p in propertynames(t[1]))...)
     end
     colab = lastcolnum(propertynames(tbl), "Abundance"; error = false)
     ab = getproperty(tbl, colab)

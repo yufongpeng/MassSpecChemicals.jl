@@ -217,7 +217,8 @@ function Isotopologues(mztable::Table; threading = nothing, chemicalparser = Che
         end
         tbl = Table(; (p => ChainedVector(getproperty.(t, p)) for p in propertynames(t[1]))...)
     else
-        tbl = Table(vcat((Isotopologues(r.Chemical; kwargs..., id = r.ID, [k => getproperty(r, k) for k in vec_key]..., threshold) for r in mztable)...))
+        t = [Isotopologues(r.Chemical; kwargs..., id = r.ID, [k => getproperty(r, k) for k in vec_key]..., threshold) for r in mztable]
+        tbl = Table(; (p => ChainedVector(getproperty.(t, p)) for p in propertynames(t[1]))...)
     end
     # spectrum specific threshold ?
     colab = lastcolnum(propertynames(tbl), "Abundance"; error = false)
@@ -544,7 +545,8 @@ function TandemIsotopologues(mztable::Table; threading = nothing, chemicalparser
         end
         tbl = Table(; (p => ChainedVector(getproperty.(t, p)) for p in propertynames(t[1]))...)
     else
-        tbl = Table(vcat((TandemIsotopologues(r.Chemical; kwargs..., id = r.ID, [k => getproperty(r, k) for k in vec_key]..., threshold) for r in mztable)...))
+        t = [TandemIsotopologues(r.Chemical; kwargs..., id = r.ID, [k => getproperty(r, k) for k in vec_key]..., threshold) for r in mztable]
+        tbl = Table(; (p => ChainedVector(getproperty.(t, p)) for p in propertynames(t[1]))...)
     end
     colab = propertynames(tbl)[findlast(x -> startswith(string(x), "Abundance"), propertynames(tbl))]
     ab = getproperty(tbl, colab)
