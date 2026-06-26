@@ -1,5 +1,8 @@
 @info "Running Isotopologues and TandemIsotopologues"
 
+p1 = MSC.maximal_proportion(Val(false), Dict("[33S]" => 6, "[34S]" => 6), Dict("S" => 1))
+p2 = MSC.maximal_proportion(Val(false), Dict("[33S]" => 6, "[34S]" => 6), Dict("S" => 11))
+
 it1 = Isotopologues(icglc[1]; abundance = 1e5, threshold = crit(1e1, 1e-2))
 it2 = Isotopologues(ioncore(icglc[1]); abundance = 1e5, abtype = :total, threshold = crit(1e1, 1e-2))
 it3 = Isotopologues(ipsi2[1]; abtype = :total, threshold = crit(1e-3, 1e-3))
@@ -7,13 +10,16 @@ it4 = Isotopologues("C6H12O6"; abundance = 1e5, abtype = :total, threshold = cri
 it5 = Isotopologues(Table(; Chemical = repeat([icglc[1]], 1000), Abundance1 = repeat([1e5], 1000)); threshold = crit(1e1, 1e-2), threading = true)
 it6 = Isotopologues(repeat([icglc[1]], 1000); abundance = 1e5, threshold = crit(1e1, 1e-2), threading = false)
 
+git3 = group_isotopologues(it3)
+
 # Tandemisotopologues / Isotopologues MS/MS
 itit1 = TandemIsotopologues(cp1; abundance = 1e5, threshold = crit(1e1, 1e-2), transmission = 0.3)
 itit2 = TandemIsotopologues(chemicalformula(icps[1]) => chemicalformula(last(chemicaltransition(cp1))); abundance = 1e5, threshold = crit(1e1, 1e-2), transmission = 0.3, chemicalparser = ChemicalTransitionParser())
 itit3 = TandemIsotopologues(ChemicalSeries(AdductIon(cps, "[M-H]-"), lossserine); abundance = 1e5, threshold = crit(1e1, 1e-2), transmission = 0.5)
 itit4 = TandemIsotopologues(string("[", chemicalformula(cps), "-H]-") => "-C3H5NO2"; abundance = 1e5, threshold = crit(1e1, 1e-2), transmission = 0.5)
 itit5 = TandemIsotopologues(ChemicalSeries(ips[1], AdductIon(ioncore(ips[1]).fa1, "[M-H]-")); abtype = :total, threshold = crit(1e-8, 1e-8), transmission = 0.3)
-itit6 = TandemIsotopologues(ChemicalSeries(AdductIon(ps, "[M-H]-"), lossserine); abtype = :total, threshold = crit(1e-8, 1e-8), transmission = 0.5)
+itit6 = TandemIsotopologues(ChemicalSeries(ipsi1[3], LossSerine(), SN1Acyl()); abtype = :total, abundance = 1e5, threshold = crit(1e1, 1e-2), transmission = 0.5, precise = true)
+
 itit7 = Isotopologues("[S8]2-" => "[S7]-"; abtype = :total)
 itit8 = Isotopologues("[C2H5[13C]OO]-" => "[C2H5]-"; abtype = :total)
 itit9 = Isotopologues("[C2H5[13C]OO]-" => "-[13C]O2"; abtype = :total)
@@ -29,11 +35,12 @@ gitit14 = group_isotopologues(itit14)
 
 itit15 = TandemIsotopologues(repeat([icps[3]], 1000); product = [lossserine], abundance = [1e5], threshold = crit(1e1, 1e-2), proportion = [0.5], transmission = 0.3, threading = true)
 itit16 = TandemIsotopologues(Table(; Chemical = repeat([icps[3]], 1000), Product = repeat([[lossserine]], 1000), Abundance1 = repeat([1e5], 1000), Proportion = repeat([[0.5]], 1000), Transmission = repeat([0.3], 1000)); threshold = crit(1e1, 1e-2), threading = true)
-itit17 = TandemIsotopologues(ChemicalSeries(ips[1], AdductIon(ioncore(ips[1]).fa1, "[M-H]-")); abtype = :total, threshold = crit(1e-8, 1e-8), transmission = 0.3, precise = true)
 
-d = MSC.dictionary_elements(chemicalelements(ipsi2[1]))
+d0 = MSC.dictionary_elements(chemicalelements(ipsi2[1]))
 d1 = MSC.dictionary_elements(chemicalelements(inputchemical(itit5.Chemical[14])))
 d2 = MSC.dictionary_elements(chemicalelements(outputchemical(itit5.Chemical[14])))
+
+d3, d4, d5 = last.(MSC.serieschemicaldata(itit6.Chemical[12]))
 
 @info "Running isotpologues function on large chemical"
 Isotopologues("C494H776O148N136S4"; abtype = :total)

@@ -2,13 +2,14 @@ const MIN_PROPORTION = 1e-3
 min_propotion() = MIN_PROPORTION
 
 """
-    detectedchemicaldata(raw_product; precursor)
+    detectedchemicaldata(precursor, product)
 
 Detected chemical and dictionary of elements.
 """
-function detectedchemicaldata(raw_product; precursor)
-    prod = detectedchemical(raw_product; precursor)
-    prod, unique_elements(Dict, chemicalelements(prod))
+function detectedchemicaldata(precursor, product)
+    sch = completescheme(precursor, product)
+    det = detectedchemical(precursor, sch)
+    sch, det, unique_elements(Dict, chemicalelements(det))
 end
 
 """
@@ -17,13 +18,20 @@ end
 Series detected chemical and dictionaries of elements.
 """
 function serieschemicaldata(input_chemical)
-    precursor = seriesanalyzedchemical(input_chemical)
-    v = map(precursor) do p 
-        elements_precursor = chemicalelements(p)
-        p, unique_elements(Dict, elements_precursor)
+    sch = AbstractChemicalsSchema[]
+    det = AbstractChemical[]
+    precursor = nothing
+    for c in chemicaltransition(input_chemical) 
+        push!(sch, completescheme(precursor, c))
+        push!(det, detectedchemical(precursor, last(sch)))
+        precursor = last(det)
     end
-    for (p, d) in v 
-        all(>=(0), values(d)) || throw(ArgumentError("Product can only contain elements restricted by precursor."))
+    v = map(eachindex(sch)) do i 
+        elements_precursor = chemicalelements(det[i])
+        sch[i], det[i], unique_elements(Dict, elements_precursor)
+    end
+    for (s, d, e) in v 
+        all(>=(0), values(e)) || throw(ArgumentError("Product can only contain elements restricted by precursor."))
     end
     v
 end
@@ -130,22 +138,72 @@ function update_isotopologue_combination(::Val{false}, p, n, va, np, vp)
 end
 
 """
-    maximal_proportion(precise::Val, element_precursor::Dict, element_product::Dict, p = 1.0) -> AbstractFloat
+    distribute_element_update!(update_fn, precise, prev, e, isotopes, element_precursor, element_product, max_dict = nothing)
+
+Distribute isotopes from `element_precursor` into `element_product` for parent element `e` and isotopes `isotopes`; then update max_dict and update `prev` using `update_fn`.
+"""
+function distribute_element_update!(update_fn, precise, prev, e, isotopes, element_precursor, element_product, max_dict = nothing)
+    pn = get(element_product, e, 0)
+    filter!(!iselement, isotopes)
+    pre = [get(element_precursor, x, 0) for x in isotopes]
+    spre = sum(pre)
+    en = get(element_precursor, e, 0) + spre
+    if isempty(pre)
+        return prev
+    elseif en == 0
+        return prev
+    end
+    pro = [round(Int, x * pn / en) for x in pre]
+    spro = sum(pro)
+    if spro > pn
+        delta = spro - pn 
+        i = 1
+        while delta > 0 
+            if pro[i] > 0 
+                pro[i] -= 1 
+                delta -= 1
+            else
+                i += 1 
+            end
+        end
+        spro = pn
+    elseif spre - spro > en - pn 
+        delta = spre - spro - en + pn 
+        i = 1 
+        while delta > 0 
+            if pre[i] > pro[i] 
+                pro[i] += 1 
+                delta -= 1
+            else
+                i += 1 
+            end
+        end
+        spro = sum(pro)
+    end
+    update_max_dict!(max_dict, e, isotopes, pro)
+    update_fn(precise, prev, en, spre, pre, pn, spro, pro)
+end
+
+update_max_dict!(max_dict::Nothing, e, isotopes, pro) = nothing
+function update_max_dict!(max_dict::Dict, e, isotopes, pro) 
+    for (x, n) in zip(isotopes, pro) 
+        get!(max_dict, x, 0)
+        max_dict[x] += n
+        get!(max_dict, e, 0)
+        max_dict[e] -= n
+    end
+end
+
+"""
+    maximal_proportion(precise::Val, element_precursor::Dict, element_product::Dict, prev = 1.0) -> AbstractFloat
 
 Estimate maximal product isotopologue of `element_product`, and compute the proportion relative to all possible isotopologues fragmented from `element_precursor`. 
 """
-function maximal_proportion(precise::Val, element_precursor, element_product, p = 1.0)
+function maximal_proportion(precise::Val, element_precursor, element_product, prev = 1.0)
     for (e, v) in pairs(group(parent_element, keys(element_precursor))) 
-        pn = get(element_product, e, 0)
-        filter!(!iselement, v)
-        pre = [get(element_precursor, x, 0) for x in v]
-        spre = sum(pre)
-        en = get(element_precursor, e, 0) + spre
-        pro = isempty(pre) ? Int[] : [round(Int, x * pn / en) for x in pre]
-        spro = sum(pro)
-        p = update_maximal_proportion(precise, p, en, spre, pre, pn, spro, pro)
+        prev = distribute_element_update!(update_maximal_proportion, precise, prev, e, v, element_precursor, element_product)
     end
-    return_abundance(precise, p)
+    return_abundance(precise, prev)
 end
 
 update_maximal_proportion(::Val{true}, p, en, spre, pre, pn, spro, pro) = 
@@ -160,78 +218,41 @@ function update_maximal_proportion(::Val{false}, p, en, spre, pre, pn, spro, pro
 end
 
 """
-    maximal_proportion_elements(precise::Val, element_precursor::Dict, element_product::Dict, p = 1.0)
+    maximal_proportion_elements(precise::Val, element_precursor::Dict, element_product::Dict, prev = 1.0)
 
 Estimate maximal product isotopologue of `element_product`, and compute `Dictionary` of elements and proportion relative to all possible isotopologues fragmented from `element_precursor`. 
 """
-function maximal_proportion_elements(precise::Val, element_precursor::Dict, element_product::Dict, p = 1.0)
+function maximal_proportion_elements(precise::Val, element_precursor::Dict, element_product::Dict, prev = 1.0)
     first_element_product_dictionary = copy(element_product)
     for (e, v) in pairs(group(parent_element, keys(element_precursor))) 
-        pn = get(element_product, e, 0)
-        filter!(!iselement, v)
-        pre = [get(element_precursor, x, 0) for x in v]
-        spre = sum(pre)
-        en = get(element_precursor, e, 0) + spre
-        pro = isempty(pre) ? Int[] : [round(Int, x * pn / en) for x in pre]
-        spro = sum(pro)
-        for (x, n) in zip(v, pro) 
-            get!(first_element_product_dictionary, x, 0)
-            first_element_product_dictionary[x] += n
-            get!(first_element_product_dictionary, e, 0)
-            first_element_product_dictionary[e] -= n
-        end
-        p = update_maximal_proportion(precise, p, en, spre, pre, pn, spro, pro)
+        prev = distribute_element_update!(update_maximal_proportion, precise, prev, e, v, element_precursor, element_product, first_element_product_dictionary)
     end
-    return_abundance(precise, p), first_element_product_dictionary
+    return_abundance(precise, prev), first_element_product_dictionary
 end
 
 """
-    maximal_combination(precise::Val, element_precursor::Dict, element_product::Dict, p = 1.0) -> AbstractFloat
+    maximal_combination(precise::Val, element_precursor::Dict, element_product::Dict, prev = 1.0) -> AbstractFloat
 
 Estimate maximal product isotopologue of `element_product`, and compute the number of combinations. 
 """
-function maximal_combination(precise::Val, element_precursor::Dict, element_product::Dict, p = 1.0)
+function maximal_combination(precise::Val, element_precursor::Dict, element_product::Dict, prev = 1.0)
     for (e, v) in pairs(group(parent_element, keys(element_precursor))) 
-        pn = get(element_product, e, 0)
-        filter!(!iselement, v)
-        pre = [get(element_precursor, x, 0) for x in v]
-        spre = sum(pre)
-        en = get(element_precursor, e, 0) + spre
-        rn = en - pn
-        pro = isempty(pre) ? Int[] : [round(Int, x * pn / en) for x in pre]
-        spro = sum(pro)
-        res = pre .- pro
-        p = update_maximal_combination(precise, p, en, spre, pre, pn, spro, pro)
+        prev = distribute_element_update!(update_maximal_combination, precise, prev, e, v, element_precursor, element_product)
     end
-    return_abundance(precise, p)
+    return_abundance(precise, prev)
 end
 
 """
-    maximal_combination_elements(precise::Val, element_precursor::Dict, element_product::Dict, p = 1.0)
+    maximal_combination_elements(precise::Val, element_precursor::Dict, element_product::Dict, prev = 1.0)
 
 Estimate maximal product isotopologue of `element_product`, and compute `Dictionary` of elements and the number of combinations. 
 """
-function maximal_combination_elements(precise::Val, element_precursor, element_product, p = 1.0)
+function maximal_combination_elements(precise::Val, element_precursor, element_product, prev = 1.0)
     first_element_product_dictionary = copy(element_product)
     for (e, v) in pairs(group(parent_element, keys(element_precursor))) 
-        pn = get(element_product, e, 0)
-        filter!(!iselement, v)
-        pre = [get(element_precursor, x, 0) for x in v]
-        spre = sum(pre)
-        en = get(element_precursor, e, 0) + spre
-        rn = en - pn
-        pro = isempty(pre) ? Int[] : [round(Int, x * pn / en) for x in pre]
-        spro = sum(pro)
-        res = pre .- pro
-        for (x, n) in zip(v, pro) 
-            get!(first_element_product_dictionary, x, 0)
-            first_element_product_dictionary[x] += n
-            get!(first_element_product_dictionary, e, 0)
-            first_element_product_dictionary[e] -= n
-        end
-        p = update_maximal_combination(precise, p, en, spre, pre, pn, spro, pro)
+        prev = distribute_element_update!(update_maximal_combination, precise, prev, e, v, element_precursor, element_product, first_element_product_dictionary)
     end
-    return_abundance(precise, p), first_element_product_dictionary
+    return_abundance(precise, prev), first_element_product_dictionary
 end
 
 update_maximal_combination(::Val{true}, p, en, spre, pre, pn, spro, pro) = 
@@ -266,6 +287,22 @@ function isotopologue_inverse_combination(precise::Val, element_precursor::Dict,
             safe_multinomial(precise, v)
         else
             safe_multinomial(precise, [get(element_product, i, 0) for (i, n) in v])
+        end
+    end)
+end
+
+"""
+    loss_inverse_combination(precise::Val, element_precursor::Dict, element_product::Dict, swap::Vector{String})
+
+Compute inverse of combination for chemical loss.
+"""
+function loss_inverse_combination(precise::Val, element_precursor::Dict, element_product::Dict, swap::Vector{String})
+    return_abundance(precise, mapfoldl(/, pairs(group(parent_element ∘ first, element_precursor)); init = 1.0) do (e, v) 
+        if e in swap 
+            safe_multinomial(precise, [get(element_product, i, 0) for (i, n) in v])
+        else
+            v = [n - get(element_product, i, 0) for (i, n) in v]
+            safe_multinomial(precise, v)
         end
     end)
 end
@@ -474,7 +511,7 @@ end
 update_inverse_proportion1(::Val{true}, prev_proportion, nold, nnew) = prev_proportion * (big(nnew + 1) / nold) 
 update_inverse_proportion1(::Val{false}, prev_proportion, nold, nnew) = prev_proportion * ((nnew + 1) / nold) 
 update_inverse_proportionn(::Val{true}, prev_proportion, nold, nnew, delta) = 
-    prev_proportion * (factorial(big(nnew + delta), nnew) / factorial(big(nold), nold - delta) ) 
+    prev_proportion * (factorial(big(nnew + delta), nnew) / factorial(big(nold), nold - delta)) 
 function update_inverse_proportionn(::Val{false}, prev_proportion, nold, nnew, delta) 
     if (nold > nnew + delta ? check_overflow_factorial(nold, nold - delta) : check_overflow_factorial(nnew + delta, nnew))
         convert(float(Int), prev_proportion * (factorial(big(nnew + delta), nnew) / factorial(big(nold), nold - delta)))

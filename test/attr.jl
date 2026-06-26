@@ -36,7 +36,7 @@
         @test chemicalformula(fglc) == "C6H12O6"
         @test MSC.dictionary_elements(chemicalelements(fglc)) == Dict("C" => 6, "H" => 12, "O" => 6)
 
-        @test chemicalname(cps) == "PS 18:0/20:4(5Z,8Z,11Z,14Z)"
+        @test chemicalname(cps) == "PS 18:0/20:4"
         @test chemicalabbr(cps) == chemicalname(cps)
         @test chemicalformula(cps) == "C44H78NO10P"
         @test MSC.dictionary_elements(chemicalelements(cps)) == Dict("C" => 44, "H" => 78, "N" => 1, "O" => 10, "P" => 1)
@@ -269,8 +269,7 @@
         @test !ischemicalequal(chemicaltransition(itit12.Chemical[1])[2], chemicaltransition(itit12.Chemical[2])[3])
         @test ischemicalequal(chemicaltransition(itit12.Chemical[1])[2], chemicalparent(chemicaltransition(itit12.Chemical[1])[2]))
         @test chemicalparent.(chemicaltransition(itit12.Chemical[5])) == chemicalparent.(chemicaltransition(itit12.Chemical[1]))
-        @test elementalscheme(chemicaltransition(itit12.Chemical[1])[2]) == chemicaltransition(itit12.Chemical[1])[2]
-        @test structuralscheme(chemicaltransition(itit12.Chemical[1])[2]) == chemicaltransition(itit12.Chemical[1])[2]
+        @test elementalscheme(chemicaltransition(itit12.Chemical[1])[2]) == structuralscheme(chemicaltransition(itit12.Chemical[1])[2]) 
         @test isapprox(sum(mmi, chemicaltransition(itit12.Chemical[5])), itit12.MZ3[5]; rtol = 20e-6)
         @test isapprox(sum(molarmass, chemicaltransition(itit12.Chemical[5])), molarmass(detectedchemical(itit12.Chemical[5])); rtol = 20e-6)
     end
@@ -285,8 +284,7 @@
         @test chemicalparent.(chemicaltransition(gitit12.Chemical[5])) == chemicalparent.(chemicaltransition(gitit12.Chemical[1]))
         @test ischemicalequal(gitit12.Chemical[5], gitit12.Chemical[5])
         @test ischemicalequal(gitit12.Chemical[1], itit12.Chemical[1])
-        @test elementalscheme(chemicaltransition(gitit12.Chemical[1])[2]) == chemicaltransition(gitit12.Chemical[1])[2]
-        @test structuralscheme(chemicaltransition(gitit12.Chemical[1])[2]) == chemicaltransition(gitit12.Chemical[1])[2]
+        @test elementalscheme(chemicaltransition(gitit12.Chemical[1])[2]) == structuralscheme(chemicaltransition(gitit12.Chemical[1])[2]) 
         @test isapprox(sum(mmi, chemicaltransition(gitit12.Chemical[6])), gitit12.MZ3[6]; rtol = 20e-6)
         @test isapprox(sum(molarmass, chemicaltransition(gitit12.Chemical[6])), molarmass(detectedchemical(gitit12.Chemical[6])); rtol = 20e-6)
     end

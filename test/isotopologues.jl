@@ -2,7 +2,7 @@
 
 @testset "Isotopologues and TandemIsotopologues" begin 
     # isotopologues
-
+    @test p1 == p2 == 0.5
     @test all(>(1e1), it1.Abundance1)
     @test isapprox(first(it2.Abundance1), first(first(it4.Abundance1)))
     # @test all(ischemicalequal.(isotopologues(icglc[1], 1e5; threshold = crit(1e1, 1e-2)), it1.Chemical))
@@ -23,32 +23,37 @@
     # isotopologues
     @test isapprox(isotopicabundance(glc), isotopicabundance(MSC.unique_elements(chemicalelements(glc))))
     @test isapprox(it3.Abundance1[6], 
-        factorial(d["C"], d["C"] - 2) / factorial(2) * MSC.elements_abundance()["C"] ^ (d["C"] - 2)* MSC.elements_abundance()["[13C]"] ^ 2 * 
-        MSC.elements_abundance()["H"] ^ d["H"] * 
-        MSC.elements_abundance()["N"] ^ get(d, "N", 0) * 
-        MSC.elements_abundance()["O"] ^ d["O"] * 
-        MSC.elements_abundance()["P"] ^ d["P"] 
+        factorial(d0["C"], d0["C"] - 2) / factorial(2) * 
+        MSC.elements_abundance()["C"] ^ (d0["C"] - 2) * 
+        MSC.elements_abundance()["[13C]"] ^ 2 * 
+        MSC.elements_abundance()["H"] ^ d0["H"] * 
+        MSC.elements_abundance()["N"] ^ get(d0, "N", 0) * 
+        MSC.elements_abundance()["O"] ^ d0["O"] * 
+        MSC.elements_abundance()["P"] ^ d0["P"] 
         )
     @test ischemicalequal(ipsi2[1], it3.Chemical[1])
     # isotopologues MS/MS
     @test isapprox(itit5.Abundance2[1], isotopicabundance(ips[1]))
     @test isapprox(itit5.Abundance2[14], 
-        MSC.elements_abundance()["C"] ^ (d1["C"]) * MSC.elements_abundance()["[13C]"] ^ d1["[13C]"] * 
+        MSC.elements_abundance()["C"] ^ d1["C"] * 
+        MSC.elements_abundance()["[13C]"] ^ d1["[13C]"] * 
         MSC.elements_abundance()["H"] ^ d1["H"] * 
         MSC.elements_abundance()["N"] ^ get(d1, "N", 0) * 
-        MSC.elements_abundance()["O"] ^ (d1["O"]) * MSC.elements_abundance()["[17O]"] ^ d1["[17O]"] * 
+        MSC.elements_abundance()["O"] ^ (d1["O"]) * 
+        MSC.elements_abundance()["[17O]"] ^ d1["[17O]"] * 
         MSC.elements_abundance()["P"] ^ d1["P"] * 
         factorial(d2["C"] + d2["[13C]"], d2["C"]) / factorial(d2["[13C]"]) * 
         factorial(d1["O"] + d1["[17O]"] - d2["O"] - get(d2, "[17O]", 0), d1["O"] - d2["O"]) / factorial(d1["[17O]"] - get(d2, "[17O]", 0))
     )
-    @test isapprox(itit17.Abundance2[14], 
-        big(MSC.elements_abundance()["C"]) ^ (d1["C"]) * big(MSC.elements_abundance()["[13C]"]) ^ d1["[13C]"] * 
-        big(MSC.elements_abundance()["H"]) ^ d1["H"] * 
-        big(MSC.elements_abundance()["N"]) ^ get(d1, "N", 0) * 
-        big(MSC.elements_abundance()["O"]) ^ (d1["O"]) * big(MSC.elements_abundance()["[17O]"]) ^ d1["[17O]"] * 
-        big(MSC.elements_abundance()["P"]) ^ d1["P"] * 
-        factorial(big(d2["C"] + d2["[13C]"]), d2["C"]) / factorial(big(d2["[13C]"])) * 
-        factorial(big(d1["O"] + d1["[17O]"] - d2["O"] - get(d2, "[17O]", 0)), d1["O"] - d2["O"]) / factorial(big(d1["[17O]"] - get(d2, "[17O]", 0)));
+    @test isapprox(itit6.Abundance3[12], 
+        big(MSC.elements_abundance()["C"]) ^ d3["C"] * 
+        big(MSC.elements_abundance()["[13C]"]) ^ (d3["[13C]"] - 3) * 
+        big(MSC.elements_abundance()["H"]) ^ d3["H"] * 
+        big(MSC.elements_abundance()["N"]) ^ get(d3, "N", 0) * 
+        big(MSC.elements_abundance()["[15N]"]) ^ d3["[15N]"] * 
+        big(MSC.elements_abundance()["O"]) ^ (d3["O"]) * 
+        big(MSC.elements_abundance()["P"]) ^ d3["P"] * 
+        factorial(big(d5["C"] + d5["[13C]"]), d5["C"]) / factorial(big(d5["[13C]"])) * 1e5,
         rtol = 1e-10
     )
     @test isapprox(itl.Abundance1[begin], isotopicabundance(itl.Chemical[begin]); rtol = 1e-6)

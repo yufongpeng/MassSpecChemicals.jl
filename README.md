@@ -276,24 +276,46 @@ retentiontime(chemical) == 10 # Defined as accessing :retentiontime through getc
 When isotopes are involved in addut ion formation for an object `adduct_ion` which `chemical = ioncore(adduct_ion)::ChemicalType` and `adduct = ionadduct(adduct_ion)::Existing_Scheme`, there are two solutions.
 1. If `ChemicalType` is a customized chemical type, define type-specific `completescheme`
     ```julia
-    completescheme(adduct_ion::ChemicalType, ::Affected_Scheme)
-    completescheme(adduct_ion::AbstractAdductIon{ChemicalType, Existing_Scheme}, ::Affected_Scheme)
+    completescheme(adduct_ion::ChemicalType, ::Affected_Scheme) # Ionization
+    completescheme(adduct_ion::AdductIon{ChemicalType, Existing_Scheme}, ::Affected_Scheme) # Fragmentation (Neutral Loss)
     ```
     
-    `completescheme` returns `CompleteSchema` which wraps `Affected_Scheme` and corresponding elemental scheme. For instance, [M-Me]- of Deuterium-labeled phosphatidylcholine (`DL_PC`) may turn out to be [M-CD3]- (`ElementalScheme{false, DL_Methenium}`) rather than [M-CH3]- (`ElementalScheme{false, Methenium}`) if Deuteriums are labeled on the methyl group of choline. In this case, extend `completescheme(::DL_PC, ::ElementalScheme{false, Methenium})` such that
+    `completescheme` returns `CompleteSchema` which wraps `Affected_Scheme` and corresponding elemental scheme. For instance, [M-Me]- of Deuterium-labeled phosphatidylcholine (as type `DLPC` for instance) may turn out to be [M-CD3]- (`ElementalScheme{false, DLMe}`) rather than [M-CH3]- (`ElementalScheme{false, Me}`) if Deuteriums are labeled on the methyl group of choline. In this case, extend `completescheme(::DLPC, ::ElementalScheme{false, Me})` such that
     ```julia 
-    # dlmcpc: [M-Me]- of Deuterium-labeled phosphatidylcholine on the methyl group of choline
+    struct PC <: AbstractChemical 
+        ... 
+    end
+    struct DLPC <: AbstractChemical 
+        ... 
+    end
+    struct Me <: AbstractChemical 
+        ... 
+    end
+    struct DLMe <: AbstractChemical 
+        ... 
+    end
+    # dlpc: [M-Me]- of Deuterium-labeled phosphatidylcholine on the methyl group of choline
     # dlpc: [M-Me]- of Deuterium-labeled phosphatidylcholine on other part
-    completescheme(dlmcpc, x::ElementalScheme{false, Methenium}) == StructuralElementalScheme(x, ElementalScheme(false, DL_Methenium()))
-    completescheme(dlpc, x::ElementalScheme{false, Methenium}) == StructuralElementalScheme(x, x)
+    # pc: [M-Me]- of natural phosphatidylcholine 
+    # loss_me: [M-CH3]-, i.e. ElementalScheme{false, Me}
+    # loss_cd3: [M-CD3]-, i.e. ElementalScheme{false, DLMe}
+    completescheme(dlmcpc, loss_me) == StructuralElementalScheme(loss_me, loss_cd3)
+    completescheme(dlpc, loss_me) == StructuralElementalScheme(loss_me, loss_me)
+    completescheme(pc, loss_me) == StructuralElementalScheme(loss_me, loss_me)
     ```
-2. If `ChemicalType` is `Chemical`, define an attribute `:structure` for the `chemical`. The attribute should be ionadduct-(scheme-scheme pairs) pairs. `:structure` finds this attribute, and extracts the value of key `adduct`. 
+    For more details, see example in file `test/objects/customized.jl`.
+2. If `ChemicalType` is `Chemical`, define an attribute `:structure` for the `chemical`. The attribute should be ionadduct-(scheme-scheme pairs) pairs. `structure_search` finds this attribute, and extracts the value of key `adduct`. 
     ```julia
-    chemical = Chemical("18:0 PC-d9", "	C44H79NO8PD9")
-    push!(chemical.property, :structure => [nothing => [ElementalScheme(false, Methenium()) => StructuralElementalScheme(x, ElementalScheme(false, DL_Methenium()))]])
+    # loss_me: [M-CH3]-, i.e. ElementalScheme(false, Chemical("Me", "CH3")}
+    # loss_cd3: [M-CD3]-, i.e. ElementalScheme(false, Chemical("Me[D3]", "CD3"))
+    chemical = Chemical("18:0 PC-d9", "C44H79NO8PD9")
+    loss_me = ElementalScheme(false, Chemical("Me", "CH3"))
+    loss_cd3 = ElementalScheme(false, Chemical("Me[D3]", "CD3"))
+    push!(chemical.property, :structure => [nothing => [loss_me => loss_cd3]])
     completescheme(chemical, ChemicalGain(Proton())) == StructuralElementalScheme(ChemicalGain(Proton()), ChemicalGain(Proton())) # No key Protonation()
-    completescheme(chemical, ChemicalLoss(Methenium())) == StructuralElementalScheme(ChemicalLoss(Methenium()), ChemicalLoss(Methenium()))
+    completescheme(chemical, loss_me) == StructuralElementalScheme(loss_me, loss_cd3)
     ```
+    For more details, see example in file `test/objects/generic.jl`.
 ## Isotopic abundance and Isotopologues
 There are three related functions
 * `isotopicabundance`
