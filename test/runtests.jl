@@ -1,7 +1,7 @@
 using MassSpecChemicals
 using Statistics, StatsBase, TypedTables, DataPipes, Dictionaries
 const MSC = MassSpecChemicals
-import MassSpecChemicals: chemicalname, chemicalelements, chemicalformula, chemicalabbr, chemicalsmiles, completescheme, adductionscheme, detectedchemical, charge
+import MassSpecChemicals: chemicalname, chemicalelements, chemicalformula, chemicalabbr, chemicalsmiles, completescheme, elementalscheme, adductionscheme, detectedchemical, charge
 import Base: copy, hash, == 
 using Test
 

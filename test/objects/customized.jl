@@ -163,14 +163,18 @@ const DiacylPSmH = AdductIon{<:DiacylPS, <:SES{<:LossProton}}
 const DiacylPSmS = AdductIon{<:DiacylPS, <:SES{LossSerine}}
 const DiacylPSmHS = AdductIon{<:DiacylPS, <:SES{LossProtonSerine}}
 
-completescheme(precursor::DiacylPS, product::LossSerine) = SES(product, ChemicalLoss(Serine(; nD = first(precursor.headgroup), n13C = last(precursor.headgroup))))
-completescheme(precursor::DiacylPSmH, product::LossSerine) = SES(product, ChemicalLoss(Serine(; nD = first(ioncore(precursor).headgroup), n13C = last(ioncore(precursor).headgroup))))
-completescheme(precursor::DiacylPS, product::LossProtonSerine) = SES(product, ChemicalLoss(AdductIon(Serine(; nD = first(precursor.headgroup), n13C = last(precursor.headgroup)), ChemicalGain(Proton()))))
+# completescheme(precursor::DiacylPS, product::LossSerine) = SES(product, ChemicalLoss(Serine(; nD = first(precursor.headgroup), n13C = last(precursor.headgroup))))
+# completescheme(precursor::DiacylPSmH, product::LossSerine) = SES(product, ChemicalLoss(Serine(; nD = first(ioncore(precursor).headgroup), n13C = last(ioncore(precursor).headgroup))))
+# completescheme(precursor::DiacylPS, product::LossProtonSerine) = SES(product, ChemicalLoss(AdductIon(Serine(; nD = first(precursor.headgroup), n13C = last(precursor.headgroup)), ChemicalGain(Proton()))))
+
+elementalscheme(precursor::DiacylPS, product::LossSerine) = ChemicalLoss(Serine(; nD = first(precursor.headgroup), n13C = last(precursor.headgroup)))
+elementalscheme(precursor::DiacylPSmH, product::LossSerine) = ChemicalLoss(Serine(; nD = first(ioncore(precursor).headgroup), n13C = last(ioncore(precursor).headgroup)))
+elementalscheme(precursor::DiacylPS, product::LossProtonSerine) = ChemicalLoss(AdductIon(Serine(; nD = first(precursor.headgroup), n13C = last(precursor.headgroup)), ChemicalGain(Proton())))
 
 # `LossSerine()` -> `LossProtonSerine()` for 
-adductionscheme(precursor::DiacylPSmH, product::SES{LossSerine}) = completescheme(ioncore(precursor), LossProtonSerine())
+# adductionscheme(precursor::DiacylPSmH, product::SES{LossSerine}) = completescheme(ioncore(precursor), LossProtonSerine())
 adductionscheme(precursor::DiacylPSmH, product::LossSerine) = completescheme(ioncore(precursor), LossProtonSerine())
-adductionscheme(precursor::DiacylPSmS, product::SES{<:LossProton}) = completescheme(ioncore(precursor), LossProtonSerine())
+# adductionscheme(precursor::DiacylPSmS, product::SES{<:LossProton}) = completescheme(ioncore(precursor), LossProtonSerine())
 adductionscheme(precursor::DiacylPSmS, product::LossProton) = completescheme(ioncore(precursor), LossProtonSerine())
 
 chemicalname(::LossSerine; n = 1, loss = false, delim = "", kwargs...) = string(delim, loss ? "Gain_" : "Loss_", n > 1 ? n : "", "Serine")
@@ -178,16 +182,20 @@ chemicalname(::LossProtonSerine; n = 1, loss = false, delim = "", kwargs...) = s
 chemicalabbr(::LossSerine; n = 1, loss = false, delim = "", kwargs...) = string(delim, loss ? "+" : "-", n > 1 ? n : "", "Ser")
 chemicalabbr(::LossProtonSerine; n = 1, loss = false, delim = "", kwargs...) = string(delim, loss ? "+" : "-", n > 1 ? n : "", "[Ser+H]+")
 
-struct SN1Acyl <: AbstractStructuralScheme end
-struct SN2Acyl <: AbstractStructuralScheme end
-completescheme(precursor::DiacylPSmH, product::SN1Acyl) = SES(product, AdductIon(ioncore(precursor).fa1, ChemicalLoss(Proton())))
-completescheme(precursor::DiacylPSmH, product::SN2Acyl) = SES(product, AdductIon(ioncore(precursor).fa2, ChemicalLoss(Proton())))
-completescheme(precursor::DiacylPSmHS, product::SN1Acyl) = SES(product, AdductIon(ioncore(precursor).fa1, ChemicalLoss(Proton())))
-completescheme(precursor::DiacylPSmHS, product::SN2Acyl) = SES(product, AdductIon(ioncore(precursor).fa2, ChemicalLoss(Proton())))
-detectedchemical(precursor::DiacylPSmH, product::SN1Acyl) = AdductIon(ioncore(precursor).fa1, ChemicalLoss(Proton()))
-detectedchemical(precursor::DiacylPSmH, product::SN2Acyl) = AdductIon(ioncore(precursor).fa2, ChemicalLoss(Proton()))
-detectedchemical(precursor::DiacylPSmHS, product::SN1Acyl) = AdductIon(ioncore(precursor).fa1, ChemicalLoss(Proton()))
-detectedchemical(precursor::DiacylPSmHS, product::SN2Acyl) = AdductIon(ioncore(precursor).fa2, ChemicalLoss(Proton()))
+struct SN1Acyl <: StructuralChemicalScheme end
+struct SN2Acyl <: StructuralChemicalScheme end
+# completescheme(precursor::DiacylPSmH, product::SN1Acyl) = SES(product, AdductIon(ioncore(precursor).fa1, ChemicalLoss(Proton())))
+# completescheme(precursor::DiacylPSmH, product::SN2Acyl) = SES(product, AdductIon(ioncore(precursor).fa2, ChemicalLoss(Proton())))
+# completescheme(precursor::DiacylPSmHS, product::SN1Acyl) = SES(product, AdductIon(ioncore(precursor).fa1, ChemicalLoss(Proton())))
+# completescheme(precursor::DiacylPSmHS, product::SN2Acyl) = SES(product, AdductIon(ioncore(precursor).fa2, ChemicalLoss(Proton())))
+# detectedchemical(precursor::DiacylPSmH, product::SN1Acyl) = AdductIon(ioncore(precursor).fa1, ChemicalLoss(Proton()))
+# detectedchemical(precursor::DiacylPSmH, product::SN2Acyl) = AdductIon(ioncore(precursor).fa2, ChemicalLoss(Proton()))
+# detectedchemical(precursor::DiacylPSmHS, product::SN1Acyl) = AdductIon(ioncore(precursor).fa1, ChemicalLoss(Proton()))
+# detectedchemical(precursor::DiacylPSmHS, product::SN2Acyl) = AdductIon(ioncore(precursor).fa2, ChemicalLoss(Proton()))
+elementalscheme(precursor::DiacylPSmH, product::SN1Acyl) = AdductIon(ioncore(precursor).fa1, ChemicalLoss(Proton()))
+elementalscheme(precursor::DiacylPSmH, product::SN2Acyl) = AdductIon(ioncore(precursor).fa2, ChemicalLoss(Proton()))
+elementalscheme(precursor::DiacylPSmHS, product::SN1Acyl) = AdductIon(ioncore(precursor).fa1, ChemicalLoss(Proton()))
+elementalscheme(precursor::DiacylPSmHS, product::SN2Acyl) = AdductIon(ioncore(precursor).fa2, ChemicalLoss(Proton()))
 
 chemicalname(::SN1Acyl; n = 1, kwargs...) = string(n > 1 ? n : "", "Sn1_Acyl")
 chemicalname(::SN2Acyl; n = 1, kwargs...) = string(n > 1 ? n : "", "Sn2_Acyl")

@@ -9,7 +9,7 @@ export
     # Types
     AbstractChemical, Chemical, FormulaChemical, ChemicalTransition, ChemicalSeries, Isobars, Isotopomers, AbstractChemicalWrapper, 
     AbstractAdductIon, AdductIon,
-    AbstractScheme, AbstractElementalScheme, AbstractStructuralScheme, AbstractCompleteScheme, 
+    AbstractScheme, AbstractElementalScheme, AbstractStructuralScheme, StructuralChemicalScheme, AbstractCompleteScheme, 
     ElementalScheme, ChemicalGain, ChemicalLoss, 
     ChemicalSchema, IsotopomerizedSchema, StructuralElementalScheme, 
     CompleteSchema, StructuralSchema, ElementalSchema, 

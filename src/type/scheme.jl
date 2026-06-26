@@ -1,12 +1,40 @@
 
 """
+    abstract type AbstractElementalScheme <: AbstractScheme end
+
+Scheme contaning exact elements.
 """
 abstract type AbstractElementalScheme <: AbstractScheme end
+"""
+    abstract type AbstractStructuralScheme <: AbstractScheme end
+
+Scheme contaning only structures.  
+"""
 abstract type AbstractStructuralScheme <: AbstractScheme end
+"""
+    abstract type AbstractCompleteScheme{T,S} <: AbstractScheme end
+
+Scheme contaning both elements and structures. 
+"""
 abstract type AbstractCompleteScheme{T, S} <: AbstractScheme end
+"""
+    abstract type StructuralChemicalScheme <: AbstractStructuralScheme end
+
+Scheme contaning structures generating chemical entity. 
+"""
+abstract type StructuralChemicalScheme <: AbstractStructuralScheme end
 
 struct RandomProductScheme <: AbstractStructuralScheme end
-  
+
+"""
+    abstract type StructuralElementalScheme{T,S} <: AbstractCompleteScheme{T,S} end
+
+Default `AbstractCompleteScheme`
+
+# Fields
+* `structuralscheme::T`
+* `elementalscheme::S`
+"""
 struct StructuralElementalScheme{T, S} <: AbstractCompleteScheme{T, S}
     structuralscheme::T 
     elementalscheme::S

@@ -276,11 +276,11 @@ retentiontime(chemical) == 10 # Defined as accessing :retentiontime through getc
 When isotopes are involved in addut ion formation for an object `adduct_ion` which `chemical = ioncore(adduct_ion)::ChemicalType` and `adduct = ionadduct(adduct_ion)::Existing_Scheme`, there are two solutions.
 1. If `ChemicalType` is a customized chemical type, define type-specific `completescheme`
     ```julia
-    completescheme(adduct_ion::ChemicalType, ::Affected_Scheme) # Ionization
-    completescheme(adduct_ion::AdductIon{ChemicalType, Existing_Scheme}, ::Affected_Scheme) # Fragmentation (Neutral Loss)
+    elementalscheme(adduct_ion::ChemicalType, ::Affected_Scheme) # Ionization
+    elementalscheme(adduct_ion::AdductIon{ChemicalType, Existing_Scheme}, ::Affected_Scheme) # Fragmentation (Neutral Loss)
     ```
     
-    `completescheme` returns `CompleteSchema` which wraps `Affected_Scheme` and corresponding elemental scheme. For instance, [M-Me]- of Deuterium-labeled phosphatidylcholine (as type `DLPC` for instance) may turn out to be [M-CD3]- (`ElementalScheme{false, DLMe}`) rather than [M-CH3]- (`ElementalScheme{false, Me}`) if Deuteriums are labeled on the methyl group of choline. In this case, extend `completescheme(::DLPC, ::ElementalScheme{false, Me})` such that
+    `elementalscheme` returns elemental scheme containing correct elements. For instance, [M-Me]- of Deuterium-labeled phosphatidylcholine (as type `DLPC` for instance) may turn out to be [M-CD3]- (`ElementalScheme{false, DLMe}`) rather than [M-CH3]- (`ElementalScheme{false, Me}`) if Deuteriums are labeled on the methyl group of choline. In this case, extend `elementalscheme(::DLPC, ::ElementalScheme{false, Me})` such that
     ```julia 
     struct PC <: AbstractChemical 
         ... 
@@ -299,9 +299,9 @@ When isotopes are involved in addut ion formation for an object `adduct_ion` whi
     # pc: [M-Me]- of natural phosphatidylcholine 
     # loss_me: [M-CH3]-, i.e. ElementalScheme{false, Me}
     # loss_cd3: [M-CD3]-, i.e. ElementalScheme{false, DLMe}
-    completescheme(dlmcpc, loss_me) == StructuralElementalScheme(loss_me, loss_cd3)
-    completescheme(dlpc, loss_me) == StructuralElementalScheme(loss_me, loss_me)
-    completescheme(pc, loss_me) == StructuralElementalScheme(loss_me, loss_me)
+    elementalscheme(dlmcpc, loss_me) == loss_cd3
+    elementalscheme(dlpc, loss_me) == loss_me
+    elementalscheme(pc, loss_me) == loss_me
     ```
     For more details, see example in file `test/objects/customized.jl`.
 2. If `ChemicalType` is `Chemical`, define an attribute `:structure` for the `chemical`. The attribute should be ionadduct-(scheme-scheme pairs) pairs. `structure_search` finds this attribute, and extracts the value of key `adduct`. 
@@ -312,8 +312,8 @@ When isotopes are involved in addut ion formation for an object `adduct_ion` whi
     loss_me = ElementalScheme(false, Chemical("Me", "CH3"))
     loss_cd3 = ElementalScheme(false, Chemical("Me[D3]", "CD3"))
     push!(chemical.property, :structure => [nothing => [loss_me => loss_cd3]])
-    completescheme(chemical, ChemicalGain(Proton())) == StructuralElementalScheme(ChemicalGain(Proton()), ChemicalGain(Proton())) # No key Protonation()
-    completescheme(chemical, loss_me) == StructuralElementalScheme(loss_me, loss_cd3)
+    elementalscheme(chemical, ChemicalGain(Proton())) == ChemicalGain(Proton()) # No key Protonation()
+    elementalscheme(chemical, loss_me) == loss_cd3
     ```
     For more details, see example in file `test/objects/generic.jl`.
 ## Isotopic abundance and Isotopologues
