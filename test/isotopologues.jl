@@ -56,5 +56,7 @@
         factorial(big(d5["C"] + d5["[13C]"]), d5["C"]) / factorial(big(d5["[13C]"])) * 1e5,
         rtol = 1e-10
     )
+    @test isapprox(itit17.Abundance3[7] / itit17.Abundance3[6], 1.5)
+    @test isapprox(itit18.Abundance3[6] / itit18.Abundance3[7], 4)
     @test isapprox(itl.Abundance1[begin], isotopicabundance(itl.Chemical[begin]); rtol = 1e-6)
 end

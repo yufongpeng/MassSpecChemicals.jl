@@ -66,6 +66,23 @@
         @test ischemicalequal(first(chemicaltransition(icgld[1])), icgld[1])
         @test ischemicalequal(chemicalparent(icgld[1]), icgld[1])
         @test isempty(isotopomersisotopes(icgld[1]))
+        @test MSC.elementalscheme(cglc, ionadduct(icglc[1])) == MSC.elementalscheme(icglc[1], ionadduct(icglc[1]))
+        @test MSC.elementalscheme(cglc, ChemicalSchema(ElementalScheme(true, Proton()), ElementalScheme(false, Water()))) == MSC.elementalscheme(icglc[1], ChemicalSchema(ElementalScheme(true, Proton()), ElementalScheme(false, Water())))
+        @test MSC.elementalscheme(cglc, isotopomerize(ChemicalSchema(ElementalScheme(true, Proton()), ElementalScheme(false, Water())), ["[18O]" => 1])) == MSC.elementalscheme(icglc[1], isotopomerize(ChemicalSchema(ElementalScheme(true, Proton()), ElementalScheme(false, Water())), ["[18O]" => 1]))
+        @test MSC.elementalscheme(cglc, fa1) == MSC.elementalscheme(icglc[1], fa1)
+        @test MSC.elementalscheme(cglc, AdductIon(fa1, "[M-H]-")) == MSC.elementalscheme(icglc[1], AdductIon(fa1, "[M-H]-"))
+        @test MSC.elementalscheme(glc, cglc) == MSC.completescheme(glc, cglc)
+        @test MSC.elementalscheme(glc, ionadduct(icglc[1])) == MSC.elementalscheme(iglc[1], ionadduct(icglc[1]))
+        @test MSC.elementalscheme(glc, ChemicalSchema(ElementalScheme(true, Proton()), ElementalScheme(false, Water()))) == MSC.elementalscheme(iglc[1], ChemicalSchema(ElementalScheme(true, Proton()), ElementalScheme(false, Water())))
+        @test MSC.elementalscheme(glc, isotopomerize(ChemicalSchema(ElementalScheme(true, Proton()), ElementalScheme(false, Water())), ["[18O]" => 1])) == MSC.elementalscheme(iglc[1], isotopomerize(ChemicalSchema(ElementalScheme(true, Proton()), ElementalScheme(false, Water())), ["[18O]" => 1]))
+        @test MSC.elementalscheme(glc, fa1) == MSC.completescheme(iglc[1], fa1)
+        @test MSC.elementalscheme(glc, AdductIon(fa1, "[M-H]-")) == MSC.completescheme(iglc[1], AdductIon(fa1, "[M-H]-"))
+        @test MSC.elementalscheme(glc, iglc[1]) == MSC.completescheme(glc, iglc[1])
+        @test MSC.completescheme(cglc, cglc) == MSC.completescheme(icglc[1], cglc)
+        @test MSC.completescheme(cglc, icglc[1]) == MSC.completescheme(icglc[1], icglc[1])
+        @test MSC.completescheme(glc, ChemicalSchema(ElementalScheme(true, Proton()), ElementalScheme(false, Water()))) == chemicalparent(MSC.completescheme(glc, isotopomerize(ChemicalSchema(ElementalScheme(true, Proton()), ElementalScheme(false, Water())), ["[18O]" => 1])))
+        @test MSC.completescheme(cglc, ChemicalSchema(ElementalScheme(true, Proton()), ElementalScheme(false, Water()))) == chemicalparent(MSC.completescheme(cglc, isotopomerize(ChemicalSchema(ElementalScheme(true, Proton()), ElementalScheme(false, Water())), ["[18O]" => 1])))
+        @test MSC.completescheme(icglc[1], ChemicalSchema(ElementalScheme(true, Proton()), ElementalScheme(false, Water()))) == chemicalparent(MSC.completescheme(icglc[1], isotopomerize(ChemicalSchema(ElementalScheme(true, Proton()), ElementalScheme(false, Water())), ["[18O]" => 1])))
         @test ischemicalequal(analyzedchemical(icgld[1]), icgld[1])
         @test ischemicalequal(detectedchemical(icgld[1]), icgld[1])
         @test ischemicalequal(inputchemical(icgld[1]), icgld[1])
@@ -75,7 +92,6 @@
         @test isempty(last(seriesanalyzedisotopes(icgld[1])))
         @test detectedcharge(icgld[1]) == last(seriesanalyzedcharge(icgld[1]))
         @test detectedelements(icgld[1]) == last(seriesanalyzedelements(icgld[1]))
-
     end
 
     @testset "Scheme and loss/gain attributes" begin

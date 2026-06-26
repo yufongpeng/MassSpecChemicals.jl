@@ -151,6 +151,7 @@ isgainscheme(sch::ElementalScheme{true}) = true
 isgainscheme(sch::AbstractCompleteScheme) = isgainscheme(elementalscheme(sch))
 isgainscheme(sch::ChemicalSchema) = all(isgainscheme, sch.schema)
 isgainscheme(sch::IsotopomerizedSchema) = isgainscheme(sch.parent)
+isgainscheme(sch::Groupedisotopomerizedschema) = isgainscheme(sch.parent)
 
 """
     islossscheme(sch::AbstractScheme) -> Bool
@@ -162,6 +163,7 @@ islossscheme(sch::ElementalScheme{false}) = true
 islossscheme(sch::AbstractCompleteScheme) = islossscheme(elementalscheme(sch))
 islossscheme(sch::ChemicalSchema) = all(islossscheme, sch.schema)
 islossscheme(sch::IsotopomerizedSchema) = islossscheme(sch.parent) 
+islossscheme(sch::Groupedisotopomerizedschema) = islossscheme(sch.parent) 
 
 """
     completescheme(precursor::AbstractChemical, product::AbstractChemical) -> AbstractChemical

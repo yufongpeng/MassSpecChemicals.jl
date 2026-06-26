@@ -34,7 +34,7 @@ function isotopologues_elements_ms2(precise::Val, it1, element_precursor_diction
         end
         proportion_cutoff = p * minimum(makecrit_value(crit(threshold), abundance)) / abundance
         if iter 
-            fn_main = product_loss ? isotopologues_elements_loss_ms2_iter : isotopologues_elements_single_ms2_iter
+            fn_main = (loss == product_loss) ? isotopologues_elements_single_ms2_iter : isotopologues_elements_loss_ms2_iter 
             fn_post = isotopologues_elements_single_ms2_post_id_iter
         else
             fn_main = isotopologues_elements_single_ms2

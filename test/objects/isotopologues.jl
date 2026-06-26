@@ -35,6 +35,8 @@ gitit14 = group_isotopologues(itit14)
 
 itit15 = TandemIsotopologues(repeat([icps[3]], 1000); product = [lossserine], abundance = [1e5], threshold = crit(1e1, 1e-2), proportion = [0.5], transmission = 0.3, threading = true)
 itit16 = TandemIsotopologues(Table(; Chemical = repeat([icps[3]], 1000), Product = repeat([[lossserine]], 1000), Abundance1 = repeat([1e5], 1000), Proportion = repeat([[0.5]], 1000), Transmission = repeat([0.3], 1000)); threshold = crit(1e1, 1e-2), threading = true)
+itit17 = TandemIsotopologues("[C2H5[12C]OO]-" => "-CO" => "-H2O"; abtype = :input)
+itit18 = TandemIsotopologues("[C2H5[12C]OO]-" => "-CO" => "OH"; abtype = :input)
 
 d0 = MSC.dictionary_elements(chemicalelements(ipsi2[1]))
 d1 = MSC.dictionary_elements(chemicalelements(inputchemical(itit5.Chemical[14])))

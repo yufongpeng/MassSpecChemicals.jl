@@ -76,68 +76,6 @@ return_abundance(::Val{true}, x) = x
 return_abundance(::Val{false}, x) = convert(float(Int), x) 
 
 """
-    isotopologue_proportion(precise::Val, element_precursor::Dict, element_product::Dict, p = 1.0) -> AbstractFloat
-
-Proportion of isotopologue `element_product` relative to all possible isotopologues fragmented from `element_precursor`. 
-"""
-function isotopologue_proportion(precise::Val, element_precursor::Dict, element_product::Dict, p::T = 1.0) where T
-    any(<(0), values(element_product)) && return zero(T)
-    for (e, v) in pairs(group(parent_element, keys(element_precursor)))
-        np = get(element_product, e, 0)
-        np < 0 && return zero(T)
-        n = get(element_precursor, e, 0)
-        n - np < 0 && return zero(T)
-        filter!(!iselement, v)
-        va = [get(element_precursor, i, 0) for i in v]
-        vp = [get(element_product, i, 0) for i in v]
-        p = update_isotopologue_proportion(precise, p, n, va, np, vp)
-    end
-    return_abundance(precise, p)
-end
-
-update_isotopologue_proportion(::Val{true}, p, n, va, np, vp) = 
-    p * multinomial(big(np), vp...) / multinomial(big(n), va...) * multinomial(big(n - np), (va .- vp)...)
-
-function update_isotopologue_proportion(::Val{false}, p, n, va, np, vp) 
-    if check_overflow_multinomial(n, va...) 
-        p * multinomial(big(np), vp...) / multinomial(big(n), va...) * multinomial(big(n - np), (va .- vp)...)
-    else
-        p * multinomial(np, vp...) / multinomial(n, va...) * multinomial(n - np, (va .- vp)...)
-    end
-end
-
-"""
-    isotopologue_combination(precise::Val, element_precursor::Dict, element_product::Dict, p = 1.0) -> AbstractFloat
-
-The number of combination of product isotopologue `element_product` and precursor `element_precursor`. 
-"""
-function isotopologue_combination(precise::Val, element_precursor::Dict, element_product::Dict, p::T = 1.0) where T
-    any(<(0), values(element_product)) && return zero(T)
-    for (e, v) in pairs(group(parent_element, keys(element_precursor)))
-        np = get(element_product, e, 0)
-        np < 0 && return zero(T)
-        n = get(element_precursor, e, 0)
-        n - np < 0 && return zero(T)
-        filter!(!iselement, v)
-        va = [get(element_precursor, i, 0) for i in v]
-        vp = [get(element_product, i, 0) for i in v]
-        p = update_isotopologue_combination(precise, p, n, va, np, vp)
-    end
-    return_abundance(precise, p)
-end
-
-update_isotopologue_combination(::Val{true}, p, n, va, np, vp) = 
-    p * multinomial(big(np), vp...) * multinomial(big(n - np), (va .- vp)...)
-
-function update_isotopologue_combination(::Val{false}, p, n, va, np, vp) 
-    if (np * 2 > n ? check_overflow_multinomial(np, vp...) : check_overflow_multinomial(n - np, (va .- vp)...))
-        p * multinomial(big(np), vp...) * multinomial(big(n - np), (va .- vp)...)
-    else
-        p * safe_multinomial(np, vp...) * safe_multinomial(n - np, (va .- vp)...)
-    end
-end
-
-"""
     distribute_element_update!(update_fn, precise, prev, e, isotopes, element_precursor, element_product, max_dict = nothing)
 
 Distribute isotopes from `element_precursor` into `element_product` for parent element `e` and isotopes `isotopes`; then update max_dict and update `prev` using `update_fn`.
