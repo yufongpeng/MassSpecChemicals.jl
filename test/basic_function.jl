@@ -17,7 +17,7 @@
     @test hash(copy(pt1.Chemical[3])) == hash(pt1.Chemical[3])
     @test copy(it3.Chemical[2]) == it3.Chemical[2]
     @test hash(copy(git3.Chemical[2])) == hash(git3.Chemical[2])
-    @test copy(it3.Chemical[2]) == it3.Chemical[2]
+    @test copy(git3.Chemical[2]) == git3.Chemical[2]
     @test hash(copy(git3.Chemical[2])) == hash(git3.Chemical[2])
     @test copy(chemicaltransition(itit12.Chemical[11])[2]) == chemicaltransition(itit12.Chemical[11])[2]
     @test hash(copy(chemicaltransition(itit12.Chemical[11])[2])) == hash(chemicaltransition(itit12.Chemical[11])[2])

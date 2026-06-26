@@ -262,8 +262,9 @@ elementalscheme(precursor::AdductIon{<:GenericChemical}, product::GenericChemica
 elementalscheme(precursor::AdductIon{<:GenericChemical}, product::AdductIon{<:GenericChemical}) = structure_search_elemental(ioncore(precursor), ionadduct(precursor), product)
 elementalscheme(precursor::AdductIon{<:GenericChemical}, product::AbstractScheme) = structure_search_elemental(ioncore(precursor), ionadduct(precursor), product)
 elementalscheme(precursor::AdductIon{<:GenericChemical}, product::CompleteSchema) = elementalscheme(product)
-elementalscheme(precursor::AdductIon{<:GenericChemical}, product::IsotopomerizedSchema) = structure_search_elemental(ioncore(precursor), ionadduct(precursor), product)
 elementalscheme(precursor::AdductIon{<:GenericChemical}, product::ChemicalSchema) = structure_search_elemental(ioncore(precursor), ionadduct(precursor), product)
+elementalscheme(precursor::AdductIon{<:GenericChemical}, product::IsotopomerizedSchema) = structure_search_elemental(ioncore(precursor), ionadduct(precursor), product)
+elementalscheme(precursor::AdductIon{<:GenericChemical}, product::Groupedisotopomerizedschema) = structure_search_elemental(ioncore(precursor), ionadduct(precursor), product)
 elementalscheme(precursor::AdductIon{<:GenericChemical}, product::AbstractElementalScheme) = structure_search_elemental(ioncore(precursor), ionadduct(precursor), product)
 
 """
@@ -328,7 +329,7 @@ detectedchemical(precursor::AbstractChemical, product::AbstractChemical) = produ
 detectedchemical(precursor::AbstractChemical, product::CompleteSchemeChemical) = elementalscheme(product)
 detectedchemical(precursor::AbstractChemical, product::CompleteSchema) = AdductIon(precursor, product, 1) 
 detectedchemical(precursor::AbstractChemical, product::AbstractScheme) = AdductIon(precursor, completescheme(precursor, product), 1) 
-detectedchemical(precursor::AbstractChemical, product::StructuralChemicalScheme) = elemeantalscheme(precursor, product)
+detectedchemical(precursor::AbstractChemical, product::StructuralChemicalScheme) = elementalscheme(precursor, product)
 
 detectedchemical(precursor::Nothing, product::AbstractChemical) = product
 detectedchemical(precursor::Nothing, product::CompleteSchemeChemical) = elementalscheme(product)
@@ -467,9 +468,9 @@ end
 detectedchemical(isobars::Isobars; kwargs...) = Isobars([detectedchemical(chemical; kwargs...) for chemical in chemicalspecies(isobars)], isobars.abundance)
 detectedchemical(isobars::Isobars{<: ChemicalTransition}; kwargs...) = Isobars([detectedchemical(chemical; kwargs...) for chemical in chemicalspecies(isobars)], isobars.abundance[:, end])
 
-detectedisotopes(sch::StructuralElementalScheme{T, <:AbstractChemical}; precursor = nothing, precursorisotopes = nothing, kwargs...) where T = isotopomersisotopes(sch; kwargs...)
-detectedcharge(sch::StructuralElementalScheme{T, <:AbstractChemical}; precursor = nothing, precursorcharge = nothing, kwargs...) where T = charge(sch; kwargs...)
-detectedelements(sch::StructuralElementalScheme{T, <:AbstractChemical}; precursor = nothing, precursorelements = nothing, kwargs...) where T = chemicalelements(sch; kwargs...)
+detectedisotopes(sch::CompleteSchemeChemical; precursor = nothing, precursorisotopes = nothing, kwargs...) = isotopomersisotopes(sch; kwargs...)
+detectedcharge(sch::CompleteSchemeChemical; precursor = nothing, precursorcharge = nothing, kwargs...) = charge(sch; kwargs...)
+detectedelements(sch::CompleteSchemeChemical; precursor = nothing, precursorelements = nothing, kwargs...) = chemicalelements(sch; kwargs...)
 
 detectedchemical(ct::ChemicalTransition; kwargs...) = 
     detectedchemical(outputchemical(ct); precursor = @view(chemicaltransition(ct)[begin:end - 1]), kwargs...) 

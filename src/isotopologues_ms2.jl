@@ -494,7 +494,7 @@ function rec_exchangeisotopes_loss_iter!(
             element_product_dictionary[i] += 1
         end
         new_mass = prev_mass + (e in swap ? element_mass_delta(i, e) : element_mass_delta(e, i))
-        if proportion >= threshold  
+        if proportion >= threshold 
             push!(element_vec, swap_elements(element_product_dictionary, element_precursor_dictionary, swap))
             push!(abundance_vec, proportion)
             push!(preab_vec, preab)
