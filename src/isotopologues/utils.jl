@@ -242,11 +242,11 @@ end
 """
     gf_parent_isotope(isotope = "[13C]")
 
-Create function for grouping isotopologues by parent chemical and isotopomer state defining by `isotope`.
+Create function for grouping isotopologues by parent chemical and [`mass_shift_index`](@ref) using `isotope` as reference.
 """
 function gf_parent_isotope(isotope = "[13C]")
     isotope_unit = elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]]
-    x -> [chemicalparent(m) => isotopomerstate(m; isotope_unit) for m in x]
+    x -> [chemicalparent(m) => mass_shift_index(m; isotope_unit) for m in x]
 end
 
 """

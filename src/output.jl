@@ -94,7 +94,7 @@ chemicalname(isobars::Isobars; verbose = true, kwargs...) = (length(chemicalspec
 chemicalname(isotopomers::Isotopomers; n = 1, kwargs...) = string(chemicalname(chemicalparent(isotopomers); n, kwargs...), isotope_repr(isotopomers.isotopes))
 chemicalname(isotopomers::Isotopomers{<:FormulaChemical}; n = 1, kwargs...) = string(chemicalname(chemicalparent(isotopomers); n, bracket = true, kwargs...), isotope_repr(isotopomers.isotopes))
 
-chemicalname(isotopomers::Groupedisotopomers; n = 1, kwargs...) = string(chemicalname(chemicalparent(isotopomers); n, kwargs...), isotopomers.state > 0 ? string("(+", isotopomers.state, ")") : isotopomers.state < 0 ? string("(-", abs(isotopomers.state), ")") : "") 
+chemicalname(isotopomers::Groupedisotopomers; n = 1, kwargs...) = string(chemicalname(chemicalparent(isotopomers); n, kwargs...), isotopomers.index > 0 ? string("(+", isotopomers.index, ")") : isotopomers.index < 0 ? string("(-", abs(isotopomers.index), ")") : "") 
 chemicalname(ct::ChemicalTransition; kwargs...) = join(chemicalname.(chemicaltransition(ct); kwargs...), " -> ")
 
 chemicalname(sch::StructuralElementalScheme; n = 1, kwargs...) = chemicalname(elementalscheme(sch); n, kwargs...)
@@ -116,11 +116,11 @@ function chemicalname(sch::ChemicalSchema; n = 1, loss = false, bracket = false,
     end
     bracket ? string("[", s, "]") : s 
 end
-chemicalname(sch::Groupedisotopomerizedschema; n = 1, loss = false, bracket = true, delim = "|", kwargs...) = string(chemicalname(chemicalparent(sch); n, loss, bracket, delim, kwargs...), sch.state > 0 ? string("(+", sch.state, ")") : sch.state < 0 ? string("(-", abs(sch.state), ")") : "") 
+chemicalname(sch::Groupedisotopomerizedschema; n = 1, loss = false, bracket = true, delim = "|", kwargs...) = string(chemicalname(chemicalparent(sch); n, loss, bracket, delim, kwargs...), sch.index > 0 ? string("(+", sch.index, ")") : sch.index < 0 ? string("(-", abs(sch.index), ")") : "") 
 
 chemicalabbr(isobars::Isobars; verbose = true, kwargs...) = (length(chemicalspecies(isobars)) == 1 || verbose) ? string("Isobars[", join(chemicalabbr.(chemicalspecies(isobars); kwargs...), ", "), "]") : string("Isobars[", chemicalabbr(first(chemicalspecies(isobars); kwargs...)), ", …]")
 chemicalabbr(isotopomers::Isotopomers; n = 1, kwargs...) = string(chemicalabbr(chemicalparent(isotopomers); n, kwargs...), isotope_repr(isotopomers.isotopes))
-chemicalabbr(isotopomers::Groupedisotopomers; n = 1, kwargs...) = string(chemicalabbr(chemicalparent(isotopomers); n, kwargs...), isotopomers.state > 0 ? string("(+", isotopomers.state, ")") : isotopomers.state < 0 ? string("(-", abs(isotopomers.state), ")") : "") 
+chemicalabbr(isotopomers::Groupedisotopomers; n = 1, kwargs...) = string(chemicalabbr(chemicalparent(isotopomers); n, kwargs...), isotopomers.index > 0 ? string("(+", isotopomers.index, ")") : isotopomers.index < 0 ? string("(-", abs(isotopomers.index), ")") : "") 
 chemicalabbr(ct::ChemicalTransition; kwargs...) = join(chemicalabbr.(chemicaltransition(ct); kwargs...), " -> ")
 
 chemicalabbr(sch::StructuralElementalScheme; n = 1, bracket = true, kwargs...) = chemicalabbr(elementalscheme(sch); n, bracket, kwargs...)
@@ -133,7 +133,7 @@ function chemicalabbr(sch::ChemicalSchema; loss = false, bracket = true, n = 1, 
     s = join([chemicalabbr(k; n = n * v, loss, bracket = false, kwargs...) for (k, v) in zip(sch.schema, sch.number)], "")
     bracket ? string("[", s, "]", charge_repr(charge(sch; loss))) : s 
 end
-chemicalabbr(sch::Groupedisotopomerizedschema; n = 1, loss = false, bracket = true, kwargs...) = string(chemicalname(chemicalparent(sch); n, loss, bracket, kwargs...), sch.state > 0 ? string("(+", sch.state, ")") : sch.state < 0 ? string("(-", abs(sch.state), ")") : "") 
+chemicalabbr(sch::Groupedisotopomerizedschema; n = 1, loss = false, bracket = true, kwargs...) = string(chemicalname(chemicalparent(sch); n, loss, bracket, kwargs...), sch.index > 0 ? string("(+", sch.index, ")") : sch.index < 0 ? string("(-", abs(sch.index), ")") : "") 
 
 chemicalsmiles(isobars::Isobars; kwargs...) = chemicalsmiles(chemicalentity(isobars); kwargs...)
 chemicalsmiles(isotopomers::Isotopomers; kwargs...) = chemicalsmiles(chemicalparent(isotopomers); kwargs...)

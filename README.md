@@ -64,10 +64,10 @@ Charged chemicals formed in MS with a specific adduct (chemical gain) or chemica
     Isotopomers(parent::AbstractChemical, fullelements::Vector{Pair{String, Int}})
     ```
 
-7. `Groupedisotopomers`: isotopomers grouped by isotopomer state
+7. `Groupedisotopomers`: isotopomers grouped by mass-shift index using isotope as reference
 
     ```julia
-    Groupedisotopomers(parent::AbstractChemical, state::Int, isotope::String, isotopes::Vector{Vector{Pair{String, Int}}}, abundance::Vector)
+    Groupedisotopomers(parent::AbstractChemical, index::Int, isotope::String, isotopes::Vector{Vector{Pair{String, Int}}}, abundance::Vector)
     ```
 
 Users can parse structural chemical expressions and pairs using `parse_chemical`, and chain chemicals into transition using `ChemicalSeries`.
@@ -235,7 +235,7 @@ Attributes are interfaces for accessing properties and fields through `getchemic
 |`retentiontime`|`AbstractFloat`|retention time; defaults to `NaN`|
 |`chemicalparent`|`AbstractChemical`|parent chemical without delocalized isotope replacements|
 |`isotopomersisotopes`|`Vector{Pair{String, Int}}`|delocalized isotope replacements of isotopomers|
-|`isotopomerstate`|`Int`|isotopomer state, i.e. equivalent number of isotopes|
+|`mass_shift_index`|`Int`|nominal index of mass shift between exact mass and monoisotopic mass using mass difference of an isotope and its parent|
 |`groupedisotopomersisotopes`|`Vector{Vector{Pair{String, Int}}}`|delocalized isotope replacements of each isotopomer in group|
 |`groupedisotopomersabundance`|`AbstractFloat`|abundance of each isotopomer in group|
 |`chemicalentity`|`AbstractChemical`|a single chemical entity representing the chemical|

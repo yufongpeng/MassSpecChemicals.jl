@@ -125,28 +125,27 @@ function IsotopomerizedSchema(chemical::AbstractScheme, fullelements::Dict)
     IsotopomerizedSchema(parent, ev)
 end
 
-
 """
     Groupedisotopomerizedschema{T<:AbstractScheme, N} <: AbstractScheme
 
-Isotopomerized schema grouped by isotopomer state.
+Isotopomerized schema grouped by mass-shift index.
 
 # Fields 
 * `parent::T`: shared chemical scheme prior to isotopic replacement. 
-* `state::Int`: isotopomer state.
-* `isotope::String`: isotope for computing isotopomer state.
+* `index::Int`: mass-shift index.
+* `isotope::String`: reference isotope for [`mass_shift_index`](@ref).
 * `isotopes::Vector{ElementsVector}`: Isotopes-number pairs of isotopic replacements of each isotopomers.
 * `abundance::Vector{N}`: abundance of each isotopomers.
 """
 struct Groupedisotopomerizedschema{T<:AbstractScheme, N} <: AbstractScheme
     parent::T 
-    state::Int
+    index::Int
     isotope::String
     isotopes::Vector{ElementsVector}
     abundance::Vector{N}
-    function Groupedisotopomerizedschema(parent::T, state::Int, isotope::String, isotopes::Vector{ElementsVector}, abundance::Vector{N}) where {T, N}
+    function Groupedisotopomerizedschema(parent::T, index::Int, isotope::String, isotopes::Vector{ElementsVector}, abundance::Vector{N}) where {T, N}
         id = sortperm(abundance)
-        new{T, N}(parent, state, isotope, isotopes[id], abundance[id])
+        new{T, N}(parent, index, isotope, isotopes[id], abundance[id])
     end
 end
 

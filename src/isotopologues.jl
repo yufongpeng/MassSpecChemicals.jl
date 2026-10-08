@@ -548,7 +548,7 @@ TandemIsotopologues(::Isotopomers; kwargs...) = throw(ArgumentError("`Isotopomer
 """
     group_isotopologues(mztable::Table; isotope = "[13C]")
 
-Group isotopologues by isotopomer state based on `isotope`.
+Group isotopologues by [`mass_shift_index`](@ref) using `isotope` as reference.
 """
 function group_isotopologues(mztable::Table; isotope = "[13C]")
     sp = string.(propertynames(mztable))
@@ -560,10 +560,10 @@ function group_isotopologues(mztable::Table; isotope = "[13C]")
     # gt = map(gid) do v 
     #     (; [c => mean(getproperty(mztable, c)[v], weights(getproperty(mztable, d)[v])) for (c, d) in zip(colmz, colab)]..., [c => sum(getproperty(mztable, c)[v]) for c in colab]...)
     # end
-    chemcial_parent_state = collect(keys(gid))
+    chemical_parent_index = collect(keys(gid))
     chemical_isotopes = [collect(zip([isotopomersisotopes.(x; loss = false) for x in @view transitions[id]]...)) for id in gid]
     chemical_abundance = [[getproperty(mztable, a)[id] for a in colab] for id in gid]
-    chemical = [ChemicalSeries([groupedisotopomerize(p..., isotope, collect(i), a) for (p, i, a) in zip(pa, iso, ab)]) for (pa, iso, ab) in zip(chemcial_parent_state, chemical_isotopes, chemical_abundance)]
+    chemical = [ChemicalSeries([groupedisotopomerize(p..., isotope, collect(i), a) for (p, i, a) in zip(pa, iso, ab)]) for (pa, iso, ab) in zip(chemical_parent_index, chemical_isotopes, chemical_abundance)]
     Table(Table(; Chemical = chemical), Table(collect(NamedTuple, gt)))
 end
 

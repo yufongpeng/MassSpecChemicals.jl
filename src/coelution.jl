@@ -86,7 +86,7 @@ end
 """
     isobar_table(ci::CoelutingIsobars; isotope = "[13C]", threshold = rcrit(1e-4), error_elution = measure_error.(ci.elution), error_mz = measure_error.(ci.msanalyzer)) -> Table
 
-A table listing all target chemicals and their isobars grouped by isomeric state based on `isotope` from `ci`.
+A table listing all target chemicals and their isobars grouped by [`mass_shift_index`](@ref) using `isotope` as reference from `ci`.
 
 # Arguments
 * `isotope::AbstractString`: a minor isotope.

@@ -4,14 +4,14 @@
 ==(x::ChemicalTransition, y::ChemicalTransition) = x.transition == y.transition
 ==(x::Isobars, y::Isobars) = x.chemicals == y.chemicals && all(splat(isapprox), zip(x.abundance, y.abundance))
 ==(x::Isotopomers, y::Isotopomers) = x.parent == y.parent && x.isotopes == y.isotopes
-==(x::Groupedisotopomers, y::Groupedisotopomers) = x.parent == y.parent && x.state == y.state && x.isotope == y.isotope && all(splat(==), zip(x.isotopes, y.isotopes)) && all(splat(isapprox), zip(x.abundance, y.abundance))
+==(x::Groupedisotopomers, y::Groupedisotopomers) = x.parent == y.parent && x.index == y.index && x.isotope == y.isotope && all(splat(==), zip(x.isotopes, y.isotopes)) && all(splat(isapprox), zip(x.abundance, y.abundance))
 ==(x::AdductIon, y::AdductIon) = x.core == y.core && x.adduct == y.adduct && x.ncore == y.ncore
 ==(x::T, y::T) where {T<:AbstractChemicalWrapper} = x.chemical == y.chemical
 ==(x::ElementalScheme{T}, y::ElementalScheme{T}) where T = x.chemical == y.chemical
 ==(x::StructuralElementalScheme, y::StructuralElementalScheme) = x.structuralscheme == y.structuralscheme && x.elementalscheme == y.elementalscheme
 ==(x::ChemicalSchema, y::ChemicalSchema) = x.schema == y.schema 
 ==(x::IsotopomerizedSchema, y::IsotopomerizedSchema) = x.parent == y.parent && x.isotopes == y.isotopes 
-==(x::Groupedisotopomerizedschema, y::Groupedisotopomerizedschema) = x.parent == y.parent && x.state == y.state && x.isotope == y.isotope && all(splat(==), zip(x.isotopes, y.isotopes)) && all(splat(isapprox), zip(x.abundance, y.abundance))
+==(x::Groupedisotopomerizedschema, y::Groupedisotopomerizedschema) = x.parent == y.parent && x.index == y.index && x.isotope == y.isotope && all(splat(==), zip(x.isotopes, y.isotopes)) && all(splat(isapprox), zip(x.abundance, y.abundance))
 function ==(x::ElementsVector, y::ElementsVector) 
     ixs = sortperm(x.elements)
     iys = sortperm(y.elements)
@@ -78,7 +78,7 @@ function hash(x::Isotopomers, h::UInt)
 end
 function hash(x::Groupedisotopomers, h::UInt) 
     h = hash(x.parent, h) 
-    h = hash(x.state, h) 
+    h = hash(x.index, h) 
     h = hash(x.isotope, h) 
     h = hash(map(first, axes(x.isotopes)), h)
     h = hash(map(last, axes(x.isotopes)), h)
@@ -113,7 +113,7 @@ function hash(x::IsotopomerizedSchema, h::UInt)
 end
 function hash(x::Groupedisotopomerizedschema, h::UInt) 
     h = hash(x.parent, h) 
-    h = hash(x.state, h) 
+    h = hash(x.index, h) 
     h = hash(x.isotope, h) 
     h = hash(map(first, axes(x.isotopes)), h)
     h = hash(map(last, axes(x.isotopes)), h)
@@ -144,14 +144,14 @@ copy(x::FormulaChemical) = FormulaChemical(copy(x.elements), copy(x.property))
 copy(x::ChemicalTransition) = ChemicalTransition(copy(x.transition))
 copy(x::Isobars) = Isobars(copy(x.chemicals), copy(x.abundance))
 copy(x::Isotopomers) = Isotopomers(copy(x.parent), copy(x.isotopes))
-copy(x::Groupedisotopomers) = Groupedisotopomers(copy(x.parent), x.state, x.isotope, [copy(y) for y in x.isotopes], copy(x.abundance))
+copy(x::Groupedisotopomers) = Groupedisotopomers(copy(x.parent), x.index, x.isotope, [copy(y) for y in x.isotopes], copy(x.abundance))
 copy(x::AdductIon) = AdductIon(copy(x.core), copy(x.adduct), x.ncore) 
 copy(x::T) where {T<:AbstractChemicalWrapper} = T(copy(x.chemical))
 copy(x::ElementalScheme{T}) where T = ElementalScheme(T, copy(x.chemical))
 copy(x::StructuralElementalScheme) = StructuralElementalScheme(copy(x.structuralscheme), copy(x.elementalscheme)) 
 copy(x::ChemicalSchema) = ChemicalSchema(copy(x.schema)) 
 copy(x::IsotopomerizedSchema) = IsotopomerizedSchema(copy(x.parent), copy(x.isotopes)) 
-copy(x::Groupedisotopomerizedschema) = Groupedisotopomerizedschema(copy(x.parent), x.state, x.isotope, [copy(y) for y in x.isotopes], copy(x.abundance))
+copy(x::Groupedisotopomerizedschema) = Groupedisotopomerizedschema(copy(x.parent), x.index, x.isotope, [copy(y) for y in x.isotopes], copy(x.abundance))
 copy(x::ElementsVector) = ElementsVector(copy(x.elements), copy(x.numbers))
 
 iterate(ev::ElementsVector, i = 1) = length(ev.elements) < i ? nothing : (ev.elements[i] => ev.numbers[i], i + 1)

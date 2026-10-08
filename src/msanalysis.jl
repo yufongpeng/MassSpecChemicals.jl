@@ -393,7 +393,7 @@ Extract peaks from a [`Spectrum`](@ref) or [`SelectedIonMonitor`](@ref).
     * `:list`: sum of listed peaks.
     * `:raw`: no abundance normalization.
 * `threshold` can be a number or [`Criteria`](@ref) (absolute and/or relative to `abundance`), representing the lower limit of abundance. 
-* `groupedisotopomers`: whether group isotopologues by isotopomer state based on `isotope`.
+* `groupedisotopomers`: whether group isotopologues by [`mass_shift_index`](@ref) using `isotope` as reference.
 * `isotope::String`: minor isotope.
 """
 peak_table(spectrum::Spectrum; alg = LocalMaxima(), abundance = 1, abtype = Max(), threshold = rcrit(1e-4)) = peak_table(spectrum.table, spectrum.spectrum, spectrum.initial_mass, spectrum.binsize, spectrum.stepsize; alg, abundance, abtype, threshold)
@@ -483,7 +483,7 @@ function find_nearest_peak(alg::LocalMaxima, convolution, i, k)
         dir'start > 0 || break 
     end
     r = @. (!)(dir) * start
-    id = if !any(start)
+    if !any(start)
         ibin[begin]
     elseif all(r) && peak[begin] < peak[end]
         ibin[end]
@@ -496,7 +496,6 @@ function find_nearest_peak(alg::LocalMaxima, convolution, i, k)
     else
         nothing 
     end
-    id
 end
 
 function bin_offset(outmass, binmass, binsize, nbin_multiplier)

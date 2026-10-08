@@ -52,7 +52,7 @@ export
     analyzedchemical, detectedchemical, detectedcharge, detectedisotopes,
     inputchemical, outputchemical,
     seriesanalyzedchemical, seriesanalyzedisotopes, seriesanalyzedcharge, 
-    msstage, chemicaltransition, isotopomerstate, 
+    msstage, chemicaltransition, mass_shift_index, 
     getchemicalproperty, 
     elementalscheme, structuralscheme, 
 
@@ -105,7 +105,7 @@ The following attributes are optional, but generic functions are defined.
 * [`mz`](@ref) `-> AbstractFloat`: mass to charge ratio (m/z).
 * [`chemicalparent`](@ref) `-> AbstractChemical`: parent chemical without delocalized isotopes replacement.
 * [`isotopomersisotopes`](@ref) `-> Vector{Pair{String, Int}}`: delocalized isotopes replacement of isotopomers.
-* [`isotopomerstate`](@ref) `-> Int`: isotopomers state, i.e. equivalent number of isotope.
+* [`mass_shift_index`](@ref) `-> Int`: nominal index of mass shift between exact mass and monoisotopic mass using mass difference of an isotope and its parent.
 * [`groupedisotopomersisotopes`](@ref) `-> Vector{Vector{Pair{String, Int}}}`: delocalized isotopes replacements of each isotopomers.
 * [`groupedisotopomersabundance`](@ref) `-> AbstractFloat`: abundance of each isotopomers.
 * [`chemicalentity`](@ref) `-> AbstractChemical`: a single chemical entity representing the chemical.
@@ -147,7 +147,7 @@ The following atributes are implemented.
 * [`molarmass`](@ref) `-> AbstractFloat`: molar mass.
 * [`chemicalparent`](@ref) `-> AbstractChemical`: parent scheme without delocalized isotopes replacement.
 * [`isotopomersisotopes`](@ref) `-> Vector{Pair{String, Int}}`: delocalized isotopes replacement of isotopomers.
-* [`isotopomerstate`](@ref) `-> Int`: isotopomers state, i.e. equivalent number of isotope.
+* [`mass_shift_index`](@ref) `-> Int`: nominal index of mass shift between exact mass and monoisotopic mass using mass difference of an isotope and its parent.
 * [`groupedisotopomersisotopes`](@ref) `-> Vector{Vector{Pair{String, Int}}}`: delocalized isotopes replacements of each isotopomers.
 * [`groupedisotopomersabundance`](@ref) `-> AbstractFloat`: abundance of each isotopomers.
 

@@ -521,13 +521,13 @@ isotopomersisotopes(sch::AbstractStructuralScheme; kwargs...) = throw(ArgumentEr
 isotopomersisotopes(sch::AbstractCompleteScheme; loss = false, kwargs...) = isotopomersisotopes(elementalscheme(sch); loss, kwargs...) 
 
 """
-    isotopomerstate(cc::AbstractChemical; isotope = "[13C]", ischemical = true, loss = false, kwargs...) -> Int 
-    isotopomerstate(cc::AbstractScheme; isotope = "[13C]", ischemical = false, loss = false, kwargs...) -> Int 
+    mass_shift_index(cc::AbstractChemical; isotope = "[13C]", ischemical = true, loss = false, kwargs...) -> Int 
+    mass_shift_index(cc::AbstractScheme; isotope = "[13C]", ischemical = false, loss = false, kwargs...) -> Int 
 
-The isotopomers state, i.e. equivalent number of `isotope`. 
+A nominal index of mass shift between exact mass and monoisotopic mass using mass difference of `isotope` and its parent. 
 
 # Generic Methods
-* `AbstractChemicalsSchema`: isotopomers state calculated from `isotopomersisotopes`.
+* `AbstractChemicalsSchema`: `mass_shift_index` calculated from `isotopomersisotopes`.
 
 # Specific Methods
 * Entity Level.
@@ -536,9 +536,10 @@ The isotopomers state, i.e. equivalent number of `isotope`.
 * `ischemical::Bool` determines whether the chemical is a chemical or a scheme. 
 * `loss::Bool` determines whether the chemical is part of chemical loss, and sign flips are propagated into `isotopomersisotopes`.
 """
-isotopomerstate(cc::AbstractChemical; isotope_unit = nothing, isotope = "[13C]", loss = false, ischemical = true, kwargs...) = _isotopomerstate(isotopomersisotopes(cc), isnothing(isotope_unit) ? elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]] : isotope_unit; loss, ischemical, kwargs...)
-isotopomerstate(cc::AbstractScheme; isotope_unit = nothing, isotope = "[13C]", loss = false, ischemical = false, kwargs...) = _isotopomerstate(isotopomersisotopes(cc), isnothing(isotope_unit) ? elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]] : isotope_unit; loss, ischemical, kwargs...)
+mass_shift_index(cc::AbstractChemical; isotope_unit = nothing, isotope = "[13C]", loss = false, ischemical = true, kwargs...) = _mass_shift_index(isotopomersisotopes(cc), isnothing(isotope_unit) ? elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]] : isotope_unit; loss, ischemical, kwargs...)
+mass_shift_index(cc::AbstractScheme; isotope_unit = nothing, isotope = "[13C]", loss = false, ischemical = false, kwargs...) = _mass_shift_index(isotopomersisotopes(cc), isnothing(isotope_unit) ? elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]] : isotope_unit; loss, ischemical, kwargs...)
 
+@deprecate isotopomerstate mass_shift_index
 """
     groupedisotopomersisotopes(chemical::AbstractChemicalsSchema; loss = false, kwargs...) -> Vector{Vector{Pair{String, Int}}}
 

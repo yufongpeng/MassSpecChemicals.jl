@@ -210,10 +210,10 @@ isotopomersisotopes(sch::ElementalScheme{false}; loss = false, kwargs...) = isot
 isotopomersisotopes(x::IsotopomerizedSchema; loss = false, kwargs...) = collect(reverse_elements(x.isotopes, loss))
 isotopomersisotopes(x::Groupedisotopomerizedschema; loss = false, kwargs...) = collect(reverse_elements(x.isotopes[begin], loss))
 
-isotopomerstate(sch::ElementalScheme{true}; isotope_unit = nothing, isotope = "[13C]", loss = false, kwargs...) = _isotopomerstate(isotopomersisotopes(sch; loss = false), isnothing(isotope_unit) ? elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]] : isotope_unit; loss, kwargs..., ischemical = false)
-isotopomerstate(sch::ElementalScheme{false}; isotope_unit = nothing, isotope = "[13C]", loss = false, kwargs...) = _isotopomerstate(isotopomersisotopes(sch; loss = false), isnothing(isotope_unit) ? elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]] : isotope_unit; loss = !loss, kwargs..., ischemical = false)
+mass_shift_index(sch::ElementalScheme{true}; isotope_unit = nothing, isotope = "[13C]", loss = false, kwargs...) = _mass_shift_index(isotopomersisotopes(sch; loss = false), isnothing(isotope_unit) ? elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]] : isotope_unit; loss, kwargs..., ischemical = false)
+mass_shift_index(sch::ElementalScheme{false}; isotope_unit = nothing, isotope = "[13C]", loss = false, kwargs...) = _mass_shift_index(isotopomersisotopes(sch; loss = false), isnothing(isotope_unit) ? elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]] : isotope_unit; loss = !loss, kwargs..., ischemical = false)
 
-function _isotopomerstate(isotopes::Vector, isotope_unit; ischemical = true, loss = false)
+function _mass_shift_index(isotopes::Vector, isotope_unit; ischemical = true, loss = false)
     ds = 0
     if ischemical || !loss
         for (e, n) in isotopes
@@ -221,7 +221,7 @@ function _isotopomerstate(isotopes::Vector, isotope_unit; ischemical = true, los
         end
     else
         for (e, n) in isotopes
-            ds += (elements_mass()[e] - elements_mass()[elements_parents()[e]]) * (-n)
+            ds -= (elements_mass()[e] - elements_mass()[elements_parents()[e]]) * n
         end
     end
     round(Int, ds / isotope_unit)
