@@ -56,7 +56,7 @@ scheme_abbr() = SCHEME_ABBR
 """
     set_schabbr!(abbr::AbstractString, chemical::AbstractChemical)
 
-Set `abbr` to be an abbreviation of scheme chemical `fm` for default [`AdductParser`](@ref). 
+Set `abbr` to be an abbreviation of scheme `chemical` for default [`AdductParser`](@ref). 
 
 # Examples
 ```julia
@@ -92,11 +92,11 @@ for (abbr, fm) in [
 end
 
 """
-    set_scheme!(nm::AbstractString, scheme::AbstractScheme)
+    set_scheme!(name::AbstractString, scheme::AbstractScheme)
 
-Set `nm` to be `scheme` for default `AdductParser`.
+Set `name` to be `scheme` for default [`AdductParser`](@ref).
 
-For customized scheme types, this function is required to make `nm` parsed into `scheme` by [`parse_adduct`](@ref).
+For customized scheme types, this function is required to make `name` parsed into `scheme` by [`parse_adduct`](@ref).
 
 # Examples
 ```julia
@@ -110,4 +110,4 @@ julia> parse_adduct("[2M+NSC]+")
 (adduct = NewScheme, ncore = 2)
 ```
 """
-set_scheme!(nm::AbstractString, scheme::AbstractScheme) = push!(scheme_name(), nm => scheme)
+set_scheme!(name::AbstractString, scheme::AbstractScheme) = push!(scheme_name(), name => scheme)

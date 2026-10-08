@@ -52,7 +52,7 @@ Single scheme involving a chemical. The elements are fixed, and can be replaced 
 * `chemical::T`: chemical involved in scheme.
 
 Single isotopomer can be set by using [`Isotopomers`](@ref) as field `chemical`. 
-Elemental scheme can be redirected to the corresponding isotopic labeled scheme in [`AdductIon`](@ref) by dispatching on core chemical and existing schema, 
+Elemental scheme can be redirected to the corresponding isotopic labeled scheme in [`AdductIon`](@ref) by dispatching on core chemical and existing scheme, 
 or looking up the `property` for generic [`Chemical`](@ref).
 """
 struct ElementalScheme{Bool, T<:AbstractChemical} <: AbstractElementalScheme
@@ -77,41 +77,41 @@ Chemical loss of `chemical`, i.e. `ElementalScheme(false, chemical)`. See [`Elem
 ChemicalLoss(x) = ElementalScheme(false, x)
 
 """
-    ChemicalSchema{T<:AbstractScheme} <: AbstractScheme
+    ChemicalSchemes{T<:AbstractScheme} <: AbstractScheme
 
-Mutiple chemical schema.
+Mutiple chemical schemes.
 
 # Fields
-* `schema::Vector{Pair{T, Int}}`: scheme => number vector. The number v is the times of the scheme in the chemical schema. 
+* `schemes::Vector{Pair{T, Int}}`: scheme => number vector. The number v is the times of the scheme in the chemical schemes. 
 """
-struct ChemicalSchema{T<:AbstractScheme} <: AbstractScheme
-    schema::Vector{T}
+struct ChemicalSchemes{T<:AbstractScheme} <: AbstractScheme
+    schemes::Vector{T}
     number::Vector{Int}
 end 
 
 """
-    IsotopomerizedSchema{T<:ChemicalSchema} <: AbstractScheme
+    IsotopomerizedSchemes{T<:ChemicalSchemes} <: AbstractScheme
 
-Mutiple chemical schema with delocalized isotopic replacements.
+Mutiple chemical schemes with delocalized isotopic replacements.
 
 # Fields
-* `schema::T`: parent scheme.
+* `schemes::T`: parent scheme.
 * `isotopes::ElementsVector`: delocalized isotopic replacements.
 """
-struct IsotopomerizedSchema{T<:ChemicalSchema} <: AbstractScheme 
+struct IsotopomerizedSchemes{T<:ChemicalSchemes} <: AbstractScheme 
     parent::T
     isotopes::ElementsVector
 end
 
-function IsotopomerizedSchema(chemical::AbstractScheme, fullformula::String)
-    IsotopomerizedSchema(chemicalparent(chemical), dictionary_elements(chemicalelements(fullformula)))
+function IsotopomerizedSchemes(chemical::AbstractScheme, fullformula::String)
+    IsotopomerizedSchemes(chemicalparent(chemical), dictionary_elements(chemicalelements(fullformula)))
 end
 
-function IsotopomerizedSchema(chemical::AbstractScheme, fullelements::Vector{Pair{String, Int}})
-    IsotopomerizedSchema(chemicalparent(chemical), dictionary_elements(fullelements))
+function IsotopomerizedSchemes(chemical::AbstractScheme, fullelements::Vector{Pair{String, Int}})
+    IsotopomerizedSchemes(chemicalparent(chemical), dictionary_elements(fullelements))
 end
 
-function IsotopomerizedSchema(chemical::AbstractScheme, fullelements::Dict)
+function IsotopomerizedSchemes(chemical::AbstractScheme, fullelements::Dict)
     parent = chemicalparent(chemical)
     dp = dictionary_elements(chemicalelements(parent))
     ev = ElementsVector(collect(keys(fullelements)), collect(values(fullelements)))
@@ -122,13 +122,13 @@ function IsotopomerizedSchema(chemical::AbstractScheme, fullelements::Dict)
     end
     deleteat!(ev.elements, del)
     deleteat!(ev.numbers, del)
-    IsotopomerizedSchema(parent, ev)
+    IsotopomerizedSchemes(parent, ev)
 end
 
 """
-    Groupedisotopomerizedschema{T<:AbstractScheme, N} <: AbstractScheme
+    Groupedisotopomerizedschemes{T<:AbstractScheme, N} <: AbstractScheme
 
-Isotopomerized schema grouped by mass-shift index.
+Isotopomerized schemes grouped by mass-shift index.
 
 # Fields 
 * `parent::T`: shared chemical scheme prior to isotopic replacement. 
@@ -137,57 +137,57 @@ Isotopomerized schema grouped by mass-shift index.
 * `isotopes::Vector{ElementsVector}`: Isotopes-number pairs of isotopic replacements of each isotopomers.
 * `abundance::Vector{N}`: abundance of each isotopomers.
 """
-struct Groupedisotopomerizedschema{T<:AbstractScheme, N} <: AbstractScheme
+struct Groupedisotopomerizedschemes{T<:AbstractScheme, N} <: AbstractScheme
     parent::T 
     index::Int
     isotope::String
     isotopes::Vector{ElementsVector}
     abundance::Vector{N}
-    function Groupedisotopomerizedschema(parent::T, index::Int, isotope::String, isotopes::Vector{ElementsVector}, abundance::Vector{N}) where {T, N}
+    function Groupedisotopomerizedschemes(parent::T, index::Int, isotope::String, isotopes::Vector{ElementsVector}, abundance::Vector{N}) where {T, N}
         id = sortperm(abundance)
         new{T, N}(parent, index, isotope, isotopes[id], abundance[id])
     end
 end
 
-schemetype(::ChemicalSchema{T}) where T = T 
+schemetype(::ChemicalSchemes{T}) where T = T 
 schemetype(::T) where T = T 
 
-function ChemicalSchema(scheme::T, schema...) where {T<:AbstractScheme} 
-    C = promote_type(T, schemetype.(schema)...)
+function ChemicalSchemes(scheme::T, schemes...) where {T<:AbstractScheme} 
+    C = promote_type(T, schemetype.(schemes)...)
     cs = C[scheme]
     cn = Int[1]
-    for s in schema
+    for s in schemes
         push_scheme!(cs, cn, s)
     end
-    ChemicalSchema(cs, cn)
+    ChemicalSchemes(cs, cn)
 end
 
-function ChemicalSchema(schema::AbstractVector{T}) where {T<:AbstractScheme}
-    cs = T[first(schema)]
+function ChemicalSchemes(schemes::AbstractVector{T}) where {T<:AbstractScheme}
+    cs = T[first(schemes)]
     cn = Int[1]
-    length(schema) < 2 && return ChemicalSchema(cs, cn)
-    for s in @view schema[2:end]
+    length(schemes) < 2 && return ChemicalSchemes(cs, cn)
+    for s in @view schemes[2:end]
         push_scheme!(cs, cn, s)
     end
-    ChemicalSchema(cs, cn)
+    ChemicalSchemes(cs, cn)
 end
 
-function ChemicalSchema(scheme::ChemicalSchema{T}, schema...) where {T<:AbstractScheme}
-    C = promote_type(T, schemetype.(schema)...)
+function ChemicalSchemes(scheme::ChemicalSchemes{T}, schemes...) where {T<:AbstractScheme}
+    C = promote_type(T, schemetype.(schemes)...)
     if C == T
-        cs = copy(scheme.schema)
+        cs = copy(scheme.schemes)
     else
-        cs = convert(Vector{C}, copy(scheme.schema))
+        cs = convert(Vector{C}, copy(scheme.schemes))
     end
     cn = copy(scheme.number)
-    for s in schema
+    for s in schemes
         push_scheme!(cs, cn, s)
     end
-    ChemicalSchema(cs, cn)
+    ChemicalSchemes(cs, cn)
 end
 
-function push_scheme!(cs::Vector, cn::Vector, scheme::ChemicalSchema)
-    for (k, v) in zip(scheme.schema, scheme.number)
+function push_scheme!(cs::Vector, cn::Vector, scheme::ChemicalSchemes)
+    for (k, v) in zip(scheme.schemes, scheme.number)
         i = findfirst(==(k), cs)
         if i !== nothing
             cn[i] += v
@@ -211,25 +211,32 @@ function push_scheme!(cs::Vector, cn::Vector, scheme::AbstractScheme)
 end
 
 """
-    const CompleteSchema = Union{<:AbstractCompleteScheme, <:ChemicalSchema{<:AbstractCompleteScheme}, <:IsotopomerizedSchema{<:ChemicalSchema{<:AbstractCompleteScheme}}, <:Groupedisotopomerizedschema{<:ChemicalSchema{<:AbstractCompleteScheme}}}
+    const CompleteSchemes = Union{<:AbstractCompleteScheme, <:ChemicalSchemes{<:AbstractCompleteScheme}, <:IsotopomerizedSchemes{<:ChemicalSchemes{<:AbstractCompleteScheme}}, <:Groupedisotopomerizedschemes{<:ChemicalSchemes{<:AbstractCompleteScheme}}}
 
 Complete scheme (scheme containing both [`structuralscheme`](@ref) and [`elementalscheme`](@ref)).
 """
-const CompleteSchema = Union{<:AbstractCompleteScheme, <:ChemicalSchema{<:AbstractCompleteScheme}, <:IsotopomerizedSchema{<:ChemicalSchema{<:AbstractCompleteScheme}}, <:Groupedisotopomerizedschema{<:ChemicalSchema{<:AbstractCompleteScheme}}}
+const CompleteSchemes = Union{<:AbstractCompleteScheme, <:ChemicalSchemes{<:AbstractCompleteScheme}, <:IsotopomerizedSchemes{<:ChemicalSchemes{<:AbstractCompleteScheme}}, <:Groupedisotopomerizedschemes{<:ChemicalSchemes{<:AbstractCompleteScheme}}}
 
 """
-    const StructuralSchema = Union{<:AbstractStructuralScheme, <:ChemicalSchema{<:AbstractStructuralScheme}, <:IsotopomerizedSchema{<:ChemicalSchema{<:AbstractStructuralScheme}}, <:Groupedisotopomerizedschema{<:ChemicalSchema{<:AbstractStructuralScheme}}}
+    const StructuralSchemes = Union{<:AbstractStructuralScheme, <:ChemicalSchemes{<:AbstractStructuralScheme}, <:IsotopomerizedSchemes{<:ChemicalSchemes{<:AbstractStructuralScheme}}, <:Groupedisotopomerizedschemes{<:ChemicalSchemes{<:AbstractStructuralScheme}}}
 
-Stuctural schema.
+Stuctural schemes.
 """
-const StructuralSchema = Union{<:AbstractStructuralScheme, <:ChemicalSchema{<:AbstractStructuralScheme}, <:IsotopomerizedSchema{<:ChemicalSchema{<:AbstractStructuralScheme}}, <:Groupedisotopomerizedschema{<:ChemicalSchema{<:AbstractStructuralScheme}}}
+const StructuralSchemes = Union{<:AbstractStructuralScheme, <:ChemicalSchemes{<:AbstractStructuralScheme}, <:IsotopomerizedSchemes{<:ChemicalSchemes{<:AbstractStructuralScheme}}, <:Groupedisotopomerizedschemes{<:ChemicalSchemes{<:AbstractStructuralScheme}}}
 
 """
-    const ElementalSchema = Union{<:AbstractElementalScheme, <:ChemicalSchema{<:AbstractElementalScheme}, <:IsotopomerizedSchema{<:ChemicalSchema{<:AbstractElementalScheme}}, <:Groupedisotopomerizedschema{<:ChemicalSchema{<:AbstractElementalScheme}}}
+    const ElementalSchemes = Union{<:AbstractElementalScheme, <:ChemicalSchemes{<:AbstractElementalScheme}, <:IsotopomerizedSchemes{<:ChemicalSchemes{<:AbstractElementalScheme}}, <:Groupedisotopomerizedschemes{<:ChemicalSchemes{<:AbstractElementalScheme}}}
 
-Elemental schema.
+Elemental schemes.
 """
-const ElementalSchema = Union{<:AbstractElementalScheme, <:ChemicalSchema{<:AbstractElementalScheme}, <:IsotopomerizedSchema{<:ChemicalSchema{<:AbstractElementalScheme}}, <:Groupedisotopomerizedschema{<:ChemicalSchema{<:AbstractElementalScheme}}}
+const ElementalSchemes = Union{<:AbstractElementalScheme, <:ChemicalSchemes{<:AbstractElementalScheme}, <:IsotopomerizedSchemes{<:ChemicalSchemes{<:AbstractElementalScheme}}, <:Groupedisotopomerizedschemes{<:ChemicalSchemes{<:AbstractElementalScheme}}}
+
+@deprecate ChemicalSchema ChemicalSchemes
+@deprecate IsotopomerizedSchema IsotopomerizedSchemes
+@deprecate Groupedisotopomerizedschemes Groupedisotopomerizedschemes
+@deprecate CompleteSchema CompleteSchemes
+@deprecate StructuralSchema StructuralSchemes
+@deprecate ElementalSchema ElementalSchemes
 
 """
     const CompleteSchemeChemical = AbstractCompleteScheme{T, <:AbstractChemical}

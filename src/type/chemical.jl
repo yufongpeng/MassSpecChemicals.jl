@@ -57,9 +57,9 @@ FormulaChemical(formula::AbstractString, property) = FormulaChemical(chemicalele
 FormulaChemical(elements::Dict, property) = FormulaChemical(collect(elements), property)
 
 """
-    ChemicalTransition{T<:AbstractChemicalsSchema} <: AbstractChemical
+    ChemicalTransition{T<:AbstractChemicalScheme} <: AbstractChemical
 
-Chemical transition in MSⁿ. Products can be any subtype of `AbstractChemicalsSchema` representing chemical entity or species.
+Chemical transition in MSⁿ. Products can be any subtype of `AbstractChemicalScheme` representing chemical entity or species.
 
 # Fields 
 * `transition::Vector{T}`.
@@ -70,7 +70,7 @@ Chemical transition in MSⁿ. Products can be any subtype of `AbstractChemicalsS
     
 `products` are pushed into `precursor` to construct `transition`.
 """
-struct ChemicalTransition{T<:AbstractChemicalsSchema} <: AbstractChemical
+struct ChemicalTransition{T<:AbstractChemicalScheme} <: AbstractChemical
     transition::Vector{T}
 end
 
@@ -206,20 +206,20 @@ struct Groupedisotopomers{T<:AbstractChemical, N} <: AbstractChemical
 end
 
 """
-    ChemicalSeries(chemical::AbstractChemicalsSchema)
+    ChemicalSeries(chemical::AbstractChemicalScheme)
     ChemicalSeries(pair::Pair)
     ChemicalSeries(chemicals::AbstractVector)
 
 Transform chemical into valid chemical structure. Multiple chemicals are converted into `ChemicalTransition`.
 """
-ChemicalSeries(cc::AbstractChemicalsSchema) = cc
+ChemicalSeries(cc::AbstractChemicalScheme) = cc
 ChemicalSeries(cc::ChemicalTransition) = cc
 ChemicalSeries(ct...) = ChemicalTransition(ct...) 
 ChemicalSeries(v::AbstractVector) = length(v) < 2 ? ChemicalSeries(first(v)) : ChemicalTransition(v...)
 ChemicalSeries(v::Pair) = ChemicalTransition(_ChemicalSeries(v)...)
 _ChemicalSeries(v::Pair) = (_ChemicalSeries(first(v))..., _ChemicalSeries(last(v))...)
 _ChemicalSeries(v::ChemicalTransition) = (chemicaltransition(v)..., )
-_ChemicalSeries(v::AbstractChemicalsSchema) = (v, ) 
+_ChemicalSeries(v::AbstractChemicalScheme) = (v, ) 
 
 """
     AbstractChemicalWrapper{T<:AbstractChemical} <: AbstractChemical 

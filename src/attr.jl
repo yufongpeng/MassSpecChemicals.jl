@@ -1,6 +1,6 @@
 """
-    getchemicalproperty(chemical::AbstractChemicalsSchema, property::Symbol, default::Nothing, type = Any) -> Any
-    getchemicalproperty(chemical::AbstractChemicalsSchema, property::Symbol, default::T, type = T) -> T
+    getchemicalproperty(chemical::AbstractChemicalScheme, property::Symbol, default::Nothing, type = Any) -> Any
+    getchemicalproperty(chemical::AbstractChemicalScheme, property::Symbol, default::T, type = T) -> T
 
 Get `property` from `chemical`. 
 
@@ -11,9 +11,9 @@ If no matched property name is found, it returns `default`.
 
 For type [`AbstractAdductIon`](@ref), it searches for properties of itself and then the properties of core chemical without specialized methods.
 """
-getchemicalproperty(chemical::AbstractChemicalsSchema, property::Symbol, default::T) where T = getchemicalproperty(chemical, property, default, T)
-getchemicalproperty(chemical::AbstractChemicalsSchema, property::Symbol, default::Nothing) = getchemicalproperty(chemical, property, default, Any)
-getchemicalproperty(chemical::AbstractChemicalsSchema, property::Symbol, default, ::Type{T}) where T = hasproperty(chemical, property) ? getproperty(chemical, property)::T : default::T 
+getchemicalproperty(chemical::AbstractChemicalScheme, property::Symbol, default::T) where T = getchemicalproperty(chemical, property, default, T)
+getchemicalproperty(chemical::AbstractChemicalScheme, property::Symbol, default::Nothing) = getchemicalproperty(chemical, property, default, Any)
+getchemicalproperty(chemical::AbstractChemicalScheme, property::Symbol, default, ::Type{T}) where T = hasproperty(chemical, property) ? getproperty(chemical, property)::T : default::T 
 getchemicalproperty(adduct_ion::AbstractAdductIon, property::Symbol, default, type::Type{T})  where T = hasproperty(adduct_ion, property) ? getproperty(adduct_ion, property)::T : getchemicalproperty(ioncore(adduct_ion), property, default, type)
 getchemicalproperty(chemical::AbstractChemicalWrapper, property::Symbol, default, ::Type{T}) where T = hasproperty(chemical, property) ? getproperty(chemical, property)::T : hasproperty(chemical.chemical, property) ? getproperty(chemical.chemical, property)::T : default::T 
 function getchemicalproperty(chemical::Union{Chemical, FormulaChemical}, property::Symbol, default, ::Type{T}) where T
@@ -25,12 +25,12 @@ function getchemicalproperty(chemical::Union{Chemical, FormulaChemical}, propert
 end
 
 """
-    chemicalname(chemical::AbstractChemicalsSchema; verbose = true, n = 1, loss = false, bracket = true, kwargs...) -> String
+    chemicalname(chemical::AbstractChemicalScheme; verbose = true, n = 1, loss = false, bracket = true, kwargs...) -> String
 
 The name of `chemical`. It should be unique for each chemical object. 
 
 # Generic Methods
-* `AbstractChemicalsSchema`: property search.
+* `AbstractChemicalScheme`: property search.
 * `AbstractAdductIon`: name composed of name of core chemical and adduct.
 * `AbstractChemicalWrapper`: name of field `chemical`.
 
@@ -48,7 +48,7 @@ The name of `chemical`. It should be unique for each chemical object.
 * `loss::Bool` determines whether the chemical is part of chemical loss, and sign flips are propagated into this chemical.
 * `bracket::Bool` determines whether wrapping the output string with "[...]" and charge.
 """
-function chemicalname(chemical::AbstractChemicalsSchema; n = 1, kwargs...) 
+function chemicalname(chemical::AbstractChemicalScheme; n = 1, kwargs...) 
     nm = getchemicalproperty(chemical, :name, defaultname(chemical))
     n > 1 ? string(n, nm) : nm
 end
@@ -128,7 +128,7 @@ chemicalformula(chemical::AbstractChemicalWrapper; loss = false, kwargs...) = ch
 chemicalformula(sch::AbstractStructuralScheme; kwargs...) = throw(ArgumentError("`chemicalformula` cannot be defined for structural scheme."))
 
 """
-    chemicalelements(chemical::AbstractChemicalsSchema; loss = false, kwargs...) -> Vector{Pair{String, Int}}
+    chemicalelements(chemical::AbstractChemicalScheme; loss = false, kwargs...) -> Vector{Pair{String, Int}}
 
 The elements of chemical entity of `chemical`.
 
@@ -184,12 +184,12 @@ chemicalelements(chemical::AbstractChemicalWrapper; loss = false, kwargs...) = c
 chemicalelements(sch::AbstractStructuralScheme; kwargs...) = throw(ArgumentError("`chemicalelements` cannot be defined for structural scheme."))
 
 """
-    chemicalabbr(chemical::AbstractChemicalsSchema; verbose = true, n = 1, loss = false, bracket = true, kwargs...) -> String
+    chemicalabbr(chemical::AbstractChemicalScheme; verbose = true, n = 1, loss = false, bracket = true, kwargs...) -> String
 
 The abbreviation of `chemical`. 
 
 # Generic Methods
-* `AbstractChemicalsSchema`: property search.
+* `AbstractChemicalScheme`: property search.
 * `AbstractAdductIon`: abbreviation composed of abbreviation of core chemical and adduct.
 * `AbstractChemicalWrapper`: abbreviation of field `chemical`.
 
@@ -207,7 +207,7 @@ The abbreviation of `chemical`.
 * `loss::Bool` determines whether the chemical is part of chemical loss, and sign flips are propagated into this chemical.
 * `bracket::Bool` determines whether wrapping the output string with "[...]" and charge.
 """
-function chemicalabbr(chemical::AbstractChemicalsSchema; n = 1, kwargs...) 
+function chemicalabbr(chemical::AbstractChemicalScheme; n = 1, kwargs...) 
     abbr = getchemicalproperty(chemical, :abbreviation, "")
     isempty(abbr) && return chemicalname(chemical; n, kwargs...)
     string(n > 1 ? n : "", abbr)
@@ -305,7 +305,7 @@ The number of core chemical. For instance, 2 for "[2M+H]+".
 ncore(adduct_ion::AbstractAdductIon; kwargs...) = getchemicalproperty(adduct_ion, :ncore, 1)
 
 """
-    charge(chemical::AbstractChemicalsSchema; loss = false, kwargs...) -> Int
+    charge(chemical::AbstractChemicalScheme; loss = false, kwargs...) -> Int
 
 The charge state of `chemical`; positive for cation and negative for anion. For instance, -2 for dianion, +3 for trication. 
 
@@ -328,24 +328,24 @@ The charge state of `chemical`; positive for cation and negative for anion. For 
 # Keword Arguments
 * `loss::Bool` determines whether the chemical is part of chemical loss, and sign flips are factored out from elements.
 """
-charge(chemical::AbstractChemicalsSchema; loss = false, kwargs...) = loss ? -getchemicalproperty(chemical, :charge, 0) : getchemicalproperty(chemical, :charge, 0)
+charge(chemical::AbstractChemicalScheme; loss = false, kwargs...) = loss ? -getchemicalproperty(chemical, :charge, 0) : getchemicalproperty(chemical, :charge, 0)
 charge(adduct_ion::AbstractAdductIon; loss = false, kwargs...) = ncore(adduct_ion) * charge(ioncore(adduct_ion); loss, kwargs...) + charge(ionadduct(adduct_ion); loss)
 charge(chemical::AbstractChemicalWrapper; loss = false, kwargs...) = charge(chemical.chemical; loss, kwargs...)
 charge(sch::AbstractCompleteScheme; loss = false, kwargs...) = charge(elementalscheme(sch); loss, kwargs...)
 charge(sch::AbstractStructuralScheme; kwargs...) = throw(ArgumentError("`charge` cannot be defined for structural scheme."))
 
 """
-    ncharge(chemical::AbstractChemicalsSchema; kwargs...) -> Int
+    ncharge(chemical::AbstractChemicalScheme; kwargs...) -> Int
 
 The number of charges of `chemical`.
 
 # Generic Methods
-* `AbstractChemicalsSchema`: absolute value of charge.
+* `AbstractChemicalScheme`: absolute value of charge.
 
 # Specific Methods 
 * Entity Level.
 """
-ncharge(chemical::AbstractChemicalsSchema; kwargs...) = abs(charge(chemical; kwargs...))
+ncharge(chemical::AbstractChemicalScheme; kwargs...) = abs(charge(chemical; kwargs...))
 
 """
     retentiontime(chemical::AbstractChemical; kwargs...) -> AbstractFloat
@@ -388,7 +388,7 @@ chemicalentity(chemical::AbstractChemical; kwargs...) = chemical
 chemicalentity(chemical::T; kwargs...) where {T<:AbstractChemicalWrapper} = T.name.wrapper(chemicalentity(chemical.chemical; kwargs...))
 
 """
-    elementalscheme(scheme::AbstractScheme; kwargs...) -> Union{ElementalSchema, AbstractChemical}
+    elementalscheme(scheme::AbstractScheme; kwargs...) -> Union{ElementalSchemes, AbstractChemical}
 
 The elemental scheme of `scheme`. 
 
@@ -399,28 +399,28 @@ Attribute with Specific Methods marked as `Entity` indicates the `elementalschem
 * `AbstractStructuralScheme`: throw error.
 
 # Specific Methods
-* `ChemicalSchema`: elemental schema of all schema.
-* `IsotopomerizedSchema`: elemental schema of all schema.
+* `ChemicalSchemes`: elemental scheme of all schemes.
+* `IsotopomerizedSchemes`: elemental scheme of all schemes.
 
 # Property Search Workflow
 1. Function: [`getchemicalproperty`](@ref).
     * property: `:elementalscheme`.
     * default: itself.
 """
-elementalscheme(scheme::AbstractScheme; kwargs...) = getchemicalproperty(scheme, :elementalscheme, scheme, Union{ElementalSchema, AbstractChemical})
+elementalscheme(scheme::AbstractScheme; kwargs...) = getchemicalproperty(scheme, :elementalscheme, scheme, Union{ElementalSchemes, AbstractChemical})
 elementalscheme(scheme::AbstractStructuralScheme; kwargs...) = throw(ArgumentError("Structural scheme requires specific mapping to elemental scheme."))
 
 """
     structuralscheme(scheme::AbstractScheme; kwargs...) -> AbstractScheme
 
-The structural scheme of `scheme`. All elemental schema are regarded as structural schema as well.
+The structural scheme of `scheme`. All elemental schemes are regarded as structural schemes as well.
 
 # Generic Methods
 * `AbstractScheme`: property search.
 
 # Specific Methods
-* `ChemicalSchema`: structural schema of all schema.
-* `IsotopomerizedSchema`: structural schema of all schema.
+* `ChemicalSchemes`: structural scheme of all schemes.
+* `IsotopomerizedSchemes`: structural scheme of all schemes.
 
 # Property Search Workflow
 1. Function: [`getchemicalproperty`](@ref).
@@ -462,7 +462,7 @@ Attribute with Specific Methods marked as `Transition` indicates the return valu
 chemicaltransition(chemical::AbstractChemical; kwargs...) = [chemical]
 
 """
-    chemicalparent(chemical::AbstractChemicalsSchema; kwargs...) -> AbstractChemical
+    chemicalparent(chemical::AbstractChemicalScheme; kwargs...) -> AbstractChemical
 
 The parent chemical without delocalized isotopes replacement.
 
@@ -477,9 +477,9 @@ The parent chemical without delocalized isotopes replacement.
 * `ChemicalTransition`: [`ChemicalTransition`](@ref) of parent chemicals of each transition.
 * `Groupedisotopmers`: field `parent`.
 * `ElementalScheme`: scheme of chemical parent of chemical entity.
-* `ChemicalSchema`: schema of chemical parent(s) of chemical entity(s).
-* `IsotopomerizedSchema`: field `parent`.
-* `Groupedisotopmerizedschema`: field `parent`.
+* `ChemicalSchemes`: schemes of chemical parent(s) of chemical entity(s).
+* `IsotopomerizedSchemes`: field `parent`.
+* `Groupedisotopmerizedschemes`: field `parent`.
 """
 chemicalparent(cc::AbstractChemical; kwargs...) = cc
 chemicalparent(chemical::T; kwargs...) where {T<:AbstractChemicalWrapper} = T.name.wrapper(chemicalparent(chemical.chemical; kwargs...))
@@ -487,7 +487,7 @@ chemicalparent(sch::AbstractScheme; kwargs...) = sch
 chemicalparent(sch::AbstractStructuralScheme; kwargs...) = throw(ArgumentError("`chemicalparent` cannot be defined for structural scheme."))
 
 """
-    isotopomersisotopes(chemical::AbstractChemicalsSchema; loss = false, kwargs...) -> Vector{Pair{String, Int}}
+    isotopomersisotopes(chemical::AbstractChemicalScheme; loss = false, kwargs...) -> Vector{Pair{String, Int}}
 
 The delocalized isotopes replacement of isotopomers.
 
@@ -503,9 +503,9 @@ The delocalized isotopes replacement of isotopomers.
 * `Isotopomers`: field `isotopes`.
 * `Groupedisotopomers`: isotopes replacement of the most abundant isotopomers.
 * `ElementalScheme`: change of delocalized isotopes replacement.
-* `ChemicalSchema`: all changes of delocalized isotopes replacement.
-* `IsotopomerizedSchema`: field `isotopes`.
-* `Groupedisotopomerizedschema`: isotopes replacement of the most abundant isotopomers.
+* `ChemicalSchemes`: all changes of delocalized isotopes replacement.
+* `IsotopomerizedSchemes`: field `isotopes`.
+* `Groupedisotopomerizedschemes`: isotopes replacement of the most abundant isotopomers.
 
 # Property Search Workflow
 1. Function: [`getchemicalproperty`](@ref).
@@ -515,7 +515,7 @@ The delocalized isotopes replacement of isotopomers.
 # Keyword arguments
 * `loss::Bool` determines whether the chemical is part of chemical loss, and sign flips are propagated into elements.
 """
-isotopomersisotopes(cc::AbstractChemicalsSchema; loss = false, kwargs...) = reverse_elements(getchemicalproperty(cc, :isotopomersisotopes, Pair{String, Int}[]), loss)
+isotopomersisotopes(cc::AbstractChemicalScheme; loss = false, kwargs...) = reverse_elements(getchemicalproperty(cc, :isotopomersisotopes, Pair{String, Int}[]), loss)
 isotopomersisotopes(cc::AbstractChemicalWrapper; loss = false, kwargs...) = isotopomersisotopes(cc.chemical; loss, kwargs...)
 isotopomersisotopes(sch::AbstractStructuralScheme; kwargs...) = throw(ArgumentError("`isotopomersisotopes` cannot be defined for structural scheme."))
 isotopomersisotopes(sch::AbstractCompleteScheme; loss = false, kwargs...) = isotopomersisotopes(elementalscheme(sch); loss, kwargs...) 
@@ -527,7 +527,7 @@ isotopomersisotopes(sch::AbstractCompleteScheme; loss = false, kwargs...) = isot
 A nominal index of mass shift between exact mass and monoisotopic mass using mass difference of `isotope` and its parent. 
 
 # Generic Methods
-* `AbstractChemicalsSchema`: `mass_shift_index` calculated from `isotopomersisotopes`.
+* `AbstractChemicalScheme`: `mass_shift_index` calculated from `isotopomersisotopes`.
 
 # Specific Methods
 * Entity Level.
@@ -541,7 +541,7 @@ mass_shift_index(cc::AbstractScheme; isotope_unit = nothing, isotope = "[13C]", 
 
 @deprecate isotopomerstate mass_shift_index
 """
-    groupedisotopomersisotopes(chemical::AbstractChemicalsSchema; loss = false, kwargs...) -> Vector{Vector{Pair{String, Int}}}
+    groupedisotopomersisotopes(chemical::AbstractChemicalScheme; loss = false, kwargs...) -> Vector{Vector{Pair{String, Int}}}
 
 The delocalized isotopes replacement of each isotopomers.
 
@@ -554,9 +554,9 @@ The delocalized isotopes replacement of each isotopomers.
 * Entity Level.
 * `Groupedisotopomers`: isotopes replacements of each isotopomers.
 * `ElementalScheme`: single-element vector of `isotopomersisotopes`.
-* `ChemicalSchema`: `Pair{String, Int}[]`.
-* `IsotopomerizedSchema`: single-element vector of `isotopomersisotopes`.
-* `Groupedisotopomerizedschema`: isotopes replacements of each isotopomers.
+* `ChemicalSchemes`: `Pair{String, Int}[]`.
+* `IsotopomerizedSchemes`: single-element vector of `isotopomersisotopes`.
+* `Groupedisotopomerizedschemes`: isotopes replacements of each isotopomers.
 
 # Keyword arguments
 * `loss::Bool` determines whether the chemical is part of chemical loss, and sign flips are propagated into elements.
@@ -566,7 +566,7 @@ groupedisotopomersisotopes(x::AbstractStructuralScheme; kwargs...) = throw(Argum
 groupedisotopomersisotopes(x::AbstractScheme; loss = false, kwargs...) = groupedisotopomersisotopes(elementalscheme(x); loss, kwargs...)
 
 """
-    groupedisotopomersabundance(chemical::AbstractChemicalsSchema; loss = false, kwargs...) -> Vector{<:AbstractFloat}
+    groupedisotopomersabundance(chemical::AbstractChemicalScheme; loss = false, kwargs...) -> Vector{<:AbstractFloat}
 
 The abundance of each isotopomers.
 
@@ -579,16 +579,16 @@ The abundance of each isotopomers.
 * Entity Level.
 * `Groupedisotopomers`: field `abundance`.
 * `ElementalScheme`: `groupedisotopomersabundance` of field `chemical`.
-* `ChemicalSchema`: `[1.0]`.
-* `IsotopomerizedSchema`: `[1.0]`.
-* `Groupedisotopomerizedschema`: field `abundance`.
+* `ChemicalSchemes`: `[1.0]`.
+* `IsotopomerizedSchemes`: `[1.0]`.
+* `Groupedisotopomerizedschemes`: field `abundance`.
 """
 groupedisotopomersabundance(x::AbstractChemical; kwargs...) = [1.0]
 groupedisotopomersabundance(x::AbstractStructuralScheme; kwargs...) = throw(ArgumentError("`groupedisotopomersabundance` cannot be defined for structural scheme."))
 groupedisotopomersabundance(x::AbstractScheme; kwargs...) = groupedisotopomersabundance(elementalscheme(x); kwargs...)
 # truly formed chemical
 """
-    analyzedchemical(chemical::AbstractChemicalsSchema; kwargs...) -> AbstractChemical
+    analyzedchemical(chemical::AbstractChemicalScheme; kwargs...) -> AbstractChemical
 
 The single chemical entity that is directly analyzed at the very beginning of instrumental analysis.
 
@@ -605,7 +605,7 @@ analyzedchemical(cc::AbstractChemical; kwargs...) = cc
 analyzedchemical(cc::AbstractScheme; kwargs...) = throw(ArgumentError("Scheme cannot be analyzed directly."))
 
 """
-    detectedchemical(chemical::AbstractChemicalsSchema; kwargs...) -> AbstractChemical
+    detectedchemical(chemical::AbstractChemicalScheme; kwargs...) -> AbstractChemical
 
 The single chemical entity that is directly detected at the very end of instrumental analysis.
 
@@ -629,11 +629,11 @@ function detectedchemical(sch::AbstractScheme; precursor = nothing, kwargs...)
     detectedchemical(precursor, sch)
 end
 """
-    detectedisotopes(chemical::AbstractChemicalsSchema; kwargs...) -> Vector{Pair{String, Int}}
+    detectedisotopes(chemical::AbstractChemicalScheme; kwargs...) -> Vector{Pair{String, Int}}
 
 The delocalized isotopes replacement of detected chemical. See [`detectedchemical`](@ref) for details.
 """
-detectedisotopes(cc::AbstractChemicalsSchema; kwargs...) = isotopomersisotopes(detectedchemical(cc); kwargs...)
+detectedisotopes(cc::AbstractChemicalScheme; kwargs...) = isotopomersisotopes(detectedchemical(cc); kwargs...)
 function detectedisotopes(sch::AbstractScheme; precursor = nothing, precursorisotopes = nothing, kwargs...) 
     isnothing(precursor) && isnothing(precursorisotopes) && throw(ArgumentError("Scheme cannot be directly detected without precursor information."))
     pre = isnothing(precursorisotopes) ? detectedisotopes(precursor; kwargs...) : precursorisotopes
@@ -641,11 +641,11 @@ function detectedisotopes(sch::AbstractScheme; precursor = nothing, precursoriso
 end
 
 """
-    detectedcharge(chemical::AbstractChemicalsSchema; kwargs...) -> Int
+    detectedcharge(chemical::AbstractChemicalScheme; kwargs...) -> Int
 
 The charge state of detected chemical. See [`detectedchemical`](@ref) for details.
 """
-detectedcharge(cc::AbstractChemicalsSchema; kwargs...) = charge(detectedchemical(cc); kwargs...)
+detectedcharge(cc::AbstractChemicalScheme; kwargs...) = charge(detectedchemical(cc); kwargs...)
 function detectedcharge(sch::AbstractScheme; precursor = nothing, precursorcharge = nothing, kwargs...) 
     isnothing(precursor) && isnothing(precursorcharge) && throw(ArgumentError("Scheme cannot be directly detected without precursor information."))
     (isnothing(precursorcharge) ? detectedcharge(precursor; kwargs...) : precursorcharge) + charge(sch; kwargs...)
@@ -653,52 +653,52 @@ end
 
 # MS representation of chemical
 """
-    inputchemical(chemical::AbstractChemicalsSchema; kwargs...) -> AbstractChemical
+    inputchemical(chemical::AbstractChemicalScheme; kwargs...) -> AbstractChemical
 
 The single chemical entity that is the input at the very beginning of instrumental analysis. 
 
-It is equivalent to [`analyzedchemical`](@ref), except that schema are accepted. 
+It is equivalent to [`analyzedchemical`](@ref), except that schemes are accepted. 
 """
-inputchemical(cc::AbstractChemicalsSchema; kwargs...) = cc
+inputchemical(cc::AbstractChemicalScheme; kwargs...) = cc
 
 """
-    outputchemical(chemical::AbstractChemicalsSchema; kwargs...) -> AbstractChemicalsSchema
+    outputchemical(chemical::AbstractChemicalScheme; kwargs...) -> AbstractChemicalScheme
 
 The single chemical entity that is the output of the very ending of instrumental analysis.
 
-It is equivalent to [`detectedchemical`](@ref), except that schema are kept unchanged. 
+It is equivalent to [`detectedchemical`](@ref), except that schemes are kept unchanged. 
 """
-outputchemical(cc::AbstractChemicalsSchema; kwargs...) = cc
+outputchemical(cc::AbstractChemicalScheme; kwargs...) = cc
 
 """
-    seriesanalyzedchemical(chemical::AbstractChemicalsSchema; kwargs...) -> Vector{<:AbstractChemical}
+    seriesanalyzedchemical(chemical::AbstractChemicalScheme; kwargs...) -> Vector{<:AbstractChemical}
 
 The chemical entities that are directly analyzed in each stage of instrumental analysis. 
 
-It is equivalent to [`chemicaltransition`](@ref), except that schema are transformed to detected chemicals.
+It is equivalent to [`chemicaltransition`](@ref), except that schemes are transformed to detected chemicals.
 
 # Generic Methods
-* `AbstractChemicalsSchema`: `[chemical]`.
+* `AbstractChemicalScheme`: `[chemical]`.
 
 # Specific Methods
 * Transition Level.
 * `ChemicalTransition`: a vector of analyzed chemicals. See [`analyzedchemical`](@ref) for details.
 """
-seriesanalyzedchemical(cc::AbstractChemicalsSchema; kwargs...) = [cc]
+seriesanalyzedchemical(cc::AbstractChemicalScheme; kwargs...) = [cc]
 
 """
-    seriesanalyzedisotopes(chemical::AbstractChemicalsSchema; kwargs...) -> Vector{Vector{Pair{String, Int}}}
+    seriesanalyzedisotopes(chemical::AbstractChemicalScheme; kwargs...) -> Vector{Vector{Pair{String, Int}}}
 
 The delocalized isotopes replacement of serially analyzed chemical. See [`seriesanalyzedchemical`](@ref) for details.
 """
-seriesanalyzedisotopes(cc::AbstractChemicalsSchema; kwargs...) = [isotopomersisotopes(c; kwargs...) for c in seriesanalyzedchemical(cc)]
+seriesanalyzedisotopes(cc::AbstractChemicalScheme; kwargs...) = [isotopomersisotopes(c; kwargs...) for c in seriesanalyzedchemical(cc)]
 
 """
-    seriesanalyzedcharge(chemical::AbstractChemicalsSchema; kwargs...) -> Vector{Int}
+    seriesanalyzedcharge(chemical::AbstractChemicalScheme; kwargs...) -> Vector{Int}
 
 The charge states of serially analyzed chemical. See [`seriesanalyzedchemical`](@ref) for details.
 """
-seriesanalyzedcharge(cc::AbstractChemicalsSchema; kwargs...) = [charge(c; kwargs...) for c in seriesanalyzedchemical(cc)]
+seriesanalyzedcharge(cc::AbstractChemicalScheme; kwargs...) = [charge(c; kwargs...) for c in seriesanalyzedchemical(cc)]
 
 """
     msstage(chemical::AbstractChemical; kwargs...) -> Int
@@ -728,16 +728,16 @@ The monoisotopic mass of `chemical`.
 * `Isobars`: weighted mean of monoisotopic masses.
 * `Groupedisotopomers`: weighted mean of monoisotopic masses.
 * `ChemicalTransition`: monoisotopic mass of `analyzedchemical`.
-* `Groupedisotopomerizedschema`: weighted mean of change of monoisotopic masses.
+* `Groupedisotopomerizedschemes`: weighted mean of change of monoisotopic masses.
 
 # Keword Arguments
 * `loss::Bool` determines whether the chemical is part of chemical loss, and sign flips are factored out from elements.
 """
-mmi(cc::AbstractChemicalsSchema; loss = false) = mmi(chemicalelements(cc), charge(cc); loss)
+mmi(cc::AbstractChemicalScheme; loss = false) = mmi(chemicalelements(cc), charge(cc); loss)
 mmi(sch::AbstractCompleteScheme; loss = false, kwargs...) = mmi(elementalscheme(sch); loss, kwargs...)
 
 """
-    molarmass(chemical::AbstractChemicalsSchema; loss = false, kwargs...) -> AbstractFloat
+    molarmass(chemical::AbstractChemicalScheme; loss = false, kwargs...) -> AbstractFloat
 
 The molar mass of `chemical`.
 
@@ -751,12 +751,12 @@ The molar mass of `chemical`.
 * `Isobars`: weighted mean of molar masses.
 * `Groupedisotopomers`: weighted mean of molar masses.
 * `ChemicalTransition`: molar mass of `analyzedchemical`.
-* `Groupedisotopomerizedschema`: weighted mean of change of molar masses.
+* `Groupedisotopomerizedschemes`: weighted mean of change of molar masses.
 
 # Keword Arguments
 * `loss::Bool` determines whether the chemical is part of chemical loss, and sign flips are factored out from elements.
 """
-molarmass(cc::AbstractChemicalsSchema; loss = false) = molarmass(chemicalelements(cc), charge(cc); loss)
+molarmass(cc::AbstractChemicalScheme; loss = false) = molarmass(chemicalelements(cc), charge(cc); loss)
 molarmass(sch::AbstractCompleteScheme; loss = false, kwargs...) = molarmass(elementalscheme(sch); loss, kwargs...)
 
 """
@@ -776,12 +776,12 @@ The mass to charge ratio (m/z) of charged chemical or chemical with adduct. It i
 * `Isobars`: weighted mean of m/z.
 * `Groupedisotopomers`: weighted mean of m/z.
 * `ChemicalTransition`: m/z of `analyzedchemical`.
-* `Groupedisotopomerizedschema`: weighted mean of change of m/z.
+* `Groupedisotopomerizedschemes`: weighted mean of change of m/z.
 
 # Keword Arguments
 * `loss:Bool` determines whether the chemical is part of chemical loss, and sign flips are factored out from elements.
 """
-mz(charged_cc::AbstractChemicalsSchema; loss = false, kwargs...) = charge(charged_cc) == 0 ? NaN : mmi(charged_cc; loss, kwargs...) / ncharge(charged_cc)
+mz(charged_cc::AbstractChemicalScheme; loss = false, kwargs...) = charge(charged_cc) == 0 ? NaN : mmi(charged_cc; loss, kwargs...) / ncharge(charged_cc)
 mz(cc::AbstractChemical, adduct; loss = false, kwargs...) = mz(ionize(cc; parse_adduct(adduct)...); loss, kwargs...)
 function mz(adduct_ion::AbstractAdductIon; loss = false, kwargs...) 
     (ncore(adduct_ion) * mmi(ioncore(adduct_ion); loss, kwargs...) + mmi(ionadduct(adduct_ion); loss, kwargs...)) / ncharge(adduct_ion)

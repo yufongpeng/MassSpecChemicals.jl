@@ -1,6 +1,6 @@
 """
     parse_chemical([parser::AbstractChemicalParser,] name::AbstractString...; kwargs...) 
-    parse_chemical([parser::AbstractChemicalParser,] chemical::AbstractChemicalsSchema...; kwargs...) -> AbstractChemicalsSchema
+    parse_chemical([parser::AbstractChemicalParser,] chemical::AbstractChemicalScheme...; kwargs...) -> AbstractChemicalScheme
     parse_chemical([parser::AbstractChemicalParser,] chemicals::AbstractVector; kwargs...) 
     parse_chemical([parser::AbstractChemicalParser,] pair::Pair kwargs...) 
 
@@ -106,16 +106,16 @@ function parse_adduction(chemicalparser, name, core; chemicalgain = nothing, kwa
     elseif ne == -1 && length(vc) == 0
         sch = ElementalScheme(true, Electron())
     elseif ne == 0
-        sch = ChemicalSchema(vc...)
+        sch = ChemicalSchemes(vc...)
     elseif ne > 0
-        sch = ChemicalSchema(vc..., (ElementalScheme(false, Electron()) for i in 1:ne)...)
+        sch = ChemicalSchemes(vc..., (ElementalScheme(false, Electron()) for i in 1:ne)...)
     else
-        sch = ChemicalSchema(vc..., (ElementalScheme(true, Electron()) for i in ne:(-1))...)
+        sch = ChemicalSchemes(vc..., (ElementalScheme(true, Electron()) for i in ne:(-1))...)
     end
     (corechemical, sch, ncore)
 end
 
-assemble_chemical(chemicalgain, corechemical, sch::Nothing, ncore) = ncore > 1 ? ChemicalSchema([ElementalScheme(chemicalgain, corechemical)], [ncore]) : ElementalScheme(chemicalgain, corechemical)
+assemble_chemical(chemicalgain, corechemical, sch::Nothing, ncore) = ncore > 1 ? ChemicalSchemes([ElementalScheme(chemicalgain, corechemical)], [ncore]) : ElementalScheme(chemicalgain, corechemical)
 assemble_chemical(chemicalgain::Nothing, corechemical, sch::Nothing, ncore) = ncore > 1 ? throw(ArgumentError("Number of chemicals > 1 is not allowed without any chemical wrapper.")) : corechemical 
 assemble_chemical(chemicalgain, corechemical::Nothing, sch, ncore) = throw(ArgumentError("Cannot loss or gain a scheme."))
 assemble_chemical(chemicalgain::Nothing, corechemical::Nothing, sch, ncore) = sch 
@@ -201,9 +201,9 @@ function isplusminusbracket(x)
     start ? (chemicalgain, true) : (chemicalgain, false)
 end
 
-parse_chemical(::AbstractChemicalParser, cc::AbstractChemicalsSchema...; kwargs...) = ChemicalSeries(cc...)
+parse_chemical(::AbstractChemicalParser, cc::AbstractChemicalScheme...; kwargs...) = ChemicalSeries(cc...)
 
-parse_chemical(::AbstractChemicalParser, cc::AbstractChemicalsSchema, precursorcharge::Union{Int, Nothing}; kwargs...) = (cc, detectedcharge(cc; precursorcharge))
+parse_chemical(::AbstractChemicalParser, cc::AbstractChemicalScheme, precursorcharge::Union{Int, Nothing}; kwargs...) = (cc, detectedcharge(cc; precursorcharge))
 parse_chemical(::AbstractChemicalParser, cc::ChemicalTransition, precursorcharge::Union{Int, Nothing}; kwargs...) = (cc.transition, detectedcharge(cc))
 function parse_chemical(chemicalparser::AbstractChemicalParser, name::AbstractString, precursorcharge::Union{Int, Nothing}; kwargs...) 
     chemical = parse_chemical(chemicalparser, name; precursorcharge, kwargs...)

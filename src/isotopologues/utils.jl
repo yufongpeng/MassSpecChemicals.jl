@@ -18,7 +18,7 @@ end
 Series detected chemical and dictionaries of elements.
 """
 function serieschemicaldata(input_chemical)
-    sch = AbstractChemicalsSchema[]
+    sch = AbstractChemicalScheme[]
     det = AbstractChemical[]
     precursor = nothing
     for c in chemicaltransition(input_chemical) 
@@ -38,11 +38,11 @@ function serieschemicaldata(input_chemical)
 end
 
 """
-    seriesisotopomerize(transitions::Vector{<:AbstractChemicalsSchema}, els::Vector{<:Vector{ElementsVector}})
+    seriesisotopomerize(transitions::Vector{<:AbstractChemicalScheme}, els::Vector{<:Vector{ElementsVector}})
 
 Serial isotomoperize `transitions` with detected isotpic replacements `els`.
 """
-function seriesisotopomerize(transitions::Vector{<:AbstractChemicalsSchema}, els::Vector{<:Vector{ElementsVector}})
+function seriesisotopomerize(transitions::Vector{<:AbstractChemicalScheme}, els::Vector{<:Vector{ElementsVector}})
     @inbounds map(els) do el
         ChemicalTransition(map(enumerate(transitions)) do (i, trans)
             (islossscheme(trans) || isgainscheme(trans)) && i == firstindex(transitions) && throw(ArgumentError("$(typeof(trans)) cannot be input chemical."))

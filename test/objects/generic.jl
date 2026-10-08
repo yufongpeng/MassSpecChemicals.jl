@@ -1,4 +1,4 @@
-@info "Defining generic chemicals and schema"
+@info "Defining generic chemicals and schemes"
 
 cglc = Chemical("Glucose", ["C" => 6, "H" => 12, "O" => 6]; retentiontime = 1.5, abbreviation = "Glc", SMILES = "")
 fglc = FormulaChemical(["C" => 6, "H" => 12, "O" => 6]; retentiontime = 1.5, abbreviation = "Glc", SMILES = "")
@@ -14,11 +14,11 @@ lossserine = ChemicalLoss(cserine)
 lossserinei = ChemicalLoss(cserinei)
 losshserine = ChemicalLoss(AdductIon(cserine, "[M+H]+"))
 losshserinei = ChemicalLoss(AdductIon(cserinei, "[M+H]+"))
-losshserinegainwater = ChemicalSchema(ChemicalLoss(AdductIon(cserine, "[M+H]+")), ChemicalGain(Water()))
-losshserinegaincolossco = ChemicalSchema(ChemicalLoss(AdductIon(cserine, "[M+H]+")), parse_chemical("+CO"), parse_chemical("-CO"))
+losshserinegainwater = ChemicalSchemes(ChemicalLoss(AdductIon(cserine, "[M+H]+")), ChemicalGain(Water()))
+losshserinegaincolossco = ChemicalSchemes(ChemicalLoss(AdductIon(cserine, "[M+H]+")), parse_chemical("+CO"), parse_chemical("-CO"))
 # Generic structure interface
 # Mix `[M-H]-` and neutral loss `lossserine` into `losshserine` for `AddductIon(cps, "[M-H]-")`
-push!(cps.property, :schema => [
+push!(cps.property, :scheme => [
     ChemicalLoss(Proton()) => [
         lossserine => losshserine
     ] 
@@ -36,7 +36,7 @@ push!(cpsi1.property, :structure => [
     ]
 ])
 # Mix `[M-H]-` and neutral loss `lossserine` into `losshserine` for `AddductIon(cpsi1, "[M-H]-")`
-push!(cpsi1.property, :schema => [
+push!(cpsi1.property, :scheme => [
     ChemicalLoss(Proton()) => [
         lossserine => losshserine
     ] 
@@ -57,7 +57,7 @@ push!(cpsi2.property, :structure => [
     ]
 ])
 # Mix `[M-H]-` and neutral loss `lossserine` into `losshserine` for `AddductIon(cpsi2, "[M-H]-")`
-push!(cpsi2.property, :schema => [
+push!(cpsi2.property, :scheme => [
     ChemicalLoss(Proton()) => [
         lossserine => losshserine
     ] 

@@ -138,7 +138,7 @@
         @test isempty(isotopomersisotopes(Serine()))
 
         @test parse_chemical("[-Ser-H]-") == LossProtonSerine()
-        @test parse_chemical("[-Ser-H+H2O]-") == ChemicalSchema(ChemicalLoss(Serine()), ChemicalLoss(Proton()), ChemicalGain(Water()))
+        @test parse_chemical("[-Ser-H+H2O]-") == ChemicalSchemes(ChemicalLoss(Serine()), ChemicalLoss(Proton()), ChemicalGain(Water()))
     end
 
     @testset "Structural scheme attributes" begin
@@ -165,22 +165,22 @@
     @testset "Internal interface of elementalscheme, completescheme, adductionscheme, and detectedchemical" begin 
         @test StructuralElementalScheme(MSC.RandomProductScheme(), MSC.elementalscheme(nothing, cglc)) == MSC.completescheme(nothing, cglc)
         @test MSC.elementalscheme(cglc, ionadduct(icglc[1])) == MSC.elementalscheme(icglc[1], ionadduct(icglc[1]))
-        @test MSC.elementalscheme(cglc, ChemicalSchema(ElementalScheme(true, Proton()), ElementalScheme(false, Water()))) == MSC.elementalscheme(icglc[1], ChemicalSchema(ElementalScheme(true, Proton()), ElementalScheme(false, Water())))
-        @test MSC.elementalscheme(cglc, isotopomerize(ChemicalSchema(ElementalScheme(true, Proton()), ElementalScheme(false, Water())), ["[18O]" => 1])) == MSC.elementalscheme(icglc[1], isotopomerize(ChemicalSchema(ElementalScheme(true, Proton()), ElementalScheme(false, Water())), ["[18O]" => 1]))
+        @test MSC.elementalscheme(cglc, ChemicalSchemes(ElementalScheme(true, Proton()), ElementalScheme(false, Water()))) == MSC.elementalscheme(icglc[1], ChemicalSchemes(ElementalScheme(true, Proton()), ElementalScheme(false, Water())))
+        @test MSC.elementalscheme(cglc, isotopomerize(ChemicalSchemes(ElementalScheme(true, Proton()), ElementalScheme(false, Water())), ["[18O]" => 1])) == MSC.elementalscheme(icglc[1], isotopomerize(ChemicalSchemes(ElementalScheme(true, Proton()), ElementalScheme(false, Water())), ["[18O]" => 1]))
         @test MSC.elementalscheme(cglc, fa1) == MSC.elementalscheme(icglc[1], fa1)
         @test MSC.elementalscheme(cglc, AdductIon(fa1, "[M-H]-")) == MSC.elementalscheme(icglc[1], AdductIon(fa1, "[M-H]-"))
         @test StructuralElementalScheme(MSC.RandomProductScheme(), MSC.elementalscheme(glc, cglc)) == MSC.completescheme(glc, cglc)
         @test MSC.elementalscheme(glc, ionadduct(icglc[1])) == MSC.elementalscheme(iglc[1], ionadduct(icglc[1]))
-        @test MSC.elementalscheme(glc, ChemicalSchema(ElementalScheme(true, Proton()), ElementalScheme(false, Water()))) == MSC.elementalscheme(iglc[1], ChemicalSchema(ElementalScheme(true, Proton()), ElementalScheme(false, Water())))
-        @test MSC.elementalscheme(glc, isotopomerize(ChemicalSchema(ElementalScheme(true, Proton()), ElementalScheme(false, Water())), ["[18O]" => 1])) == MSC.elementalscheme(iglc[1], isotopomerize(ChemicalSchema(ElementalScheme(true, Proton()), ElementalScheme(false, Water())), ["[18O]" => 1]))
+        @test MSC.elementalscheme(glc, ChemicalSchemes(ElementalScheme(true, Proton()), ElementalScheme(false, Water()))) == MSC.elementalscheme(iglc[1], ChemicalSchemes(ElementalScheme(true, Proton()), ElementalScheme(false, Water())))
+        @test MSC.elementalscheme(glc, isotopomerize(ChemicalSchemes(ElementalScheme(true, Proton()), ElementalScheme(false, Water())), ["[18O]" => 1])) == MSC.elementalscheme(iglc[1], isotopomerize(ChemicalSchemes(ElementalScheme(true, Proton()), ElementalScheme(false, Water())), ["[18O]" => 1]))
         @test StructuralElementalScheme(MSC.RandomProductScheme(), MSC.elementalscheme(glc, fa1)) == MSC.completescheme(iglc[1], fa1)
         @test StructuralElementalScheme(MSC.RandomProductScheme(), MSC.elementalscheme(glc, AdductIon(fa1, "[M-H]-"))) == MSC.completescheme(iglc[1], AdductIon(fa1, "[M-H]-"))
         @test StructuralElementalScheme(MSC.RandomProductScheme(), MSC.elementalscheme(glc, iglc[1])) == MSC.completescheme(glc, iglc[1])
         @test MSC.completescheme(cglc, cglc) == MSC.completescheme(icglc[1], cglc)
         @test MSC.completescheme(cglc, icglc[1]) == MSC.completescheme(icglc[1], icglc[1])
-        @test MSC.completescheme(glc, ChemicalSchema(ElementalScheme(true, Proton()), ElementalScheme(false, Water()))) == chemicalparent(MSC.completescheme(glc, isotopomerize(ChemicalSchema(ElementalScheme(true, Proton()), ElementalScheme(false, Water())), ["[18O]" => 1])))
-        @test MSC.completescheme(cglc, ChemicalSchema(ElementalScheme(true, Proton()), ElementalScheme(false, Water()))) == chemicalparent(MSC.completescheme(cglc, isotopomerize(ChemicalSchema(ElementalScheme(true, Proton()), ElementalScheme(false, Water())), ["[18O]" => 1])))
-        @test MSC.completescheme(icglc[1], ChemicalSchema(ElementalScheme(true, Proton()), ElementalScheme(false, Water()))) == chemicalparent(MSC.completescheme(icglc[1], isotopomerize(ChemicalSchema(ElementalScheme(true, Proton()), ElementalScheme(false, Water())), ["[18O]" => 1])))
+        @test MSC.completescheme(glc, ChemicalSchemes(ElementalScheme(true, Proton()), ElementalScheme(false, Water()))) == chemicalparent(MSC.completescheme(glc, isotopomerize(ChemicalSchemes(ElementalScheme(true, Proton()), ElementalScheme(false, Water())), ["[18O]" => 1])))
+        @test MSC.completescheme(cglc, ChemicalSchemes(ElementalScheme(true, Proton()), ElementalScheme(false, Water()))) == chemicalparent(MSC.completescheme(cglc, isotopomerize(ChemicalSchemes(ElementalScheme(true, Proton()), ElementalScheme(false, Water())), ["[18O]" => 1])))
+        @test MSC.completescheme(icglc[1], ChemicalSchemes(ElementalScheme(true, Proton()), ElementalScheme(false, Water()))) == chemicalparent(MSC.completescheme(icglc[1], isotopomerize(ChemicalSchemes(ElementalScheme(true, Proton()), ElementalScheme(false, Water())), ["[18O]" => 1])))
         @test detectedchemical(ps, LossProtonSerine()) == detectedchemical(ps, completescheme(ps, LossProtonSerine()))
         @test detectedchemical(ps, StructuralElementalScheme(SN1Acyl(), ps.fa1)) == detectedchemical(nothing, StructuralElementalScheme(SN1Acyl(), ps.fa1))
         @test MSC.completescheme(chemicaltransition(cp6)...) == StructuralElementalScheme(:sn1fa, ionize(fa1i, "[M-H]-"))
@@ -188,7 +188,7 @@
         @test !(@test_noerror detectedchemical(ps, SN1Acyl()))
         @test !(@test_noerror detectedchemical(cps, SN1Acyl()))
         @test !(@test_noerror detectedchemical(icps[1], SN1Acyl()))
-        @test MSC.adductionscheme(ips[3], ElementalScheme(false, Water())) == ChemicalSchema(ionadduct(ips[3]), StructuralElementalScheme(ElementalScheme(false, Water()), ElementalScheme(false, Water())))
+        @test MSC.adductionscheme(ips[3], ElementalScheme(false, Water())) == ChemicalSchemes(ionadduct(ips[3]), StructuralElementalScheme(ElementalScheme(false, Water()), ElementalScheme(false, Water())))
     end
 
     @testset "Isotopomers" begin
@@ -293,8 +293,8 @@
         @test MSC.dictionary_elements.(chemicalelements.(seriesanalyzedchemical(itit12.Chemical[11]))) == MSC.dictionary_elements.(chemicalelements.(seriesanalyzedchemical(itit12.Chemical[11])))
     end
 
-    @testset "IsotopomerizedSchema" begin
-        @test IsotopomerizedSchema(chemicaltransition(itit12.Chemical[2])[2].parent, "-H2OO[13C]") == chemicaltransition(itit12.Chemical[5])[2]
+    @testset "IsotopomerizedSchemes" begin
+        @test IsotopomerizedSchemes(chemicaltransition(itit12.Chemical[2])[2].parent, "-H2OO[13C]") == chemicaltransition(itit12.Chemical[5])[2]
         @test @test_noerror test_show(itit12.Chemical[5])
         @test chemicalabbr(itit12.Chemical[5]) == join(chemicalabbr.(chemicaltransition(itit12.Chemical[5])), " -> ")
         @test chemicalname(itit12.Chemical[5]) == join(chemicalname.(chemicaltransition(itit12.Chemical[5])), " -> ")
@@ -309,7 +309,7 @@
         @test isapprox(sum(molarmass, chemicaltransition(itit12.Chemical[5])), molarmass(detectedchemical(itit12.Chemical[5])); rtol = 20e-6)
     end
     
-    @testset "Groupedisotopomerizedschema" begin
+    @testset "Groupedisotopomerizedschemes" begin
         @test @test_noerror test_show(gitit12.Chemical[6])
         @test chemicalabbr(gitit12.Chemical[6]) == join(chemicalabbr.(chemicaltransition(gitit12.Chemical[6])), " -> ")
         @test chemicalname(gitit12.Chemical[6]) == join(chemicalname.(chemicaltransition(gitit12.Chemical[6])), " -> ")

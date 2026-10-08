@@ -11,8 +11,8 @@ export
     AbstractAdductIon, AdductIon,
     AbstractScheme, AbstractElementalScheme, AbstractStructuralScheme, StructuralChemicalScheme, AbstractCompleteScheme, 
     ElementalScheme, ChemicalGain, ChemicalLoss, 
-    ChemicalSchema, IsotopomerizedSchema, StructuralElementalScheme, 
-    CompleteSchema, StructuralSchema, ElementalSchema, 
+    ChemicalSchemes, IsotopomerizedSchemes, StructuralElementalScheme, 
+    CompleteSchemes, StructuralSchemes, ElementalSchemes, 
 
     # Default chemical for scheme 
     Electron, 
@@ -81,9 +81,10 @@ export
     value_error, relative_error, percentage_error, ppm_error, relative_error_mean, percentage_error_mean, ppm_error_mean
 
 
-abstract type AbstractChemicalsSchema end
+abstract type AbstractChemicalScheme end
+@deprecate AbstractChemicalsSchema AbstractChemicalScheme
 """
-    AbstractChemical <: AbstractChemicalsSchema
+    AbstractChemical <: AbstractChemicalScheme
 
 Abstract type for chemicals. 
     
@@ -127,12 +128,12 @@ Specific Methods for the attributes are defined for other intrinsic chemical typ
 * Species Level: attribute of the corresponding chemical species.
 * Transition Level: attribute of the corresponding chemical transition.
 """
-abstract type AbstractChemical <: AbstractChemicalsSchema end
+abstract type AbstractChemical <: AbstractChemicalScheme end
 
 """
-    AbstractScheme <: AbstractChemicalsSchema
+    AbstractScheme <: AbstractChemicalScheme
 
-Abstract type for all kinds of chemical schema.
+Abstract type for all kinds of chemical schemes.
 
 The following atributes are implemented.
 * [`elementalscheme`](@ref) `-> AbstractScheme`.
@@ -154,9 +155,9 @@ The following atributes are implemented.
 Specific Methods for the attributes are defined for other intrinsic scheme type on different scheme level.
 * Entity Level: attribute of the elemental scheme.
 * Species Level: attribute of the scheme itself.
-* Transition Level: only apply to schema in `ChemicalTransition`; `Species Level` for each scheme.
+* Transition Level: only apply to schemes in `ChemicalTransition`; `Species Level` for each scheme.
 """
-abstract type AbstractScheme <: AbstractChemicalsSchema end
+abstract type AbstractScheme <: AbstractChemicalScheme end
 # mt, ccs 
 include(joinpath("type", "chemical.jl"))
 include(joinpath("type", "scheme.jl"))

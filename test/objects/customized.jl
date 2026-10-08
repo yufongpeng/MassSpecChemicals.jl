@@ -223,7 +223,7 @@ struct ES <: AbstractElementalScheme
     elements::Vector{Pair{String, Int}}
 end
 
-@info "Defining custom chemicals and schema"
+@info "Defining custom chemicals and schemes"
 
 glc = Glucose("D", 0, 0, 1.5)
 gld = Glucose("D", 6, 0, 1.5)

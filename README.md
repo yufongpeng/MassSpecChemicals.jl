@@ -153,7 +153,7 @@ Any chemical gain, loss, and fragmentation scheme is an instance of `AbstractSch
 2. `AbstractStructuralScheme`: a scheme containing only structural information. This is useful for defining rule-based fragmentation.
 3. `AbstractCompleteScheme`: a scheme containing both elemental and structural information. The default type is `StructuralElementalScheme`, which is the final scheme stored in `AdductIon`.
 
-In addition to single scheme, multiple schema are wrapped in `ChemicalSchema`.
+In addition to single scheme, multiple schemes are wrapped in `ChemicalSchemes`.
 
 Predefined chemicals used in scheme:
 
@@ -398,8 +398,8 @@ This object can be further aggregated using `isobar_table`.
 ## Other Functions
 * `ischemicalequal`: whether two chemicals are chemically equivalent.
 * `match_chemical`: match detected chemicals with reference library.
-* `isotopomerize`: convert any other chemical types into `Isotopomers`-like type (including schema).
-* `groupedisotopomerize`: convert any other chemical types into `Groupedisotopomers`-like type (including schema).
+* `isotopomerize`: convert any other chemical types into `Isotopomers`-like type (including schemes).
+* `groupedisotopomerize`: convert any other chemical types into `Groupedisotopomers`-like type (including schemes).
 * `parent_element`: find the element of an isotope, e.g. "C" for "[13C]", "O" for "[18O]", and etc.
 * `major_isotope`: find the most abundunt isotope of an element, e.g. "[12C]" for "C", "[16O]" for "O", etc.
 * `minor_isotope`: find the `i`th abundunt minor isotope (excluding most abundunt isotope), e.g. "[13C]" for "C" and `i=1`, "[17O]" for "O" and `i=2`, and etc.
