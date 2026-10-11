@@ -2,10 +2,10 @@
     mmi(formula::AbstractString, net_charge = 0; loss = false) -> AbstractFloat
     mmi(elements, net_charge = 0; loss = false) -> AbstractFloat
 
-Monoisotopic mass of formula, and elements.
+Monoisotopic mass of a formula or elemental composition.
 """
 function mmi(elements::Union{<:Vector{<:Pair}, <:Dict}, net_charge = 0; loss = false)
-    # Vector of el => #el
+    # Vector of element-to-count pairs
     weight = elements_mass()[""]
     for (el, n) in elements
         weight += elements_mass()[el] * n
@@ -15,7 +15,7 @@ function mmi(elements::Union{<:Vector{<:Pair}, <:Dict}, net_charge = 0; loss = f
 end
 
 function mmi(formula::AbstractString, net_charge = 0; loss = false)
-    # if any prefix number
+    # If the formula begins with a numeric multiplier
     n = match(r"^[0-9]+", formula)
     if isnothing(n)
         mmi(chemicalelements(formula), net_charge; loss)
@@ -29,10 +29,10 @@ end
     molarmass(formula::AbstractString, net_charge = 0; loss = false) -> AbstractFloat
     molarmass(elements, net_charge = 0; loss = false) -> AbstractFloat
 
-Molar mass of formula, and elements.
+Molar mass of a formula or elemental composition.
 """
 function molarmass(elements::Union{<:Vector{<:Pair}, <:Dict}, net_charge = 0; loss = false)
-    # Vector of el => #el
+    # Vector of element-to-count pairs
     weight = elements_mass()[""]
     for (el, n) in elements
         if iselement(el)
@@ -48,7 +48,7 @@ function molarmass(elements::Union{<:Vector{<:Pair}, <:Dict}, net_charge = 0; lo
 end
 
 function molarmass(formula::AbstractString, net_charge = 0; loss = false)
-    # if any prefix number
+    # If the formula begins with a numeric multiplier
     n = match(r"^[0-9]+", formula)
     if isnothing(n)
         molarmass(chemicalelements(formula), net_charge; loss)
@@ -110,7 +110,7 @@ ppm_error_mean(x, y) = 2 * (y - x) / (x + y) * 1e6
 """
     measure_name(fn[, error]) -> String 
 
-Common name of measurement `fn` with or without `error`.
+Common name for measurement `fn`, with or without an associated error metric.
 """
 measure_name(fn) = repr(fn)
 measure_name(fn::typeof(retentiontime)) = "RT"

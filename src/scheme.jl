@@ -43,9 +43,9 @@ scheme_doc = """
     scheme_name()
     scheme_abbr()
 
-Access constants related to scheme. 
-* `scheme_name`: scheme type for an scheme expression.
-* `scheme_abbr`: conversion of abbreviation to chemical for scheme.
+Access constants related to a scheme.
+* `scheme_name`: the scheme type for a scheme expression.
+* `scheme_abbr`: conversion from an abbreviation to a chemical in a scheme.
 """
 @doc scheme_doc
 scheme_name() = SCHEME_NAME
@@ -56,7 +56,7 @@ scheme_abbr() = SCHEME_ABBR
 """
     set_schabbr!(abbr::AbstractString, chemical::AbstractChemical)
 
-Set `abbr` to be an abbreviation of scheme `chemical` for default [`AdductParser`](@ref). 
+Set `abbr` as the abbreviation of scheme `chemical` for the default [`AdductParser`](@ref).
 
 # Examples
 ```julia
@@ -94,9 +94,9 @@ end
 """
     set_scheme!(name::AbstractString, scheme::AbstractScheme)
 
-Set `name` to be `scheme` for default [`AdductParser`](@ref).
+Set `name` as the scheme name for the default [`AdductParser`](@ref).
 
-For customized scheme types, this function is required to make `name` parsed into `scheme` by [`parse_adduct`](@ref).
+For custom scheme types, this function is required so that `name` is parsed into `scheme` by [`parse_adduct`](@ref).
 
 # Examples
 ```julia

@@ -14,7 +14,7 @@ Plot a spectrum.
     * `:raw`: no abundance normalization.
 * `threshold` can be a number or criteria (absolute and/or relative to maximum), data lower than this value will be set to zero. 
 
-Other keyword arguments can controls the settings of plot.
+Other keyword arguments control the plot settings.
 """
 plot_spectrum(mz_range, spectrum::Spectrum; deconvolution = false, abundance = 1, abtype = :max, threshold = rcrit(1e-4), kwargs...) = 
     _plot_spectrum(mz_range, spectrum; abundance, abtype, deconvolution, threshold, kwargs...)
@@ -29,7 +29,7 @@ plot_spectrum(x; kwargs...) = plot_spectrum(nothing, x; kwargs...)
 Plot a spectrum to an existing figure.
 
 # Arguments
-* `mz_range::Union{Nothing, Tuple}`: nothing (indicating entire mz range) or a tuple of m/z lower bound an d upper bound.
+* `mz_range::Union{Nothing, Tuple}`: `nothing` (indicating the full m/z range) or a tuple of lower and upper m/z bounds.
 * `deconvolution::Bool`: plot deconvoluted or convoluted spectrum.
 * `abundance` sets the abundance of the peak specified by `abtype`. 
 * `abtype`.
@@ -38,7 +38,7 @@ Plot a spectrum to an existing figure.
     * `:raw`: no abundance normalization.
 * `threshold` can be a number or criteria (absolute and/or relative to maximum), data lower than this value will be set to zero. 
 
-Other keyword arguments can controls the settings of plot.
+Other keyword arguments control the plot settings.
 """
 plot_spectrum!(mz_range, spectrum::Spectrum; deconvolution = false, abundance = 1, abtype = Max(), threshold = rcrit(1e-4), kwargs...) = 
     _plot_spectrum(mz_range, spectrum; deconvolution, abundance, abtype, threshold, kwargs..., fn = plot!)
@@ -149,10 +149,10 @@ end
 Plot the function of m/z to resolving_power.
 
 # Arguments
-* `mz_range::Union{Nothing, Tuple}`: nothing (indicating using `ms.mz`) or a tuple of m/z lower bound an d upper bound.
+* `mz_range::Union{Nothing, Tuple}`: `nothing` (indicating the full m/z range) or a tuple of lower and upper m/z bounds.
 * `n::Int`: number of data points.
 
-Other keyword arguments can controls the settings of plot.
+Other keyword arguments control the plot settings.
 """
 plot_resolving_power(mz_range, ms::AbstractMSAnalyzer; n = 1000, label = msanalyzer_name(ms), kwargs...) = 
     _plot_resolving_power(mz_range, ms; n, label, kwargs...)
@@ -164,10 +164,10 @@ plot_resolving_power(ms::AbstractMSAnalyzer; n = 1000, label = msanalyzer_name(m
 Plot the function of m/z to resolving_power to an existing figure.
 
 # Arguments
-* `mz_range::Union{Nothing, Tuple}`: nothing (indicating using `ms.mz`) or a tuple of m/z lower bound an d upper bound.
+* `mz_range::Union{Nothing, Tuple}`: `nothing` (indicating the full m/z range) or a tuple of lower and upper m/z bounds.
 * `n::Int`: number of data points.
 
-Other keyword arguments can controls the settings of plot.
+Other keyword arguments control the plot settings.
 """
 plot_resolving_power!(mz_range, ms::AbstractMSAnalyzer; n = 1000, label = msanalyzer_name(ms), kwargs...) = 
     _plot_resolving_power(mz_range, ms; n, label, kwargs..., fn = plot!)
@@ -207,7 +207,7 @@ Plot the window function.
 * `nbin_multiplier`: multiplier of actual plotted data bin relative to `binsize`.
 * `height::Real`: the lower limit of transmission. 
 
-Other keyword arguments can controls the settings of plot.
+Other keyword arguments control the plot settings.
 """
 plot_window(window::AbstractWindow; fwhm = 0.7, binsize = 0.01, stepsize = 1, height = 0.01, label = window_name(window), kwargs...) = 
     _plot_window(window; fwhm, binsize, stepsize, height, label, kwargs...)
@@ -222,7 +222,7 @@ Plot the window function to an existing figure.
 * `nbin_multiplier`: multiplier of actual plotted data bin relative to `binsize`.
 * `height::Real`: the lower limit of transmission. 
 
-Other keyword arguments can controls the settings of plot.
+Other keyword arguments control the plot settings.
 """
 plot_window!(window::AbstractWindow; fwhm = 0.7, binsize = 0.01, stepsize = 1, height = 0.01, label = window_name(window), kwargs...) = 
     _plot_window(window; fn = plot!, fwhm, binsize, stepsize, height, label, kwargs...)

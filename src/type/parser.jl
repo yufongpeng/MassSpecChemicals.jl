@@ -5,10 +5,10 @@ abstract type AbstractAdductParser end
     AdductParser{T} <: AbstractAdductParser
     AdductParser(T::Bool = false, parser::AbstractChemicalParser = ChemicalSchemeParser())
 
-Default adduct parser. `T` determines whether returning a tuple (`true`) or a named tuple (`false`). Namedtuple is useful for user input from a data table and ionization using `ionize`; tuple can be used for fixed adduct ion constructor interface.
+Default adduct parser. `T` determines whether to return a tuple (`true`) or a named tuple (`false`). A named tuple is useful for user input from a data table and for ionization via `ionize`; a tuple is useful for the fixed adduct-ion constructor interface.
 
 # Fields 
-* `chemicalparser::T`: chemical parser for each chemical scheme. Default parser is [`ChemicalSchemeParser`](@ref).
+* `chemicalparser::T`: chemical parser for each chemical scheme. The default parser is [`ChemicalSchemeParser`](@ref).
 """
 struct AdductParser{T} <: AbstractAdductParser
     chemicalparser::AbstractChemicalParser
@@ -22,7 +22,7 @@ AdductParser(x::Bool, parser::AbstractChemicalParser) = AdductParser{x}(parser)
     FormulaChemicalParser <: AbstractChemicalParser
     FormulaChemicalParser(; kwargs...)
 
-Default chemical parser which parses input string (chemical formula) into [`FormulaChemical`](@ref). 
+Default chemical parser that parses an input string (chemical formula) into [`FormulaChemical`](@ref).
 
 # Fields 
 * `property::Vector{Pair{Symbol, Any}}`: additional attributes. These can be mutated, added, or deleted with keyword arguments of [`parse_chemical`](@ref). Values of `nothing` are deleted.
@@ -38,7 +38,7 @@ FormulaChemicalParser(; kwargs...) = FormulaChemicalParser(collect(kwargs))
     ChemicalParser <: AbstractChemicalParser
     ChemicalParser(; kwargs...)
 
-Chemical parser which parses input string (chemical name) into [`Chemical`](@ref). 
+Chemical parser that parses an input string (chemical name) into [`Chemical`](@ref).
 
 # Fields 
 * `property::Vector{Pair{Symbol, Any}}`: additional attributes. It must include `:formula` or `:elements`. These can be mutated, added, or deleted with keyword arguments of [`parse_chemical`](@ref). Values of `nothing` are deleted.
@@ -54,11 +54,11 @@ ChemicalParser(; kwargs...) = ChemicalParser(collect(kwargs))
     ChemicalTransitionParser{T} <: AbstractChemicalParser
     ChemicalTransitionParser(chemicalparser::AbstractChemicalParser = ChemicalExpressionParser)
 
-Default chemical parser which parses input string into [`ChemicalTransition`](@ref). 
+Default chemical parser that parses an input string into [`ChemicalTransition`](@ref).
 
-The input string is regarded as series of chemicals separated by " -> ". Pairs and vectors can also be parsed into [`ChemicalTransition`](@ref). 
+The input string is treated as a series of chemicals separated by " -> ". Pairs and vectors can also be parsed into [`ChemicalTransition`](@ref).
 
-If the input can only be parsed into single chemical entity, it is returned directly without wrapping into [`ChemicalTransition`](@ref).
+If the input can only be parsed into a single chemical entity, it is returned directly without being wrapped in [`ChemicalTransition`](@ref).
 
 # Fields 
 * `chemicalparser::T`: chemical parser for each chemical in the transition. Default parser is [`ChemicalExpressionParser`](@ref).
@@ -72,10 +72,10 @@ ChemicalTransitionParser() = ChemicalTransitionParser(ChemicalExpressionParser()
     ChemicalExpressionParser{T} <: AbstractChemicalParser
     ChemicalExpressionParser(chemicalparser::AbstractChemicalParser = FormulaChemicalParser(); charge = 0, gain = 0, loss = 0)
 
-Default chemical parser which parses input string into [`AbstractChemical`](@ref) or [`AbstractScheme`](@ref). 
+Default chemical parser that parses an input string into [`AbstractChemical`](@ref) or [`AbstractScheme`](@ref).
 
 # Fields
-* `chemicalparser::T`: chemical parser for core chemical. Default parser is [`FormulaChemicalParser`](@ref).
+* `chemicalparser::T`: chemical parser for the core chemical. The default parser is [`FormulaChemicalParser`](@ref).
 * `charge::Int`: default chemical entity charge.
 * `gain::Int`: default chemical gain charge.
 * `loss::Int`: default chemical loss charge.
@@ -83,7 +83,7 @@ Default chemical parser which parses input string into [`AbstractChemical`](@ref
 * `scheme::Bool`: whether parse input into a chemical scheme.
 
 The input is parsed recursively.
-First check `entity` and `scheme`, if `scheme` and `enetity` are true, run step 1 ~ 8; if only `scheme` is true, run only step 1 ~ 6; if only `entity` is true, run only step 7 ~ 8. 
+First check `entity` and `scheme`. If both `scheme` and `entity` are true, run steps 1–8; if only `scheme` is true, run steps 1–6; if only `entity` is true, run steps 7–8.
 1. Match keys of `scheme_name()` -> `AbstractChemicalScheme`
 2. `"+core` -> `"+[core]\$(gain)"` -> step 4
 3. `"-core` -> `"-[core]\$(loss)"` -> step 5

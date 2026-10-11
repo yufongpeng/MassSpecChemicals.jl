@@ -91,14 +91,14 @@ Abstract type for chemicals.
 The attribute function [`chemicalname`](@ref) `-> String` (unique chemical name) is required for a concrete type of `AbstractChemical`. 
 It defaults to property `name`.
 
-At least one of the following attributes are required. They are interchangable.
+At least one of the following attributes is required. They are interchangeable.
 * [`chemicalformula`](@ref) `-> String`: chemical formula. It defaults to property `:formula`.
 * [`chemicalelements`](@ref) `-> Vector{Pair{String, Int}}`: chemical elements. It defaults to property `:elements`.
 
 The following attributes are optional, but generic functions are defined.
 * [`chemicalabbr`](@ref) `-> String`: abbreviation. It defaults to property `:abbreviation` and `chemicalname`. 
 * [`chemicalsmiles`](@ref) `-> String`: SMILES. It defaults to property `:SMILES` and `""`.
-* [`charge`](@ref) `-> Int`: charge state; positive for cation, negative for anion. It defaults to property `:charge` annd `0`.
+* [`charge`](@ref) `-> Int`: charge state; positive for cation, negative for anion. It defaults to property `:charge` and `0`.
 * [`ncharge`](@ref) `-> Int`: number of charges.
 * [`retentiontime`](@ref) `-> AbstractFloat`: retention time. It defaults to property `:retentiontime` and `NaN`.
 * [`mmi`](@ref) `-> AbstractFloat`: monoisotopic mass.
@@ -119,11 +119,11 @@ The following attributes are optional, but generic functions are defined.
 * [`seriesanalyzedchemical`](@ref) `-> Vector{<: AbstractChemical}`: chemical entities directly analyzed in each stage of instrumental analysis.
 * [`detectedcharge`](@ref) `-> Int`: charge of detected chemical.
 * [`detectedisotopes`](@ref) `-> Vector{Pair{String, Int}}`: isotopes replacement of detected chemical.
-* [`seriesanalyzedcharge`](@ref) `-> Vector{Int}`: charge of sereially analyzed chemicals.
-* [`seriesanalyzedisotopes`](@ref) `-> Vector{Vector{Pair{String, Int}}}`: isotopes replacements of sereially analyzed chemicals.
+* [`seriesanalyzedcharge`](@ref) `-> Vector{Int}`: charge of serially analyzed chemicals.
+* [`seriesanalyzedisotopes`](@ref) `-> Vector{Vector{Pair{String, Int}}}`: isotope replacements of serially analyzed chemicals.
 * [`msstage`](@ref) `-> Int`: number of stages of MS the chemical has been through.
 
-Specific Methods for the attributes are defined for other intrinsic chemical type on different chemical level.
+Specific methods for these attributes are defined for other intrinsic chemical types at different chemical levels.
 * Entity Level: attribute of the corresponding chemical entity.
 * Species Level: attribute of the corresponding chemical species.
 * Transition Level: attribute of the corresponding chemical transition.
@@ -135,9 +135,9 @@ abstract type AbstractChemical <: AbstractChemicalScheme end
 
 Abstract type for all kinds of chemical schemes.
 
-The following atributes are implemented.
+The following attributes are implemented.
 * [`elementalscheme`](@ref) `-> AbstractScheme`.
-* [`structuralalscheme`](@ref) `-> AbstractScheme`.
+* [`structuralscheme`](@ref) `-> AbstractScheme`.
 * [`chemicalname`](@ref) `-> String`.
 * [`chemicalformula`](@ref) `-> String`.
 * [`chemicalelements`](@ref) `-> Vector{Pair{String, Int}}`.
@@ -146,13 +146,13 @@ The following atributes are implemented.
 * [`ncharge`](@ref) `-> Int`: number of charges.
 * [`mmi`](@ref) `-> AbstractFloat`: monoisotopic mass.
 * [`molarmass`](@ref) `-> AbstractFloat`: molar mass.
-* [`chemicalparent`](@ref) `-> AbstractChemical`: parent scheme without delocalized isotopes replacement.
+* [`chemicalparent`](@ref) `-> AbstractChemical`: parent scheme without delocalized isotope replacement.
 * [`isotopomersisotopes`](@ref) `-> Vector{Pair{String, Int}}`: delocalized isotopes replacement of isotopomers.
 * [`mass_shift_index`](@ref) `-> Int`: nominal index of mass shift between exact mass and monoisotopic mass using mass difference of an isotope and its parent.
 * [`groupedisotopomersisotopes`](@ref) `-> Vector{Vector{Pair{String, Int}}}`: delocalized isotopes replacements of each isotopomers.
 * [`groupedisotopomersabundance`](@ref) `-> AbstractFloat`: abundance of each isotopomers.
 
-Specific Methods for the attributes are defined for other intrinsic scheme type on different scheme level.
+Specific methods for these attributes are defined for other intrinsic scheme types at different scheme levels.
 * Entity Level: attribute of the elemental scheme.
 * Species Level: attribute of the scheme itself.
 * Transition Level: only apply to schemes in `ChemicalTransition`; `Species Level` for each scheme.

@@ -50,7 +50,7 @@ end
 """
     defaultname(chemical::AbstractChemicalScheme)
 
-Default name of `chemical` if no attribute and specific method is not implemented for [`chemicalname`](@ref).
+Default name for `chemical` when no attribute is set and no specialized [`chemicalname`](@ref) method is implemented.
 """
 defaultname(::T) where {T<:AbstractChemical} = string(T)
 defaultname(::T) where {T<:AbstractScheme} = string(T)

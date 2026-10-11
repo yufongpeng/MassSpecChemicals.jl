@@ -1,14 +1,14 @@
 """
     Spectrum{T}
 
-Spectrum type.
+Discrete mass spectrum.
 
 # Fields
-* `spectrum::Vector{T}`: spectrum intensity vector.
-* `initial_mass::T`: the first m/z value of `spectrum`.
-* `binsize::T`: the size of m/z bin, i.e. m/z difference of consecutive elements.
-* `stepsize::Int`: number of bins for each data point of the actual spectrum. 
-* `table::Table`: the source table of ions. 
+* `spectrum::Vector{T}`: intensity values on the discretized m/z grid.
+* `initial_mass::T`: the m/z value at the start of the grid.
+* `binsize::T`: the m/z difference between adjacent grid points.
+* `stepsize::Int`: number of grid bins represented by each point in the original spectrum.
+* `table::Table`: source table of the ions.
 """
 struct Spectrum{T}
     spectrum::Vector{T}
@@ -29,132 +29,97 @@ abstract type AbstractWindow end
 abstract type ZeroCenteredWindow end
 
 """
-    GaussianWindow <: AbstractWindow 
-
-Gaussian window.
-
-# Window Function
+    GaussianWindow <: AbstractWindow
     (::GaussianWindow)(x, μ, σ2)
 
-## Arguments
-* `μ`: mean (center).
-* `σ2`: variance.
+Gaussian window evaluated at `x` with mean (center) `μ` and variance `σ2`.
 """
 struct GaussianWindow <: AbstractWindow end
 
+"""
+    GaussianTailedUniformWindow{T} <: AbstractWindow
+    (::GaussianTailedUniformWindow)(x, μ, fwhm)
+
+Uniform window with Gaussian tails, evaluated at `x` with center `μ` and full width at half maximum `fwhm`.
+
+# Fields
+* `taperwidth`: width of each Gaussian tail.
+"""
 struct GaussianTailedUniformWindow{T} <: AbstractWindow
     taperwidth::T
 end
 
 """
-    FixedTaperTukeyWindow <: AbstractWindow 
-
-Tukey window with fixed width of taper.
-
-# Fields 
-* `taperwidth`: width of taper.
-
-# Window Function
+    FixedTaperTukeyWindow{T} <: AbstractWindow
     (::FixedTaperTukeyWindow)(x, μ, fwhm)
 
-## Arguments
-* `μ`: mean (center).
-* `fwhm`: full width at half maximum.
+Tukey window with a fixed taper width, evaluated at `x` with center `μ` and full width at half maximum `fwhm`.
+
+# Fields
+* `taperwidth`: width of the tapered region.
 """
 struct FixedTaperTukeyWindow{T} <: AbstractWindow 
     taperwidth::T
 end
 
 """
-    TukeyWindow <: AbstractWindow 
-
-Tukey window.
-
-# Window Function
+    TukeyWindow{T} <: AbstractWindow
     (::TukeyWindow)(x, μ, fwhm)
 
-## Arguments
-* `μ`: mean (center).
-* `fwhm`: full width at half maximum.
+Tukey window with a proportional taper, evaluated at `x` with center `μ` and full width at half maximum `fwhm`.
+
+# Fields
+* `taperproportion`: proportion of the window occupied by the tapered region.
 """
 struct TukeyWindow{T} <: AbstractWindow 
     taperproportion::T
 end
 
 """
-    CosineWindow <: AbstractWindow 
-
-Cosine window.
-
-# Window Function
+    CosineWindow <: AbstractWindow
     (::CosineWindow)(x, μ, fwhm)
 
-## Arguments
-* `μ`: mean (center).
-* `fwhm`: full width at half maximum.
+Cosine window evaluated at `x` with mean (center) `μ` and full width at half maximum `fwhm`.
 """
 struct CosineWindow <: AbstractWindow end
 
 """
-    RectWindow <: AbstractWindow 
-
-Rectangular window.
-
-# Window Function
+    RectWindow <: AbstractWindow
     (::RectWindow)(x, μ, fwhm)
 
-## Arguments
-* `μ`: mean (center).
-* `fwhm`: full width at half maximum.
+Rectangular window evaluated at `x` with mean (center) `μ` and full width at half maximum `fwhm`.
 """
 struct RectWindow <: AbstractWindow end
 
 """
-    SampledGaussianWindow <: ZeroCenteredWindow 
-
-Sampled gaussian window.
-
-# Window Function
+    SampledGaussianWindow <: ZeroCenteredWindow
     (::SampledGaussianWindow)(x, t)
 
-## Arguments
-* `t`: variance.
+Gaussian window evaluated at `x` on a grid centered at zero, with variance `t`.
 """
 struct SampledGaussianWindow <: ZeroCenteredWindow end
 
 """
-    SuperGaussianWindow <: AbstractWindow 
-
-Super gaussian window.
-
-# Fields 
-* `power`: the power of exponential. `2` is equivalent to typical gaussian window.
-
-# Window Function
+    SuperGaussianWindow{T} <: AbstractWindow
     (::SuperGaussianWindow)(x, μ, σ)
 
-## Arguments
-* `μ`: mean (center).
-* `σ`: standard deviation.
+Super-Gaussian window evaluated at `x` with center `μ` and scale `σ`. A power of 2 gives a standard Gaussian shape.
+
+# Fields
+* `power`: exponent that controls the shape of the window.
 """
 struct SuperGaussianWindow{T} <: AbstractWindow 
     power::T
 end
 
 """
-    PowerCosineWindow{T} <: AbstractWindow 
-
-Power cosine (top half) window.
-
-# Fields 
-* `power`: the power of cosine.
-
-# Window Function
+    PowerCosineWindow{T} <: AbstractWindow
     (::PowerCosineWindow)(x, μ, fwhm)
 
-## Arguments
-* `μ`: mean (center).
-* `fwhm`: full width at half maximum.
+Power-cosine (top-half cosine) window evaluated at `x` with center `μ` and full width at half maximum `fwhm`.
+
+# Fields
+* `power`: exponent applied to the cosine function.
 """
 struct PowerCosineWindow{T} <: AbstractWindow 
     power::T
@@ -165,19 +130,19 @@ abstract type AbstractMSAnalyzer{W, M} end
 """
     MSAnalyzer{W, M} <: AbstractMSAnalyzer{W, M} 
 
-Generic MS Analyzer.
+Generic mass-spectrometer analyzer.
 
 # Fields
-* `window::AbstractWindow`: window function.
-* `mz`: analyzed m/z value(s). It can be a 
-    * `Real`: center m/z value.
+* `window::AbstractWindow`: window function used to model the analyzer response.
+* `mz`: analyzed m/z value or values:
+    * `Real`: one center m/z value.
     * `Vector{<:Real}`: multiple center m/z values.
-    * `Tuple{<:Real, <:Real}`: m/z range.
-    * `Nothing`: m/z value not specified.
-* `accuracy`: m/z accuracy, either a number or a [`Criteria`](@ref).
-* `fwhm_mz`: a function mapping m/z value to fwhm.
-* `digits`: digits of m/z value. `nothing` indicates no limit on digits.
-* `stepsize`: step size for discrete mass scan such as quadrupole. It must be multiples of `10 ^ (-digits)`. If `digits` is `nothing`, `stepsize` is `nothing` as well.
+    * `Tuple{<:Real, <:Real}`: an m/z range.
+    * `Nothing`: no m/z value is specified.
+* `accuracy`: m/z accuracy, specified as a number or a [`Criteria`](@ref).
+* `fwhm_mz`: function that maps an m/z value to its full width at half maximum.
+* `digits`: number of decimal places retained for m/z values. `nothing` means there is no limit.
+* `stepsize`: step size for a discrete mass scan, such as a quadrupole scan. It must be a multiple of `10 ^ (-digits)`. If `digits` is `nothing`, `stepsize` must also be `nothing`.
 """
 struct MSAnalyzer{W, M} <: AbstractMSAnalyzer{W, M}
     window::W
@@ -191,28 +156,28 @@ end
 """
     Quadrupole{W, M} <: AbstractMSAnalyzer{W, M} 
 
-Quadrupole MS Analyzer.
+Quadrupole mass analyzer.
 
 # Fields
 * `window::AbstractWindow`: window function.
-* `mz`: analyzed m/z value(s). It can be a 
-    * `Real`: center m/z value.
+* `mz`: analyzed m/z value or values:
+    * `Real`: one center m/z value.
     * `Vector{<:Real}`: multiple center m/z values.
-    * `Tuple{<:Real, <:Real}`: m/z range.
-    * `Nothing`: m/z value not specified.
-* `accuracy`: m/z accuracy, either a number or a [`Criteria`](@ref).
-* `fwhm::Real`: m/z fwhm.
-* `digits`: digits of m/z value. `nothing` indicates no limit on digits.
-* `stepsize`: step size for mass scan. It must be multiples of `10 ^ (-digits)`. If `digits` is `nothing`, `stepsize` is `nothing` as well.
+    * `Tuple{<:Real, <:Real}`: an m/z range.
+    * `Nothing`: no m/z value is specified.
+* `accuracy`: m/z accuracy, specified as a number or a [`Criteria`](@ref).
+* `fwhm::Real`: full width at half maximum in m/z.
+* `digits`: number of decimal places retained for m/z values. `nothing` means there is no limit.
+* `stepsize`: step size for the mass scan. It must be a multiple of `10 ^ (-digits)`. If `digits` is `nothing`, `stepsize` must also be `nothing`.
 
 # Constructors
     Quadrupole(mz = nothing; accuracy = 0.1, offset = 0, fwhm = 0.7, digits = nothing, stepsize = nothing, unit = 0.7, flatness = 100, taperproportion = 0.2)
 
 ## Arguments
-* `offset::Real`: m/z offset of the center of window. The resulting m/z center will be `mz + offset`.
-* `unit::Real`: unit mass resolution (fwhm); the largest fwhm that remains gaussian. Window function becomes super gaussian (flat top) for fwhm larger than unit.
-* `flatness::Real`: how flat is the gaussian fall-off of the super gaussian function. Practical values range from 10 to 1000. 
-* `taperproportion::Real`: the proportion of the window that is tapered for [`TukeyWindow`](@ref) (used in single m/z isolation). Practical values range from 0.1 to 8. 
+* `offset::Real`: offset added to the window center; the resulting center is `mz + offset`.
+* `unit::Real`: unit-mass resolution (FWHM), the largest FWHM that uses a Gaussian window. For larger FWHM values, a flat-topped super-Gaussian window is used.
+* `flatness::Real`: flatness of the super-Gaussian window's Gaussian falloff. Practical values range from 10 to 1000.
+* `taperproportion::Real`: proportion of the window occupied by the tapered region of a [`TukeyWindow`](@ref), used for single-m/z isolation. Values between 0 and 1 select a Tukey window; values of 1 or greater select a cosine window, and nonpositive values select a rectangular window.
 """
 struct Quadrupole{W, M} <: AbstractMSAnalyzer{W, M}
     window::W
@@ -246,26 +211,26 @@ doc_qit = """
     QuadrupoleIonTrap{W, M} <: AbstractMSAnalyzer{W, M} 
     const QIT = QuadrupoleIonTrap
 
-Quadrupole Ion Trap (QIT) MS Analyzer.
+Quadrupole ion trap (QIT) mass analyzer.
 
 # Fields
 * `window::AbstractWindow`: window function.
-* `mz`: analyzed m/z value(s). It can be a 
-    * `Real`: center m/z value.
+* `mz`: analyzed m/z value or values:
+    * `Real`: one center m/z value.
     * `Vector{<:Real}`: multiple center m/z values.
-    * `Tuple{<:Real, <:Real}`: m/z range.
-    * `Nothing`: m/z value not specified.
-* `accuracy`: m/z accuracy, either a number or a [`Criteria`](@ref).
-* `fwhm::Real`: m/z fwhm.
-* `digits`: digits of m/z value. `nothing` indicates no limit on digits.
-* `stepsize`: step size for mass scan. It must be multiples of `10 ^ (-digits)`. If `digits` is `nothing`, `stepsize` is `nothing` as well.
+    * `Tuple{<:Real, <:Real}`: an m/z range.
+    * `Nothing`: no m/z value is specified.
+* `accuracy`: m/z accuracy, specified as a number or a [`Criteria`](@ref).
+* `fwhm::Real`: full width at half maximum in m/z.
+* `digits`: number of decimal places retained for m/z values. `nothing` means there is no limit.
+* `stepsize`: step size for the mass scan. It must be a multiple of `10 ^ (-digits)`. If `digits` is `nothing`, `stepsize` must also be `nothing`.
 
 # Constructors
     QuadrupoleIonTrap(mz = nothing; accuracy = 0.1, offset = 0, fwhm = 0.7, stepsize = nothing, power = 4)
 
 ## Arguments
-* `offset::Real`: m/z offset of the center of window. The resulting m/z center will be `mz + offset`.
-* `power::Real`: the power of [`SuperGaussianWindow`](@ref) function (used in SWIFT isolation). Practical values range from 4 to 8. 
+* `offset::Real`: offset added to the window center; the resulting center is `mz + offset`.
+* `power::Real`: exponent of the [`SuperGaussianWindow`](@ref) used for SWIFT isolation. Practical values range from 4 to 8.
 """
 @doc doc_qit
 struct QuadrupoleIonTrap{W, M} <: AbstractMSAnalyzer{W, M} 
@@ -294,26 +259,26 @@ doc_lit = """
     LinearIonTrap{W, M} <: AbstractMSAnalyzer{W, M} 
     const LIT = LinearIonTrap
 
-Linear Ion Trap (LIT) MS Analyzer.
+Linear ion trap (LIT) mass analyzer.
 
 # Fields
 * `window::AbstractWindow`: window function.
-* `mz`: analyzed m/z value(s). It can be a 
-    * `Real`: center m/z value.
+* `mz`: analyzed m/z value or values:
+    * `Real`: one center m/z value.
     * `Vector{<:Real}`: multiple center m/z values.
-    * `Tuple{<:Real, <:Real}`: m/z range.
-    * `Nothing`: m/z value not specified.
-* `accuracy`: m/z accuracy, either a number or a [`Criteria`](@ref).
-* `fwhm::Real`: m/z fwhm.
-* `digits`: digits of m/z value. `nothing` indicates no limit on digits.
-* `stepsize`: step size for mass scan. It must be multiples of `10 ^ (-digits)`. If `digits` is `nothing`, `stepsize` is `nothing` as well.
+    * `Tuple{<:Real, <:Real}`: an m/z range.
+    * `Nothing`: no m/z value is specified.
+* `accuracy`: m/z accuracy, specified as a number or a [`Criteria`](@ref).
+* `fwhm::Real`: full width at half maximum in m/z.
+* `digits`: number of decimal places retained for m/z values. `nothing` means there is no limit.
+* `stepsize`: step size for the mass scan. It must be a multiple of `10 ^ (-digits)`. If `digits` is `nothing`, `stepsize` must also be `nothing`.
 
 # Constructors
     LinearIonTrap(mz = nothing; accuracy = 0.1, offset = 0, fwhm = 0.7, stepsize = nothing, taperproportion = 0.2)
 
 ## Arguments
-* `offset::Real`: m/z offset of the center of window. The resulting m/z center will be `mz + offset`.
-* `taperproportion::Real`: the proportion of the window that is tapered for [`TukeyWindow`](@ref) (used in SWIFT isolation).
+* `offset::Real`: offset added to the window center; the resulting center is `mz + offset`.
+* `taperproportion::Real`: proportion of the window occupied by the tapered region of a [`TukeyWindow`](@ref), used for SWIFT isolation. Values between 0 and 1 select a Tukey window; values of 1 or greater select a cosine window, and nonpositive values select a rectangular window.
 """
 @doc doc_lit
 struct LinearIonTrap{W, M} <: AbstractMSAnalyzer{W, M} 
@@ -345,18 +310,18 @@ doc_tof = """
     TimeOfFlight{W, M} <: AbstractMSAnalyzer{W, M} 
     const TOF = TimeofFlight
 
-Time-of-Flight (TOF) MS Analyzer.
+Time-of-flight (TOF) mass analyzer.
 
 # Fields
 * `window::AbstractWindow`: window function.
-* `mz`: analyzed m/z value(s). It can be a 
-    * `Real`: center m/z value.
+* `mz`: analyzed m/z value or values:
+    * `Real`: one center m/z value.
     * `Vector{<:Real}`: multiple center m/z values.
-    * `Tuple{<:Real, <:Real}`: m/z range.
-    * `Nothing`: m/z value not specified.
-* `accuracy`: m/z accuracy, either a number or a [`Criteria`](@ref).
-* `resolution`: theoretical maximal m/z resolution. 
-* `mz50`: m/z value with half `resolution`.
+    * `Tuple{<:Real, <:Real}`: an m/z range.
+    * `Nothing`: no m/z value is specified.
+* `accuracy`: m/z accuracy, specified as a number or a [`Criteria`](@ref).
+* `resolution`: theoretical maximum resolving power.
+* `mz50`: m/z value at which the resolving power is half the specified `resolution`.
 
 # Constructors
     TimeOfFlight(mz = nothing; window = GaussianWindow(), accuracy = rcrit(1e-6), resolution = 80000, mz50 = 120)
@@ -377,18 +342,18 @@ const TOF = TimeOfFlight
 """
     Orbitrap{W, M} <: AbstractMSAnalyzer{W, M} 
 
-Orbitrap MS Analyzer.
+Orbitrap mass analyzer.
 
 # Fields
 * `window::AbstractWindow`: window function.
-* `mz`: analyzed m/z value(s). It can be a 
-    * `Real`: center m/z value.
+* `mz`: analyzed m/z value or values:
+    * `Real`: one center m/z value.
     * `Vector{<:Real}`: multiple center m/z values.
-    * `Tuple{<:Real, <:Real}`: m/z range.
-    * `Nothing`: m/z value not specified.
-* `accuracy`: m/z accuracy, either a number or a [`Criteria`](@ref).
-* `resolution`: m/z resolution @200. 
-* `mz50`: m/z value with half `resolution`.
+    * `Tuple{<:Real, <:Real}`: an m/z range.
+    * `Nothing`: no m/z value is specified.
+* `accuracy`: m/z accuracy, specified as a number or a [`Criteria`](@ref).
+* `resolution`: resolving power at m/z 200.
+* `mz50`: m/z value at which the resolving power is half the specified `resolution`.
 
 # Constructors
     Orbitrap(mz = nothing; window = GaussianWindow(), accuracy = rcrit(1e-6), resolution = 480000, mz50 = 800)
@@ -406,18 +371,18 @@ doc_fticr = """
     FourierTransformIonCyclotronResonance{W, M} <: AbstractMSAnalyzer{W, M} 
     const FTICR = FourierTransformIonCyclotronResonance
 
-Fourier-transform ion cyclotron resonance (FTICR) MS Analyzer.
+Fourier-transform ion cyclotron resonance (FTICR) mass analyzer.
 
 # Fields
 * `window::AbstractWindow`: window function.
-* `mz`: analyzed m/z value(s). It can be a 
-    * `Real`: center m/z value.
+* `mz`: analyzed m/z value or values:
+    * `Real`: one center m/z value.
     * `Vector{<:Real}`: multiple center m/z values.
-    * `Tuple{<:Real, <:Real}`: m/z range.
-    * `Nothing`: m/z value not specified.
-* `accuracy`: m/z accuracy, either a number or a [`Criteria`](@ref).
-* `resolution`: m/z resolution @200. 
-* `mz50`: m/z value with half `resolution`.
+    * `Tuple{<:Real, <:Real}`: an m/z range.
+    * `Nothing`: no m/z value is specified.
+* `accuracy`: m/z accuracy, specified as a number or a [`Criteria`](@ref).
+* `resolution`: resolving power at m/z 200.
+* `mz50`: m/z value at which the resolving power is half the specified `resolution`.
 
 # Constructors
     FourierTransformIonCyclotronResonance(mz = nothing; window = GaussianWindow(), accuracy = rcrit(2e-7), resolution = 20000000, mz50 = 400)
@@ -443,27 +408,27 @@ LocalMaxima() = LocalMaxima(0.1)
 """
     CoelutingIsobars
 
-A type containing settings and results of coelution isobars. 
+A type containing settings and results for analyzing co-eluting isobars.
 
 # Fields
-* `elution::Vector{<:Pair}`: elution function (e.g. `retentiontime`)-criteria pairs. 
-* `msanalyzer::Vector{<:Pair}`: msanalyzer-abundance criteria pairs.
-* `target::Table`: a table of target chemicals in the form of [`Isotopomers`](@ref).
-* `isobar::Table`: a table of potential isobars in the form of [`Isotopomers`](@ref).
-* `tables::Vector`: tables of isotopologues of each target chemicals.
+* `elution::Vector{<:Pair}`: pairs of elution functions (such as `retentiontime`) and criteria.
+* `msanalyzer::Vector{<:Pair}`: pairs of mass analyzers and abundance criteria.
+* `target::Table`: target chemicals represented as [`Isotopomers`](@ref).
+* `isobar::Table`: potential isobars represented as [`Isotopomers`](@ref).
+* `tables::Vector`: isotopologue tables for the target chemicals.
 
-Each `msanalyzer` correpsonds to each ms stage of the transition. 
-No filtering for the ms stages that corresponding msanalyzer are `nothing`. 
-If `msanalyzer` is shorter, no filtering is applied for the transitions that have no corresponding msanalyzer.
+Each entry in `msanalyzer` corresponds to one MS stage of the transition.
+Stages whose corresponding analyzer is `nothing` are not filtered.
+If `msanalyzer` has fewer entries than the transition has stages, stages without a corresponding analyzer are not filtered.
 
 # Constructors
     CoelutingIsobars(elution, msanalyzer, table::Table; nfilter = 2, kwargs...)
     CoelutingIsobars(elution, msanalyzer, target::Table, isobar::Table; nfilter = 2)
 
 ## Arguments
-* `table::Table`: table of target chemicals not in the form of [`Isotopomers`](@ref); `target` and `isobar` are generated from this table. 
-* `nfilter::Int`: number of step to filter isobars. `0` means no filtering, and `tables` would be empty; `1` means filtering by only `elution`; `2` means filtering by both `elution` and `msanalyzer`.
-* Other keyword arguments are for [`Isotopologues`](@ref) to generate `isobar` from `table`.
+* `table::Table`: table of target chemicals not represented as [`Isotopomers`](@ref). The `target` and `isobar` tables are generated from this table.
+* `nfilter::Int`: number of filtering stages to apply. `0` disables filtering and leaves `tables` empty; `1` filters by `elution` only; `2` filters by both `elution` and `msanalyzer`.
+* Other keyword arguments are passed to [`Isotopologues`](@ref) to generate `isobar` from `table`.
 """
 struct CoelutingIsobars 
     elution::Vector{<:Pair}

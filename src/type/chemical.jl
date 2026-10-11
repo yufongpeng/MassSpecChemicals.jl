@@ -6,7 +6,7 @@ Unstructured chemical type with its name, elements (formula), and additional pro
 # Fields 
 * `name::String`: a unique chemical name.
 * `elements::Vector{Pair{String, Int}}`: chemical elements.
-* `property::Vector{Pair{Symbol, Any}}`: additional properties; the pairs repressent names and values.
+* `property::Vector{Pair{Symbol, Any}}`: additional properties; the pairs represent names and values.
 
 # Constructors
     Chemical(name::AbstractString, elements::Vector{Pair{String, Int}}, property::Vector{Pair{Symbol, Any}})
@@ -35,7 +35,7 @@ Unstructured chemical type with elements (formula), and additional properties. C
 
 # Fields 
 * `elements::Vector{Pair{String, Int}}`: chemical elements.
-* `property::Vector{Pair{Symbol, Any}}`: additional properties; the pairs repressent names and values.
+* `property::Vector{Pair{Symbol, Any}}`: additional properties; the pairs represent names and values.
 
 # Constructors
     FormulaChemical(elements::Vector{Pair{String, Int}}, property::Vector{Pair{Symbol, Any}})

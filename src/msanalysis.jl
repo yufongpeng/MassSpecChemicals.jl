@@ -5,7 +5,7 @@
     Ionization(chemical::AbstractAdductIon; kwargs...) -> Table
 
 Ionization of `chemicaltable.Chemical`. 
-The returned table contains isotopologues of adduct ions and can be further processed by other spectrum related function such as [`MSScan`](@ref), [`Isolation`](@ref), and etc. 
+The returned table contains isotopologues of adduct ions and can be further processed by other spectrum-related functions, such as [`MSScan`](@ref), [`Isolation`](@ref), and similar utilities.
 
 # Keyword Arguments
 * `adduction`: constructor for adduct ion. 
@@ -13,7 +13,7 @@ The returned table contains isotopologues of adduct ions and can be further proc
 * `adductparser::AbstractAdductParser`: parser for `string` adduct input. The default parser is `AdductParser()` (See [`AdductParser`](@ref)).
 * `adduct`: adducts being parsed by `adductparser`. The parsed adduct is a named tuple and used as keyword arguments of function `ionize` with argument `adduction` and each chemical. For individualizing adducts, use column `Adduct` in `chemicaltable`.
 * `abundance` sets the abundance of the chemical. It can also be column `Abundance` in `chemicaltable`. 
-* `proportion`: proportion of adduct ion relative to original chemical. For individualizing adducts, use column `Proportion` in `chemicaltable`. The length of each elements should macthes to that of `adduct`.
+* `proportion`: proportion of adduct ions relative to the original chemical. To individualize adducts, use the `Proportion` column in `chemicaltable`. The length of each element vector should match that of `adduct`.
 * `threshold` can be a number or [`Criteria`](@ref), representing the lower limit of abundance (absolute and/or relative to maximal value of each spectrum). 
 * `threading`: force to use multiple threads (`true`) or single thread (`false`); `nothing` lets the program determine. 
 Other `kwargs` are used by function [`Isotopologues`](@ref).
@@ -110,7 +110,7 @@ function MSScan(msanalyzer::AbstractMSAnalyzer, mztable::Table; min_bin_fwhm = 5
     if !isnothing(stepsize) && !isnothing(digits) 
         unit = round(10.0 ^ (-digits); digits)
         p = round(Int, stepsize / unit)
-        isapprox(stepsize - p * unit, 0) || throw(ArgumentError("`stepsize` must be mutiples of `10 ^ (-digits)`."))
+        isapprox(stepsize - p * unit, 0) || throw(ArgumentError("`stepsize` must be a multiple of `10 ^ (-digits)`."))
     end
     sp = string.(propertynames(mztable))
     colmz = lastcolnum(sp, "MZ")

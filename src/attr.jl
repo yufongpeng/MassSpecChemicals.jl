@@ -2,14 +2,14 @@
     getchemicalproperty(chemical::AbstractChemicalScheme, property::Symbol, default::Nothing, type = Any) -> Any
     getchemicalproperty(chemical::AbstractChemicalScheme, property::Symbol, default::T, type = T) -> T
 
-Get `property` from `chemical`. 
+Fetch `property` from `chemical`.
 
-This function defaults to finds the `property`, and returns `default` if it is not available. The return value is asserted to be type `type`.
+This function looks up `property` and returns `default` when it is unavailable. The returned value is asserted to be of type `type`.
 
-For type [`Chemical`](@ref) and properties other than `name`, `elements` and `formula`, it iterates through `chemical.property`. 
-If no matched property name is found, it returns `default`.
+For [`Chemical`](@ref) and properties other than `name`, `elements`, and `formula`, it iterates through `chemical.property`.
+If no matching property name is found, it returns `default`.
 
-For type [`AbstractAdductIon`](@ref), it searches for properties of itself and then the properties of core chemical without specialized methods.
+For [`AbstractAdductIon`](@ref), it checks the adduct itself first and then falls back to the core chemical when no specialized method is available.
 """
 getchemicalproperty(chemical::AbstractChemicalScheme, property::Symbol, default::T) where T = getchemicalproperty(chemical, property, default, T)
 getchemicalproperty(chemical::AbstractChemicalScheme, property::Symbol, default::Nothing) = getchemicalproperty(chemical, property, default, Any)
@@ -27,14 +27,14 @@ end
 """
     chemicalname(chemical::AbstractChemicalScheme; verbose = true, n = 1, loss = false, bracket = true, kwargs...) -> String
 
-The name of `chemical`. It should be unique for each chemical object. 
+The name of `chemical`. This should be unique for each chemical object.
 
 # Generic Methods
 * `AbstractChemicalScheme`: property search.
 * `AbstractAdductIon`: name composed of name of core chemical and adduct.
 * `AbstractChemicalWrapper`: name of field `chemical`.
 
-# Specific Methods 
+# Specific Methods
 * Species/Transition Level.
 
 # Property Search Workflow
@@ -43,10 +43,10 @@ The name of `chemical`. It should be unique for each chemical object.
     * default: [`defaultname`](@ref).
 
 # Keyword arguments
-* `verbose::Bool` determines whether includes all names or not for chemical species. If `verbose` is false, only the first (most abundant) chemical is included.
-* `n::Int` determines number of chemical.
-* `loss::Bool` determines whether the chemical is part of chemical loss, and sign flips are propagated into this chemical.
-* `bracket::Bool` determines whether wrapping the output string with "[...]" and charge.
+* `verbose::Bool` selects whether to include all names for a chemical species. If `verbose` is false, only the first, most abundant chemical is included.
+* `n::Int` selects the chemical count.
+* `loss::Bool` determines whether the chemical is part of a loss process, with sign changes propagated to the chemical.
+* `bracket::Bool` determines whether the output string is wrapped in "[...]" with the charge included.
 """
 function chemicalname(chemical::AbstractChemicalScheme; n = 1, kwargs...) 
     nm = getchemicalproperty(chemical, :name, defaultname(chemical))
@@ -70,16 +70,16 @@ end
     chemicalformula(chemical::AbstractChemical; delim = "", unique = true, ischemical = true, loss = false, kwargs...) -> String
     chemicalformula(chemical::AbstractScheme; delim = "", unique = true, ischemical = false, loss = false, kwargs...) -> String
 
-The formula of chemical entity of `chemical`.
+The formula of the chemical entity represented by `chemical`.
 
 # Generic Methods
 * `AbstractChemical`: property search.
-* `AbstractAdductIon`: formuala combining core chemical and adduct.
+* `AbstractAdductIon`: formula combining the core chemical and the adduct.
 * `AbstractChemicalWrapper`: formula of field `chemical`.
 * `AbstractScheme`: property search; started with `"+"` for chemical gain and `"-"` for chemical loss.
 * `AbstractStructuralScheme`: throw error.
 
-# Specific Methods 
+# Specific Methods
 * Entity Level.
 
 # Property Search Workflow
@@ -90,10 +90,10 @@ The formula of chemical entity of `chemical`.
 
 # Keyword arguments
 * `delim::Union{String, Char}` assigns the delimiter between each element.
-* `unique::Bool` determines whether combines the elements to become unique or not when constructing formula from attribute [`chemicalelements`](@ref). 
-It defaults to false for type [`Chemical`](@ref) and [`FormulaChemical`](@ref).
-* `ischemical::Bool` determines whether the chemical is a chemical or a scheme. 
-* `loss::Bool` determines whether the chemical is part of chemical loss, and signs are factored out from elements. 
+* `unique::Bool` determines whether elements are combined into a unique representation when constructing the formula from [`chemicalelements`](@ref).
+It defaults to false for [`Chemical`](@ref) and [`FormulaChemical`](@ref).
+* `ischemical::Bool` determines whether the input represents a chemical or a scheme.
+* `loss::Bool` determines whether the species is part of a loss process, with signs factored out from the element counts.
 """
 function chemicalformula(chemical::AbstractChemical; shallow = false, loss = false, ischemical = true, kwargs...) 
     result = getchemicalproperty(chemical, :formula, "")
@@ -130,16 +130,16 @@ chemicalformula(sch::AbstractStructuralScheme; kwargs...) = throw(ArgumentError(
 """
     chemicalelements(chemical::AbstractChemicalScheme; loss = false, kwargs...) -> Vector{Pair{String, Int}}
 
-The elements of chemical entity of `chemical`.
+The elemental composition of `chemical`.
 
 # Generic Methods
 * `AbstractChemical`: property search.
-* `AbstractAdductIon`: elements combining core chemical and adduct.
-* `AbstractChemicalWrapper`: chemical elements of field `chemical`.
-* `AbstractScheme`: property search; change of elements.
+* `AbstractAdductIon`: combined elements of the core chemical and the adduct.
+* `AbstractChemicalWrapper`: elemental composition of the wrapped `chemical` field.
+* `AbstractScheme`: property search; element changes are applied.
 * `AbstractStructuralScheme`: throw error.
 
-# Specific Methods 
+# Specific Methods
 * Entity Level.
 
 # Property Search Workflow
@@ -148,8 +148,8 @@ The elements of chemical entity of `chemical`.
     * default: `Pair{String, Int}[]`.
 2. Function: [`chemicalformula`](@ref) -> [`chemicalelements`](@ref).
 
-# Keyword Arguments 
-* `loss::Bool` determines whether the chemical is part of chemical loss, and sign flips are propagated into elements.
+# Keyword arguments
+* `loss::Bool` determines whether the chemical participates in a loss process, with sign flips propagated into the element counts.
 """
 function chemicalelements(chemical::AbstractChemical; shallow = false, loss = false, kwargs...) 
     result = getchemicalproperty(chemical, :elements, Pair{String, Int}[])
@@ -193,7 +193,7 @@ The abbreviation of `chemical`.
 * `AbstractAdductIon`: abbreviation composed of abbreviation of core chemical and adduct.
 * `AbstractChemicalWrapper`: abbreviation of field `chemical`.
 
-# Specific Methods 
+# Specific Methods
 * Species/Transition Level.
 
 # Property Search Workflow
@@ -203,9 +203,9 @@ The abbreviation of `chemical`.
 
 # Keyword arguments
 * `verbose::Bool` determines whether includes all abbreviations or not for chemical species. If `verbose` is false, only the first (most abundant) chemical is included.
-* `n::Int` determines number of chemical.
-* `loss::Bool` determines whether the chemical is part of chemical loss, and sign flips are propagated into this chemical.
-* `bracket::Bool` determines whether wrapping the output string with "[...]" and charge.
+* `n::Int` selects the chemical count.
+* `loss::Bool` determines whether the chemical is part of a loss process, with sign changes propagated to the chemical.
+* `bracket::Bool` determines whether the output string is wrapped in "[...]" with the charge included.
 """
 function chemicalabbr(chemical::AbstractChemicalScheme; n = 1, kwargs...) 
     abbr = getchemicalproperty(chemical, :abbreviation, "")
@@ -229,14 +229,14 @@ end
 """
     chemicalsmiles(chemical::AbstractChemical; kwargs...) -> String
 
-The SMILES of chemical entity of `chemical`.
+The SMILES representation of the chemical entity represented by `chemical`.
 
 # Generic Methods
 * `AbstractChemical`: property search.
 * `AbstractAdductIon`: SMILES of the core chemical.
 * `AbstractChemicalWrapper`: SMILES of field `chemical`.
 
-# Specific Methods 
+# Specific Methods
 * Entity Level.
 * `Isotopomers`: SMILES of the parent chemical.
 * `Groupedisotopomers`: SMILES of the most abundant parent chemical.
@@ -258,7 +258,7 @@ The core chemical of `adduct_ion`.
 # Generic Methods
 * `AbstractAdductIon`: property search.
 
-# Specific Methods 
+# Specific Methods
 * Entity Level.
 
 # Property Search Workflow
@@ -276,7 +276,7 @@ The adduct of `adduct_ion`.
 # Generic Methods
 * `AbstractAdductIon`: property search.
 
-# Specific Methods 
+# Specific Methods
 * Entity Level.
 
 # Property Search Workflow
@@ -289,12 +289,12 @@ ionadduct(adduct_ion::AbstractAdductIon{S, T}; kwargs...) where {S, T} = getchem
 """
     ncore(adduct_ion::AbstractAdductIon; kwargs...) -> Int
 
-The number of core chemical. For instance, 2 for "[2M+H]+". 
+The number of core chemicals. For example, `2` for "[2M+H]+".
 
 # Generic Methods
 * `AbstractAdductIon`: property search.
 
-# Specific Methods 
+# Specific Methods
 * Entity Level.
 
 # Property Search Workflow
@@ -307,17 +307,17 @@ ncore(adduct_ion::AbstractAdductIon; kwargs...) = getchemicalproperty(adduct_ion
 """
     charge(chemical::AbstractChemicalScheme; loss = false, kwargs...) -> Int
 
-The charge state of `chemical`; positive for cation and negative for anion. For instance, -2 for dianion, +3 for trication. 
+The charge state of `chemical`; positive for a cation and negative for an anion. For example, `-2` for a dianion and `+3` for a trication.
 
 # Generic Methods
-* `AbstractChemicals`: property search.
+* `AbstractChemicalScheme`: property search.
 * `AbstractAdductIon`: charge of core chemical and adduct.
 * `AbstractChemicalWrapper`: charge of field `chemical`.
 * `AbstractScheme`: property search; change of charges.
-* `AbstractCompleteScheme`: change of charges of elemental scheme.
+* `AbstractCompleteScheme`: charge of the elemental scheme.
 * `AbstractStructuralScheme`: throw error.
 
-# Specific Methods 
+# Specific Methods
 * Entity Level.
 
 # Property Search Workflow
@@ -325,8 +325,8 @@ The charge state of `chemical`; positive for cation and negative for anion. For 
     * property: `:charge`.
     * default: `0`.
 
-# Keword Arguments
-* `loss::Bool` determines whether the chemical is part of chemical loss, and sign flips are factored out from elements.
+# Keyword arguments
+* `loss::Bool` determines whether the chemical participates in a loss process, with sign flips propagated through the charge.
 """
 charge(chemical::AbstractChemicalScheme; loss = false, kwargs...) = loss ? -getchemicalproperty(chemical, :charge, 0) : getchemicalproperty(chemical, :charge, 0)
 charge(adduct_ion::AbstractAdductIon; loss = false, kwargs...) = ncore(adduct_ion) * charge(ioncore(adduct_ion); loss, kwargs...) + charge(ionadduct(adduct_ion); loss)
@@ -342,7 +342,7 @@ The number of charges of `chemical`.
 # Generic Methods
 * `AbstractChemicalScheme`: absolute value of charge.
 
-# Specific Methods 
+# Specific Methods
 * Entity Level.
 """
 ncharge(chemical::AbstractChemicalScheme; kwargs...) = abs(charge(chemical; kwargs...))
@@ -356,7 +356,7 @@ The retention time of `chemical`.
 * `AbstractChemical`: property search.
 * `AbstractChemicalWrapper`: retention time of field `chemical`.
 
-# Specific Methods 
+# Specific Methods
 * Entity Level.
 * `Isobars`: weighted mean of retention times of each chemical.
 
@@ -371,9 +371,9 @@ retentiontime(chemical::AbstractChemicalWrapper; kwargs...) = retentiontime(chem
 """
     chemicalentity(chemical::AbstractChemical; kwargs...) -> AbstractChemical
 
-The single chemical entity (having a single formula) from a chemical entity (i.e. itself), or chemical species. 
+The single chemical entity (with a single formula) derived from a chemical entity or chemical species.
 
-Attribute with Specific Methods marked as `Entity` indicates the `chemicalentity` is applied in the function for chemical type that is not originally a single entity. 
+A `Specific Methods` entry marked as `Entity` indicates that `chemicalentity` is applied for a chemical type that is not originally a single entity.
 
 # Generic Methods
 * `AbstractChemical`: itself.
@@ -390,9 +390,9 @@ chemicalentity(chemical::T; kwargs...) where {T<:AbstractChemicalWrapper} = T.na
 """
     elementalscheme(scheme::AbstractScheme; kwargs...) -> Union{ElementalSchemes, AbstractChemical}
 
-The elemental scheme of `scheme`. 
+The elemental scheme of `scheme`.
 
-Attribute with Specific Methods marked as `Entity` indicates the `elementalscheme` is applied in the function for scheme type that is not originally elemental. 
+A `Specific Methods` entry marked as `Entity` indicates that `elementalscheme` is applied for a scheme type that is not originally elemental.
 
 # Generic Methods
 * `AbstractScheme`: property search.
@@ -432,9 +432,9 @@ structuralscheme(scheme::AbstractScheme; kwargs...) = getchemicalproperty(scheme
 """
     chemicalspecies(chemical::AbstractChemical; kwargs...) -> Vector{<:AbstractChemical}
 
-The chemical species (represented by a vector) from a chemical entity or chemical species. 
+The chemical species represented by a vector derived from a chemical entity or chemical species.
 
-Attribute with Specific Methods marked as `Species` indicates that the return value may represent attribute of species. 
+A `Specific Methods` entry marked as `Species` indicates that the return value may represent an attribute of a species.
 
 # Generic Methods
 * `AbstractChemical`: `[chemical]`.
@@ -450,7 +450,7 @@ chemicalspecies(chemical::AbstractChemical; kwargs...) = [chemical]
 
 The chemical entities that are analyzed in each stage of instrumental analysis.
 
-Attribute with Specific Methods marked as `Transition` indicates the return value may represent attribute of transition. 
+A `Specific Methods` entry marked as `Transition` indicates that the return value may represent an attribute of a transition.
 
 # Generic Methods
 * `AbstractChemical`: `[chemical]`.
@@ -475,11 +475,11 @@ The parent chemical without delocalized isotopes replacement.
 # Specific Methods
 * Entity Level.
 * `ChemicalTransition`: [`ChemicalTransition`](@ref) of parent chemicals of each transition.
-* `Groupedisotopmers`: field `parent`.
+* `Groupedisotopomers`: field `parent`.
 * `ElementalScheme`: scheme of chemical parent of chemical entity.
 * `ChemicalSchemes`: schemes of chemical parent(s) of chemical entity(s).
 * `IsotopomerizedSchemes`: field `parent`.
-* `Groupedisotopmerizedschemes`: field `parent`.
+* `Groupedisotopomerizedschemes`: field `parent`.
 """
 chemicalparent(cc::AbstractChemical; kwargs...) = cc
 chemicalparent(chemical::T; kwargs...) where {T<:AbstractChemicalWrapper} = T.name.wrapper(chemicalparent(chemical.chemical; kwargs...))
@@ -498,7 +498,7 @@ The delocalized isotopes replacement of isotopomers.
 * `AbstractStructuralScheme`: throw error.
 * `AbstractCompleteScheme`: delocalized isotopes replacement of elemental scheme.
 
-# Specific Methods 
+# Specific Methods
 * Entity Level.
 * `Isotopomers`: field `isotopes`.
 * `Groupedisotopomers`: isotopes replacement of the most abundant isotopomers.
@@ -513,7 +513,7 @@ The delocalized isotopes replacement of isotopomers.
     * default: `Pair{String, Int}[]`.
 
 # Keyword arguments
-* `loss::Bool` determines whether the chemical is part of chemical loss, and sign flips are propagated into elements.
+* `loss::Bool` determines whether the chemical participates in a loss process, with sign flips propagated into the element counts.
 """
 isotopomersisotopes(cc::AbstractChemicalScheme; loss = false, kwargs...) = reverse_elements(getchemicalproperty(cc, :isotopomersisotopes, Pair{String, Int}[]), loss)
 isotopomersisotopes(cc::AbstractChemicalWrapper; loss = false, kwargs...) = isotopomersisotopes(cc.chemical; loss, kwargs...)
@@ -533,8 +533,8 @@ A nominal index of mass shift between exact mass and monoisotopic mass using mas
 * Entity Level.
 
 # Keyword arguments
-* `ischemical::Bool` determines whether the chemical is a chemical or a scheme. 
-* `loss::Bool` determines whether the chemical is part of chemical loss, and sign flips are propagated into `isotopomersisotopes`.
+* `ischemical::Bool` determines whether the input represents a chemical or a scheme.
+* `loss::Bool` determines whether the chemical participates in a loss process, with sign flips propagated into `isotopomersisotopes`.
 """
 mass_shift_index(cc::AbstractChemical; isotope_unit = nothing, isotope = "[13C]", loss = false, ischemical = true, kwargs...) = _mass_shift_index(isotopomersisotopes(cc), isnothing(isotope_unit) ? elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]] : isotope_unit; loss, ischemical, kwargs...)
 mass_shift_index(cc::AbstractScheme; isotope_unit = nothing, isotope = "[13C]", loss = false, ischemical = false, kwargs...) = _mass_shift_index(isotopomersisotopes(cc), isnothing(isotope_unit) ? elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]] : isotope_unit; loss, ischemical, kwargs...)
@@ -550,7 +550,7 @@ The delocalized isotopes replacement of each isotopomers.
 * `AbstractScheme`: `groupedisotopomersisotopes` of elemental scheme.
 * `AbstractStructuralScheme`: throw error.
 
-# Specific Methods 
+# Specific Methods
 * Entity Level.
 * `Groupedisotopomers`: isotopes replacements of each isotopomers.
 * `ElementalScheme`: single-element vector of `isotopomersisotopes`.
@@ -559,7 +559,7 @@ The delocalized isotopes replacement of each isotopomers.
 * `Groupedisotopomerizedschemes`: isotopes replacements of each isotopomers.
 
 # Keyword arguments
-* `loss::Bool` determines whether the chemical is part of chemical loss, and sign flips are propagated into elements.
+* `loss::Bool` determines whether the chemical participates in a loss process, with sign flips propagated into the element counts.
 """
 groupedisotopomersisotopes(x::AbstractChemical; loss = false, kwargs...) = [isotopomersisotopes(x; loss, kwargs...)]
 groupedisotopomersisotopes(x::AbstractStructuralScheme; kwargs...) = throw(ArgumentError("`groupedisotopomersisotopes` cannot be defined for structural scheme."))
@@ -575,7 +575,7 @@ The abundance of each isotopomers.
 * `AbstractScheme`: `groupedisotopomersabundance` of elemental scheme.
 * `AbstractStructuralScheme`: throw error.
 
-# Specific Methods 
+# Specific Methods
 * Entity Level.
 * `Groupedisotopomers`: field `abundance`.
 * `ElementalScheme`: `groupedisotopomersabundance` of field `chemical`.
@@ -590,7 +590,7 @@ groupedisotopomersabundance(x::AbstractScheme; kwargs...) = groupedisotopomersab
 """
     analyzedchemical(chemical::AbstractChemicalScheme; kwargs...) -> AbstractChemical
 
-The single chemical entity that is directly analyzed at the very beginning of instrumental analysis.
+The single chemical entity analyzed directly at the beginning of the instrumental analysis.
 
 # Generic Methods
 * `AbstractChemical`: itself.
@@ -607,7 +607,7 @@ analyzedchemical(cc::AbstractScheme; kwargs...) = throw(ArgumentError("Scheme ca
 """
     detectedchemical(chemical::AbstractChemicalScheme; kwargs...) -> AbstractChemical
 
-The single chemical entity that is directly detected at the very end of instrumental analysis.
+The single chemical entity detected directly at the end of the instrumental analysis.
 
 # Generic Methods
 * `AbstractChemical`: itself or precursor with scheme (scheme is derived from `detectedchemical` of `precursor` and itself as product using [`completescheme`](@ref)).
@@ -655,7 +655,7 @@ end
 """
     inputchemical(chemical::AbstractChemicalScheme; kwargs...) -> AbstractChemical
 
-The single chemical entity that is the input at the very beginning of instrumental analysis. 
+The single chemical entity that serves as the input at the beginning of the instrumental analysis.
 
 It is equivalent to [`analyzedchemical`](@ref), except that schemes are accepted. 
 """
@@ -664,7 +664,7 @@ inputchemical(cc::AbstractChemicalScheme; kwargs...) = cc
 """
     outputchemical(chemical::AbstractChemicalScheme; kwargs...) -> AbstractChemicalScheme
 
-The single chemical entity that is the output of the very ending of instrumental analysis.
+The single chemical entity that is the output at the end of the instrumental analysis.
 
 It is equivalent to [`detectedchemical`](@ref), except that schemes are kept unchanged. 
 """
@@ -730,8 +730,8 @@ The monoisotopic mass of `chemical`.
 * `ChemicalTransition`: monoisotopic mass of `analyzedchemical`.
 * `Groupedisotopomerizedschemes`: weighted mean of change of monoisotopic masses.
 
-# Keword Arguments
-* `loss::Bool` determines whether the chemical is part of chemical loss, and sign flips are factored out from elements.
+# Keyword arguments
+* `loss::Bool` determines whether the chemical participates in a loss process, with sign flips propagated through the charge.
 """
 mmi(cc::AbstractChemicalScheme; loss = false) = mmi(chemicalelements(cc), charge(cc); loss)
 mmi(sch::AbstractCompleteScheme; loss = false, kwargs...) = mmi(elementalscheme(sch); loss, kwargs...)
@@ -753,8 +753,8 @@ The molar mass of `chemical`.
 * `ChemicalTransition`: molar mass of `analyzedchemical`.
 * `Groupedisotopomerizedschemes`: weighted mean of change of molar masses.
 
-# Keword Arguments
-* `loss::Bool` determines whether the chemical is part of chemical loss, and sign flips are factored out from elements.
+# Keyword arguments
+* `loss::Bool` determines whether the chemical participates in a loss process, with sign flips propagated through the charge.
 """
 molarmass(cc::AbstractChemicalScheme; loss = false) = molarmass(chemicalelements(cc), charge(cc); loss)
 molarmass(sch::AbstractCompleteScheme; loss = false, kwargs...) = molarmass(elementalscheme(sch); loss, kwargs...)
@@ -778,7 +778,7 @@ The mass to charge ratio (m/z) of charged chemical or chemical with adduct. It i
 * `ChemicalTransition`: m/z of `analyzedchemical`.
 * `Groupedisotopomerizedschemes`: weighted mean of change of m/z.
 
-# Keword Arguments
+# Keyword arguments
 * `loss:Bool` determines whether the chemical is part of chemical loss, and sign flips are factored out from elements.
 """
 mz(charged_cc::AbstractChemicalScheme; loss = false, kwargs...) = charge(charged_cc) == 0 ? NaN : mmi(charged_cc; loss, kwargs...) / ncharge(charged_cc)

@@ -6,11 +6,11 @@
 A Julia package for representing chemicals and ions formed in mass spectrometers (MS).
 
 All chemicals are instances of the abstract type `AbstractChemical`.
-Charged chemicals formed in MS with a specific adduct (chemical gain) or chemical loss (adduct ions) are instances of the abstract type `AbstractAdductIon`.
+Charged chemicals formed in MS (adduct ions) with a specific adduct (chemical gain) or chemical loss are instances of the abstract type `AbstractAdductIon`.
 
 # Built-in chemical types
 
-1. `Chemical`: unstructured chemicals storing name, elements, and other attributes
+1. `Chemical`: an unstructured chemical that stores a name, elements, and other attributes.
 
     ```julia
     Chemical(name::AbstractString, elements::Vector{Pair{String, Int}}; property...)
@@ -20,7 +20,7 @@ Charged chemicals formed in MS with a specific adduct (chemical gain) or chemica
     Chemical(name::AbstractString, elements::Vector{Pair{String, Int}}, property::Vector{Pair{Symbol, Any}})
     ```
 
-2. `FormulaChemical`: unstructured chemicals using the formula as the name
+2. `FormulaChemical`: an unstructured chemical that uses its formula as its name.
 
     ```julia
     FormulaChemical(elements::Vector{Pair{String, Int}}; property...)
@@ -30,7 +30,7 @@ Charged chemicals formed in MS with a specific adduct (chemical gain) or chemica
     FormulaChemical(elements::Vector{Pair{String, Int}}, property::Vector{Pair{Symbol, Any}})
     ```
 
-3. `AdductIon`: charged chemicals with a specific adduct or neutral loss
+3. `AdductIon`: a charged chemical with a specific adduct or neutral loss.
 
     ```julia
     AdductIon(core::AbstractChemical, adduct::AbstractScheme, ncore::Int = 1)
@@ -38,7 +38,7 @@ Charged chemicals formed in MS with a specific adduct (chemical gain) or chemica
     AdductIon(core::AbstractChemical, adduct::AbstractString)
     ```
 
-4. `ChemicalTransition`: MS/MS transitions
+4. `ChemicalTransition`: an MS/MS transition.
 
     ```julia
     ChemicalTransition(transition::Vector)
@@ -46,13 +46,13 @@ Charged chemicals formed in MS with a specific adduct (chemical gain) or chemica
     ChemicalTransition(precursor::AbstractChemical, products...)
     ```
 
-5. `Isobars`: multiple chemicals with similar m/z
+5. `Isobars`: multiple chemicals with similar m/z values.
 
     ```julia
     Isobars(chemical::Vector{<:AbstractChemical}, abundance::VecOrMat)
     ```
 
-6. `Isotopomers`: multiple chemicals differing by isotopic replacement location
+6. `Isotopomers`: multiple chemicals that differ in the locations of isotopic replacements.
 
     ```julia
     Isotopomers(parent::AbstractChemical, isotopes::ElementsVector)
@@ -64,13 +64,13 @@ Charged chemicals formed in MS with a specific adduct (chemical gain) or chemica
     Isotopomers(parent::AbstractChemical, fullelements::Vector{Pair{String, Int}})
     ```
 
-7. `Groupedisotopomers`: isotopomers grouped by mass-shift index using isotope as reference
+7. `Groupedisotopomers`: isotopomers grouped by mass-shift index relative to a reference isotope.
 
     ```julia
     Groupedisotopomers(parent::AbstractChemical, index::Int, isotope::String, isotopes::Vector{Vector{Pair{String, Int}}}, abundance::Vector)
     ```
 
-Users can parse structural chemical expressions and pairs using `parse_chemical`, and chain chemicals into transition using `ChemicalSeries`.
+Use `parse_chemical` to parse structural chemical expressions and pairs. Use `ChemicalSeries` to chain chemicals into a transition.
 
 ```julia
 parse_chemical("[H3O]+") # H3O with one positive charge
@@ -127,35 +127,35 @@ ChemicalSeries([parse_chemical("[C6H12O6+2H]2+"), ChemicalLoss(Water())]) # vect
 |[78Se]|34|78||
 |[82Se]|34|82||
 
-By default, parent elements are considered major isotopes and may be replaced by minor isotopes. For example:
+By default, parent elements represent their major isotopes and may be replaced by minor isotopes. For example:
 * `CO2` has carbon-12 and two oxygen-16 atoms, but minor isotope replacements are possible.
 * `[13C][16O]O` has carbon-13, and two oxygen-16 atoms. Carbon-13 atom and one oxygen-16 atom cannot be replaced by other isotopes.
 
-One exception is that for parent chemical of `Isotopomers`, parent elements are major isotopes and the number of replacements is restricted by the `isotopes` field.
+For the parent chemical of an `Isotopomers` object, parent elements represent major isotopes, and the number of replacements is restricted by its `isotopes` field.
 
 Users can use:
 
 ```julia
-set_elements!(element, mass, abundance; minor_name = nothing)
+set_element!(element, mass, abundance; minor_name = nothing)
 ```
 
-to add new elements with mass and natural abundances for all isotopes.
-Customized minor element names (`minor_name`) are optional.
+to add a new element with the masses and natural abundances of its isotopes.
+Custom names for minor isotopes can be provided with `minor_name`.
 
 # AbstractScheme
 
-Any chemical gain, loss, and fragmentation scheme is an instance of `AbstractScheme`. This type has three abstract subtypes:
+Any chemical gain, loss, or fragmentation scheme is an instance of `AbstractScheme`. It has three abstract subtypes:
 
-1. `AbstractElementalScheme`: a scheme containing elemental information, including isotopic replacement. The default type is `ElementalScheme{gain, T}`, where `gain` determines if it is a chemical gain (`true`) or loss (`false`). The followings are convenient constrution functions, 
+1. `AbstractElementalScheme`: a scheme containing elemental information, including isotopic replacements. The default type is `ElementalScheme{gain, T}`, where `gain` is `true` for a chemical gain and `false` for a chemical loss. The following convenience constructors are provided:
     * `ElementalScheme(gain, chemical::T) -> ElementalScheme{gain, T}`.
     * `ChemicalGain(chemical::T) -> ElementalScheme{true, T}`.
     * `ChemicalLoss(chemical::T) -> ElementalScheme{false, T}`.
-2. `AbstractStructuralScheme`: a scheme containing only structural information. This is useful for defining rule-based fragmentation.
-3. `AbstractCompleteScheme`: a scheme containing both elemental and structural information. The default type is `StructuralElementalScheme`, which is the final scheme stored in `AdductIon`.
+2. `AbstractStructuralScheme`: a scheme containing only structural information, useful for defining rule-based fragmentation.
+3. `AbstractCompleteScheme`: a scheme containing both elemental and structural information. The default type is `StructuralElementalScheme`, which is stored in `AdductIon`.
 
-In addition to single scheme, multiple schemes are wrapped in `ChemicalSchemes`.
+Multiple schemes are wrapped in `ChemicalSchemes`.
 
-Predefined chemicals used in scheme:
+Predefined chemicals used in schemes:
 
 |Chemical|Abbreviation|
 |-------------|-----------------|
@@ -177,7 +177,7 @@ Predefined chemicals used in scheme:
 |`Methylacetate`|`"MeOAc"`|
 |`Methylformate`|`"MeOFo"`|
 
-User can parse adduct representations into valid scheme using `parse_adduct`.
+Use `parse_adduct` to parse adduct representations into valid schemes.
 ```julia
 parse_adduct("[M+H]+") # (adduct = Gain_Proton, ncore = 1)
 parse_adduct(AdductParser(true), "[M+H]+") # (Gain_Proton, 1), parse into tuple instead
@@ -185,23 +185,23 @@ parse_adduct("[M+2Na-H2O]+") # (adduct = Gain_2Sodium|Loss_Water|Gain_Electron, 
 parse_adduct("[2M+OAc]-") # (adduct = Gain_Acetate, ncore = 2), two cores
 ```
 
-New abbreviation can be set using `set_schabbr!`, where the abbreviation will be converted to desired chemical during adduct parsing.
+Use `set_schabbr!` to register a new abbreviation. During adduct parsing, the abbreviation is converted to its corresponding chemical.
 ```julia
 serine = Chemical("Serine", "C3H5NO2"; abbreviation = "Ser") # new chemical Serine
 set_schabbr!("Ser", serine) # Use abbreviation Ser
 parse_adduct("[M-H-Ser]-") # (adduct = Loss_Proton|Loss_Serine, ncore = 1)
 ```
 
-For a new adduct form, user has to define `set_scheme!` for customized adduct parsing.
+To support a new adduct form, define a scheme mapping with `set_scheme!`.
 ```julia
 struct NewScheme <: AbstractStructuralScheme end # New scheme
 set_scheme!("[+NSC]+", NewScheme()) # Single charged scheme
 parse_adduct("[2M+NSC]+") # (adduct = NewScheme, ncore = 2)
 ```
 # AbstractAdductIon
-The generic adduct ion type is `Adduction`, which can be constructed from core chemical, adducts, or parsed scheme directly. 
+The generic adduct-ion type is `AdductIon`. It can be constructed from a core chemical and an adduct, or directly from a parsed scheme.
 
-An universal interface for any types of `AbstractAdductIon` is also defined, 
+The package also provides a common interface for all subtypes of `AbstractAdductIon`:
 ```julia
 core = Chemical("chm", "C6H6")
 # Default constructor is AdductIon
@@ -240,7 +240,7 @@ Attributes are interfaces for accessing properties and fields through `getchemic
 |`groupedisotopomersabundance`|`AbstractFloat`|abundance of each isotopomer in group|
 |`chemicalentity`|`AbstractChemical`|a single chemical entity representing the chemical|
 |`chemicalspecies`|`Vector{<: AbstractChemical}`|multiple chemical entities with shared properties|
-|`chemicaltransitions`|`Vector{<: AbstractChemical}`|chemical entities analyzed in each stage of instrumental analysis|
+|`chemicaltransition`|`Vector{<: AbstractChemical}`|chemical entities analyzed at each stage of instrumental analysis|
 |`inputchemical`|`AbstractChemical`|the chemical entity that is the input at the beginning of analysis|
 |`outputchemical`|`AbstractChemical`|the chemical entity that is the output at the end of analysis|
 |`analyzedchemical`|`AbstractChemical`|the chemical entity directly analyzed at the beginning of analysis|
@@ -255,16 +255,16 @@ Attributes are interfaces for accessing properties and fields through `getchemic
 |`molarmass`|`AbstractFloat`|molar mass|
 |`mz`|`AbstractFloat`|m/z, mass-to-charge ratio|
 
-Specific methods for attributes are defined for each intrinsic chemical type at different chemical levels:
+Specific attribute methods are defined for each built-in chemical type at different levels:
 * Entity Level: attribute of the corresponding chemical entity.
 * Species Level: attribute of the corresponding chemical species.
-* Transition Level: attribute of the corresponding chemical transitions.
+* Transition Level: attribute of the corresponding chemical transition.
 
 See documentation of each attribute for the exact level.
 
 ### Type-specific attributes
 
-Users can define new attributes or overload existing attribute functions for any chemical type.
+Users can define new attributes or extend existing attribute functions for any chemical type.
 
 ```julia
 abstract type Lipid <: AbstractChemical end
@@ -293,7 +293,7 @@ ncarbon(dg) == 39
 For attributes defined in only some instances, users can use `getchemicalproperty` to handle missing attributes.
 
 ```julia
-# Access the :carbonchains property through getchemicalproperty, defaulting to [chemical]
+# Access the :carbonchains property through getchemicalproperty, defaulting to [chemical].
 carbonchains(chemical::Lipid) = getchemicalproperty(chemical, :carbonchains, [chemical])
 carbonchains(dg) == [fa1, fa2]
 carbonchains(fa1) == [fa1]
@@ -311,23 +311,23 @@ push!(chemical.property, :retentiontime => 10)
 retentiontime(chemical) == 10 # Already defined as accessing :retentiontime through getchemicalproperty
 ```
 
-### Additional Atttributes of `AbstractAdductIon`
+### Additional attributes of `AbstractAdductIon`
 |Attribute|Return type|Description|
 |----|----|-----------|
 |`ioncore`|`AbstractChemical`|core chemical|
-|`ionadduct`|`AbstractAdduct`|adduct originated from ionization|
-|`ncore`|`Int`|number of core chemical|
+|`ionadduct`|`AbstractScheme`|adduct applied during ionization|
+|`ncore`|`Int`|number of core chemicals|
 
-When isotopes are involved in addut ion formation for an object `adduct_ion` where `chemical = ioncore(adduct_ion)::ChemicalType` and `adduct = ionadduct(adduct_ion)::Existing_Scheme`, there are two solutions.
-1. If `ChemicalType` is a customized chemical type, define type-specific `elementalscheme`,
+When isotope labeling affects adduct-ion formation, there are two ways to provide the correct elemental scheme. For an object `adduct_ion`, let `chemical = ioncore(adduct_ion)::ChemicalType` and `adduct = ionadduct(adduct_ion)::Existing_Scheme`.
+1. If `ChemicalType` is a custom chemical type, define type-specific methods for `elementalscheme`:
     ```julia
     elementalscheme(chemical::ChemicalType, scheme::Affected_Scheme) # Ionization
     elementalscheme(adduct_ion::AdductIon{ChemicalType, Existing_Scheme}, scheme::Affected_Scheme) # Fragmentation (Neutral Loss)
     ```
     
-    `elementalscheme` returns an elemental scheme for `scheme`, which contains correct elements. 
+    `elementalscheme` returns an elemental scheme for `scheme` with the appropriate elemental composition.
     
-    For instance, [M-Me]- of Deuterium-labeled phosphatidylcholine (as type `DLPC` for instance) may turn out to be [M-CD3]- (`ElementalScheme{false, DLMe}`) rather than [M-CH3]- (`ElementalScheme{false, Me}`) if Deuteriums are labeled on the methyl group of choline. In this case, extend `elementalscheme(::DLPC, ::ElementalScheme{false, Me})`.
+    For example, loss of `Me` from deuterium-labeled phosphatidylcholine (`DLPC`) may correspond to loss of `CD3` (`ElementalScheme{false, DLMe}`) rather than `CH3` (`ElementalScheme{false, Me}`) when the choline methyl group is labeled. In this case, extend `elementalscheme(::DLPC, ::ElementalScheme{false, Me})`.
     ```julia 
     struct PC <: AbstractChemical end # Normal PC
     struct DLPC <: AbstractChemical 
@@ -338,7 +338,7 @@ When isotopes are involved in addut ion formation for an object `adduct_ion` whe
     elementalscheme(pc::DLPC, ::ElementalScheme{false, Me}) = pc.location == :Me ? ChemicalLoss(DLMe()) : ChemicalLoss(Me())
     ionize(DLPC(:Me); adduct = ChemicalLoss(Me())) # [DLPC-DLMe]-
     ```
-    User can use the following functions to easily generating type definition:
+    The following aliases can simplify type definitions:
     * `ESType(gain, T)`: `ElementalScheme{gain, <:T}`.
     * `CLType(T)`: `ElementalScheme{false, <:T}`.
     * `CGType(gain, T)`: `ElementalScheme{true, <:T}`.
@@ -347,7 +347,7 @@ When isotopes are involved in addut ion formation for an object `adduct_ion` whe
 
     For more details, see documentation of function `completescheme`.
 
-2. If `ChemicalType` is `Chemical`, define an attribute `:structure` for the `chemical`. The attribute should be ionadduct-(scheme-scheme pairs) pairs. `structure_search` finds this attribute, and extracts the value of key `adduct`. 
+2. If `ChemicalType` is `Chemical`, define a `:structure` attribute for the chemical. Store ion-adduct-to-scheme-pair mappings in this attribute. `structure_search` looks up the mapping for the `adduct` key.
     ```julia
     chemical = Chemical("18:0 PC-d9", "C44H79NO8PD9")
     loss_me = ChemicalLoss(Chemical("Me", "CH3"; charge = -1))
@@ -358,30 +358,30 @@ When isotopes are involved in addut ion formation for an object `adduct_ion` whe
     ```
     For more details, see documentation of function `completescheme`.
 ## Isotopic abundance and Isotopologues
-There are three related functions
+Three related functions are provided:
 * `isotopicabundance`
     
-    This function computes isotopic abundance of the input elements composition (`Vector{Pair{Int}}`, `Dict`, and etc), formula, and chemical (converted to elements by `chemicalelements`). Parent elements are viewed as major isotopes, and isotopic abundances of all elements are considered in computation. To compute isotopic abundance of chemicals with all isotopes labeled intentionally and not following natural distribution, set keyword argument `ignore_isotopes` true, and only parent elements are considered.
+    This function computes isotopic abundance from an elemental composition (such as `Vector{Pair{Int}}` or `Dict`), formula, or chemical. Chemicals are converted to elements with `chemicalelements`. By default, parent elements represent major isotopes, and the calculation includes the natural abundances of all isotopes. To treat isotope labels as intentional rather than naturally distributed, set `ignore_isotopes = true`; only parent elements are then considered.
 
 * `Isotopologues`
 
-    This function computes isotopologues of formula, single chemical, MSⁿ transition (formula pairs or `ChemimcalTransition`) or multiple chemicals. Only isotopic abundance of parent elements are considered, and isotopes are viewed as intentionally labeled elements. Isotopologues can be filtered by abundance threshold. MSⁿ product can be any chemical loss/gain. 
+    This function computes isotopologues for a formula, a single chemical, an MSⁿ transition (represented by formula pairs or `ChemicalTransition`), or multiple chemicals. It considers only the isotopic abundances of parent elements and treats isotope labels as intentional. Results can be filtered by an abundance threshold. An MSⁿ product can represent any chemical loss or gain.
 
 * `TandemIsotopologues`
 
-    This function is similar to `Isotopologues`; it computes isotopologues of given precursor(s) and additionally computes the abundance of fragments with given fragmentation patterns. Both function can compute MSⁿ isotopologues. The key difference is that this function is recursive and abundance is calculated from the beginning. It generally performs slightly slower for multiple MS stages and abundance is normalized in the first stage and filtered in all stages.
+    This function is similar to `Isotopologues`: it computes isotopologues for the given precursor(s) and calculates fragment abundances for specified fragmentation patterns. Both functions support MSⁿ isotopologues. `TandemIsotopologues` calculates abundance recursively from the first stage, so it is generally slightly slower for multiple MS stages. Abundances are normalized at the first stage and filtered at every stage.
 
 Isotopologues table can be aggregated using `group_isotopologues`.
 ## MS analysis
-There are six functions to simulate ions in mass spectrometer. 
-1. `Ionization`: ionizing target chemical(s).
-2. `Isolation`: isolating target ion(s) with specific m/z values and resolution to enter the next MS stage. 
-3. `AllIons`: allow all Ions within m/z range entering the next MS stage. 
-4. `Fragmentation`: create a table of fragments with given fragmentation patterns. 
-5. `MSScan`: perform MS scan using given mass analyzer. This function creates `Spectrum` objects, which can be visualized by `plot_spectrum` and `plot_spectrum!`. Peak lists can be extracted with function `peak_table`. 
-6. `SelectedIonMonitor`: perform selected ion monitoring for target transition(s). Peak lists can be extracted with function `peak_table`. 
+Six functions are available to simulate ions in a mass spectrometer:
+1. `Ionization`: ionizes the target chemical(s).
+2. `Isolation`: selects target ion(s) at specified m/z values and resolution for the next MS stage.
+3. `AllIons`: allows all ions within an m/z range to proceed to the next MS stage.
+4. `Fragmentation`: creates a table of fragments using the specified fragmentation patterns.
+5. `MSScan`: performs a scan with the specified mass analyzer and creates `Spectrum` objects. Visualize spectra with `plot_spectrum` or `plot_spectrum!`; extract peak lists with `peak_table`.
+6. `SelectedIonMonitor`: monitors specified target transitions. Extract peak lists with `peak_table`.
 
-The following common mass analyzer are defined.
+The following common mass analyzers are provided:
 1. `Quadrupole`
 2. `QuadrupoleIon` or `QIT`
 3. `LinearIonTrap` or `LIT`
@@ -389,25 +389,25 @@ The following common mass analyzer are defined.
 5. `Orbitrap`
 6. `FourierTransformIonCyclotronResonance` or `FTICR`
 
-Default settings related to resolution, and isolation window are set for each analyzer. To create generic mass analyzer, use `MSAnalyzer`.
+Each analyzer has default settings for resolving power and isolation windows. Use `MSAnalyzer` to create a generic mass analyzer.
 ## Co-eluting isobars
-The function `CoelutingIsobars` creates an object `CoelutingIsobars` with a vector of elution function-criteria pair, a vector of ms analyzer-criteria pair, and a target chemical table.
+`CoelutingIsobars` creates an object containing elution-function/criterion pairs, mass-analyzer/criterion pairs, and a target chemical table.
 
-This object can be further aggregated using `isobar_table`.
+Use `isobar_table` to aggregate the results.
 
 ## Other Functions
-* `ischemicalequal`: whether two chemicals are chemically equivalent.
-* `match_chemical`: match detected chemicals with reference library.
-* `isotopomerize`: convert any other chemical types into `Isotopomers`-like type (including schemes).
-* `groupedisotopomerize`: convert any other chemical types into `Groupedisotopomers`-like type (including schemes).
-* `parent_element`: find the element of an isotope, e.g. "C" for "[13C]", "O" for "[18O]", and etc.
-* `major_isotope`: find the most abundunt isotope of an element, e.g. "[12C]" for "C", "[16O]" for "O", etc.
-* `minor_isotope`: find the `i`th abundunt minor isotope (excluding most abundunt isotope), e.g. "[13C]" for "C" and `i=1`, "[17O]" for "O" and `i=2`, and etc.
-* `iselement`: determine if a string is an element, e.g. "C", "O", and etc.
-* `isisotope`: determine if a string is an isotope (including element), e.g. "[13C]", "O", and etc.
-* `acrit`: create absolute criterion.
-* `rcrit`: create relative criterion.
-* `crit`: create both absolute and relative criteria.
-* `@ri_str`: real number interval.
-* `plot_resolving_power` and `plot_resolving_power!`: plot the function of m/z to resolving_power.
-* `plot_window` and `plot_window!`: plot the window function.
+* `ischemicalequal`: checks whether two chemicals are chemically equivalent.
+* `match_chemical`: matches detected chemicals against a reference library.
+* `isotopomerize`: converts a chemical type to an `Isotopomers`-like type, including schemes.
+* `groupedisotopomerize`: converts a chemical type to a `Groupedisotopomers`-like type, including schemes.
+* `parent_element`: returns an isotope's parent element, such as `"C"` for `"[13C]"` or `"O"` for `"[18O]"`.
+* `major_isotope`: returns an element's most abundant isotope, such as `"[12C]"` for `"C"` or `"[16O]"` for `"O"`.
+* `minor_isotope`: returns the `i`th most abundant minor isotope (excluding the major isotope), such as `"[13C]"` for `"C"` with `i = 1` or `"[17O]"` for `"O"` with `i = 2`.
+* `iselement`: determines whether a string represents an element, such as `"C"` or `"O"`.
+* `isisotope`: determines whether a string represents an isotope, including parent elements, such as `"[13C]"` or `"O"`.
+* `acrit`: creates an absolute criterion.
+* `rcrit`: creates a relative criterion.
+* `crit`: creates combined absolute and relative criteria.
+* `@ri_str`: constructs a real-valued interval.
+* `plot_resolving_power` and `plot_resolving_power!`: plot resolving power as a function of m/z.
+* `plot_window` and `plot_window!`: plot a window function.

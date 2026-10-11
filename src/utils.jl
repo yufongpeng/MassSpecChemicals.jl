@@ -1,13 +1,13 @@
 """
     acrit(x) -> Criteria
 
-Cnstructing a [`Criteria`](@ref) with only absolute criteria.
+Constructing a [`Criteria`](@ref) with only absolute criteria.
 """
 acrit(x) = Criteria(x, missing)
 """
     rcrit(x) -> Criteria
 
-Cnstructing a [`Criteria`](@ref) with only relative criteria. 
+Constructing a [`Criteria`](@ref) with only relative criteria.
 """
 rcrit(x) = Criteria(missing, x)
 """
@@ -15,7 +15,7 @@ rcrit(x) = Criteria(missing, x)
     crit(x::Criteria)
     crit(absolute, relative) -> Criteria
 
-Cnstructing a [`Criteria`](@ref). When a non `Criteria` value is given, it consider it as absolute criteria; when two values are given, the first one is absolute, the second one is relative.
+Constructing a [`Criteria`](@ref). When a non-`Criteria` value is given, it is treated as an absolute criterion; when two values are given, the first is absolute and the second is relative.
 """
 crit(x) = acrit(x)
 crit(x::Criteria) = x

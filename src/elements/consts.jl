@@ -247,9 +247,9 @@ elements_doc = """
 
 Access constants related to elements. 
 * `elements_mass`: atomic mass.
-* `elements_abundance`: natrural abundance.
+* `elements_abundance`: natural abundance.
 * `elements_isotopes`: possible isotopes.
-* `elements_parents`: parent element. 
+* `elements_parents`: parent element for each isotope.
 * `elements_decodes`: decode encoded string for [`parse_compound`](@ref).
 
 # Parent Elements and Major isotopes
@@ -295,7 +295,7 @@ By default, parent elements are considered as major isotopes possibly replaced b
 * CO2 has a carbon-12 and two oxygen-16, but any minor isotopes replacements are possible.
 * [13C][16O]O has a carbon-13, an oxygen-16, and an oxygen-16 possibly replaced by other minor isotopes.
 
-One exception is that in `parent` chemical of [`Isotopomers`](@ref), parent elements are major isotopes, and the number of replacement is restricted by field `isotopes`. 
+One exception is that, in the `parent` chemical of [`Isotopomers`](@ref), parent elements are treated as major isotopes, and the number of replacements is restricted by the `isotopes` field.
 """
 
 @doc elements_doc

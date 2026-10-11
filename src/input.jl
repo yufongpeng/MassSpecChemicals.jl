@@ -2,9 +2,9 @@
     parse_chemical([parser::AbstractChemicalParser,] name::AbstractString...; kwargs...) 
     parse_chemical([parser::AbstractChemicalParser,] chemical::AbstractChemicalScheme...; kwargs...) -> AbstractChemicalScheme
     parse_chemical([parser::AbstractChemicalParser,] chemicals::AbstractVector; kwargs...) 
-    parse_chemical([parser::AbstractChemicalParser,] pair::Pair kwargs...) 
+    parse_chemical([parser::AbstractChemicalParser,] pair::Pair; kwargs...)
 
-Parse chemical name and construct a chemical object using `parser`. The default parser is `ChemicalTransitionParser()` (See [`ChemicalTransitionParser`](ref)).
+Parse a chemical name and construct a chemical object using `parser`. The default parser is `ChemicalTransitionParser()`. See [`ChemicalTransitionParser`](ref).
 """
 parse_chemical(name...; kwargs...) = parse_chemical(ChemicalTransitionParser(), name...; kwargs...)
 function parse_chemical(chemicalparser::ChemicalParser, name::AbstractString; kwargs...) 
@@ -254,8 +254,8 @@ end
 """
     parse_adduct([adductparser::AbstractAdductParser,] adduct; kwargs...) 
 
-Parse string into `NamedTuple` or `Tuple` using `adductparser`. 
-The default `AdductParser` determines the number of core first (`"[2M+...]"` for 2 cores), and then searches string in `scheme_name()`, or parses the string using `adductparser.chemicalparser`.
+Parse a string into a `NamedTuple` or `Tuple` using `adductparser`.
+The default `AdductParser` first determines the number of cores (`"[2M+...]"` for 2 cores), then searches the string in `scheme_name()`, or parses it using `adductparser.chemicalparser`.
 """
 parse_adduct(adduct; kwargs...) = parse_adduct(AdductParser(), adduct; kwargs...)
 parse_adduct(adductparser::AdductParser, adduct::AbstractScheme; kwargs...) = return_adduct(adductparser, adduct, 1)

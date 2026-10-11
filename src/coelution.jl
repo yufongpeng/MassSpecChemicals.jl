@@ -7,7 +7,7 @@ coelutingisobars_filter!(ci::CoelutingIsobars) = ms_filter!(elution_filter!(ci))
 """
     elution_filter!(ci::CoelutingIsobars)
 
-Filter `ci.isobars` for each target chemicals using `ci.elution` and store the result in `ci.tables`.
+Filter `ci.isobars` for each target chemical using `ci.elution`, and store the result in `ci.tables`.
 """
 function elution_filter!(ci::CoelutingIsobars)
     exp = ci.target
@@ -62,7 +62,7 @@ end
 """
     ms_filter!(ci::CoelutingIsobars)
 
-Filter `ci.tables` for each target chemicals using `ci.msanalyzer`. No filtering for the ms stages that corresponding msanalyzer are `nothing`. 
+Filter `ci.tables` for each target chemical using `ci.msanalyzer`. No filtering is applied for any MS stage whose corresponding analyzer is `nothing`.
 """
 function ms_filter!(ci::CoelutingIsobars)
     (isempty(ci.tables) || length(ci.target) != length(ci.tables)) && throw(ArgumentError("Run `elution_filter!` first."))
@@ -86,13 +86,13 @@ end
 """
     isobar_table(ci::CoelutingIsobars; isotope = "[13C]", threshold = rcrit(1e-4), error_elution = measure_error.(ci.elution), error_mz = measure_error.(ci.msanalyzer)) -> Table
 
-A table listing all target chemicals and their isobars grouped by [`mass_shift_index`](@ref) using `isotope` as reference from `ci`.
+A table listing each target chemical and its isobars, grouped by [`mass_shift_index`](@ref) using `isotope` as the reference from `ci`.
 
 # Arguments
 * `isotope::AbstractString`: a minor isotope.
-* `threshold` can be a number or criteria, representing the lower limit of proportion of isobar affecting the target chemical. 
+* `threshold`: can be a number or a [`Criteria`](@ref), representing the lower bound on the proportion of an isobar that affects the target chemical.
 * `error_elution::Vector{<:Vector}`: error function(s) of each elution dimension.
-* `error_mz::Vector{<:Vector}`: error function(s) of each msanalyzer.
+* `error_mz::Vector{<:Vector}`: error function(s) for each MS analyzer.
 """
 function isobar_table(ci::CoelutingIsobars; 
         isotope = "[13C]",

@@ -5,7 +5,7 @@ include(joinpath("elements", "manipulation.jl"))
 """
     set_element!(element, mass, abundance; minor_name = nothing)
 
-Update or insert `element`. 
+Insert or update `element`.
 
 # Arguments
 * `element::AbstractString`: element name.
@@ -41,13 +41,13 @@ end
     chemicalformula(elements::Vector{<:Pair}; delim = "", unique = true, ischemical = true, loss = false) -> String
     chemicalformula(elements::ElementsVector; delim = "", unique = true, ischemical = true, loss = false) -> String
 
-Create chemical formula using given element-number pairs. 
+Create a chemical formula from element-count pairs.
 
 # Arguments
 * `delim::Union{String, Char}` assigns the delimiter between each element.
 * `unique::Bool` determines whether combines the elements to become unique or not.
-* `ischemical::Bool` determines whether the chemical is a chemical or a scheme. 
-* `loss::Bool` determines whether the chemical is part of chemical loss, and signs are factored out from elements. 
+* `ischemical::Bool` determines whether the input represents a chemical or a scheme.
+* `loss::Bool` determines whether the species is part of a loss process, with signs factored out from the element counts.
 """
 function chemicalformula(elements::Vector{<:Pair}; delim = "", unique = true, loss = false, ischemical = true)
     if unique 
@@ -84,10 +84,10 @@ end
 """
     chemicalelements(formula::AbstractString; loss = false) -> Vector{Pair{String, Int}}
 
-Create element-number pairs from chemical formula. 
+Create element-count pairs from a chemical formula.
 
 # Arguments
-* `loss::Bool` determines whether the chemical is part of chemical loss, and sign flips are propagated into elements.
+* `loss::Bool` determines whether the chemical participates in a loss process, with sign flips propagated into the element counts.
 """
 function chemicalelements(formula::AbstractString; loss = false, kwargs...)
     fs = split(formula, "+")

@@ -1,25 +1,25 @@
 """
     AbstractElementalScheme <: AbstractScheme end
 
-Abstract scheme contaning exact elements.
+Abstract scheme containing exact elements.
 """
 abstract type AbstractElementalScheme <: AbstractScheme end
 """
     AbstractStructuralScheme <: AbstractScheme end
 
-Abstract scheme contaning only structures.  
+Abstract scheme containing only structures.
 """
 abstract type AbstractStructuralScheme <: AbstractScheme end
 """
     AbstractCompleteScheme{T, S} <: AbstractScheme end
 
-Abstract scheme contaning both elements and structures. 
+Abstract scheme containing both elements and structures.
 """
 abstract type AbstractCompleteScheme{T, S} <: AbstractScheme end
 """
     StructuralChemicalScheme <: AbstractStructuralScheme end
 
-Abstract scheme contaning structures generating chemical entity. 
+Abstract scheme containing structures that generate a chemical entity.
 """
 abstract type StructuralChemicalScheme <: AbstractStructuralScheme end
 
@@ -40,11 +40,10 @@ struct StructuralElementalScheme{T, S} <: AbstractCompleteScheme{T, S}
 end
 
 """
-
     ElementalScheme{Bool, T<:AbstractChemical} <: AbstractElementalScheme
     ElementalScheme(gain::Bool, chemical::T) = ElementalScheme{gain, T}(chemical)
     
-Single scheme involving a chemical. The elements are fixed, and can be replaced by minor isotopes. 
+Single scheme involving a chemical change. The elements are fixed, and can be replaced by minor isotopes.
 * `ElementalScheme{false}`: chemical loss from a precursor. This product is not detected in MS; the other part of precursor is detected instead.
 * `ElementalScheme{true}`: chemical gain to a precursor. This product is not detected in MS; the merged chemical is detected instead.
 
@@ -79,7 +78,7 @@ ChemicalLoss(x) = ElementalScheme(false, x)
 """
     ChemicalSchemes{T<:AbstractScheme} <: AbstractScheme
 
-Mutiple chemical schemes.
+Multiple chemical schemes.
 
 # Fields
 * `schemes::Vector{Pair{T, Int}}`: scheme => number vector. The number v is the times of the scheme in the chemical schemes. 
@@ -92,7 +91,7 @@ end
 """
     IsotopomerizedSchemes{T<:ChemicalSchemes} <: AbstractScheme
 
-Mutiple chemical schemes with delocalized isotopic replacements.
+Multiple chemical schemes with delocalized isotopic replacements.
 
 # Fields
 * `schemes::T`: parent scheme.
@@ -220,7 +219,7 @@ const CompleteSchemes = Union{<:AbstractCompleteScheme, <:ChemicalSchemes{<:Abst
 """
     const StructuralSchemes = Union{<:AbstractStructuralScheme, <:ChemicalSchemes{<:AbstractStructuralScheme}, <:IsotopomerizedSchemes{<:ChemicalSchemes{<:AbstractStructuralScheme}}, <:Groupedisotopomerizedschemes{<:ChemicalSchemes{<:AbstractStructuralScheme}}}
 
-Stuctural schemes.
+Structural schemes.
 """
 const StructuralSchemes = Union{<:AbstractStructuralScheme, <:ChemicalSchemes{<:AbstractStructuralScheme}, <:IsotopomerizedSchemes{<:ChemicalSchemes{<:AbstractStructuralScheme}}, <:Groupedisotopomerizedschemes{<:ChemicalSchemes{<:AbstractStructuralScheme}}}
 
@@ -233,7 +232,7 @@ const ElementalSchemes = Union{<:AbstractElementalScheme, <:ChemicalSchemes{<:Ab
 
 @deprecate ChemicalSchema ChemicalSchemes
 @deprecate IsotopomerizedSchema IsotopomerizedSchemes
-@deprecate Groupedisotopomerizedschemes Groupedisotopomerizedschemes
+@deprecate Groupedisotopomerizedschema Groupedisotopomerizedschemes
 @deprecate CompleteSchema CompleteSchemes
 @deprecate StructuralSchema StructuralSchemes
 @deprecate ElementalSchema ElementalSchemes
@@ -241,6 +240,6 @@ const ElementalSchemes = Union{<:AbstractElementalScheme, <:ChemicalSchemes{<:Ab
 """
     const CompleteSchemeChemical = AbstractCompleteScheme{T, <:AbstractChemical}
 
-Complete scheme genrating chemical.
+Complete scheme generating chemical.
 """
 const CompleteSchemeChemical = AbstractCompleteScheme{T, <:AbstractChemical} where T

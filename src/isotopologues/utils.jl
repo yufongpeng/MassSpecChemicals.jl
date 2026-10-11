@@ -15,7 +15,7 @@ end
 """
     serieschemicaldata(input_chemical; precursor)
 
-Series detected chemical and dictionaries of elements.
+Series of detected chemicals and dictionaries of elements.
 """
 function serieschemicaldata(input_chemical)
     sch = AbstractChemicalScheme[]
@@ -40,7 +40,7 @@ end
 """
     seriesisotopomerize(transitions::Vector{<:AbstractChemicalScheme}, els::Vector{<:Vector{ElementsVector}})
 
-Serial isotomoperize `transitions` with detected isotpic replacements `els`.
+Apply isotopomerization serially to `transitions` using detected isotopic replacements in `els`.
 """
 function seriesisotopomerize(transitions::Vector{<:AbstractChemicalScheme}, els::Vector{<:Vector{ElementsVector}})
     @inbounds map(els) do el
@@ -144,7 +144,7 @@ end
 """
     maximal_proportion_composition(precise::Val, element_precursor::Dict, element_product, element_name_loss, prev = 1.0)
 
-Estimate maximal product isotopologue of `element_product` fragmented from `element_precursor`, and compute the vector of numbers of isotopes and proportion relative to all possible isotopologues. 
+Estimate the most abundant product isotopologue composition for `element_product` derived from `element_precursor`. Return its isotope counts and proportion among all possible isotopologues.
 """
 function maximal_proportion_composition(precise::Val, element_precursor::Dict, element_product, element_name_loss, prev = 1.0)
     max_vps = Vector{Any}(undef, length(element_product))
@@ -172,7 +172,7 @@ end
 """
     maximal_combination_composition(precise::Val, element_precursor::Dict, element_product, element_name_loss, prev = 1.0)
 
-Estimate maximal product isotopologue of `element_product` fragmented from `element_precursor`, and compute the vector of numbers of isotopes and the number of combinations. 
+Estimate the most abundant product isotopologue composition for `element_product` derived from `element_precursor`. Return its isotope counts and the number of possible combinations.
 """
 function maximal_combination_composition(precise::Val, element_precursor::Dict, element_product, element_name_loss, prev = 1.0)
     max_vps = Vector{Any}(undef, length(element_product))
@@ -355,14 +355,14 @@ deltammi(isotopes::Vector{String}, v) = sum((elements_mass()[x] - elements_mass(
 """
     nmmi(elements::Vector{String}, numbers::Vector{Int}) -> AbstractFloat
 
-Mass of `elements` and `numbers`.
+Total mass of the specified `elements`, weighted by their corresponding values in `numbers`.
 """
 nmmi(isotopes::Vector{String}, v) = sum(elements_mass()[x] * n for (x, n) in zip(isotopes, v))
 
 """
     update_abundance(precise::Val, prev_abundance, old_element, new_element, nold, nnew) -> AbstractFloat
 
-Update of `prev_abundance` after one `old_element` replaced by `new_element`. `nold` and `nnew` are number of elements before replacing.
+Update `prev_abundance` after replacing one `old_element` with `new_element`. `nold` and `nnew` are the respective element counts before replacement.
 """
 function update_abundance(precise::Val, prev_abundance::T, old_element, new_element, nold, nnew) where T
     x = get(elements_abundance(), old_element, one(T))
@@ -380,7 +380,7 @@ update_abundance1(::Val{false}, prev_abundance, x, y, nold, nnew) = prev_abundan
 """
     update_proportion(precise::Val, prev_proportion, nold, nnew) -> AbstractFloat
     
-Update of `prev_proportion` after one element replacing. `nold` and `nnew` are number of elements before replacing.
+Update `prev_proportion` after replacing one element with another. `nold` and `nnew` are the respective element counts before replacement.
 """
 update_proportion(::Val{true}, prev_proportion, nold, nnew) = prev_proportion * (big(nold) / (nnew + 1)) 
 update_proportion(::Val{false}, prev_proportion, nold, nnew) = prev_proportion * (nold / (nnew + 1)) 
@@ -388,7 +388,7 @@ update_proportion(::Val{false}, prev_proportion, nold, nnew) = prev_proportion *
 """
     update_inverse_proportion(precise::Val, prev_inverse_proportion, nold, nnew) -> AbstractFloat
 
-Update of `prev_inverse_proportion` after one element replacing. `nold` and `nnew` are number of elements before replacing.
+Update `prev_inverse_proportion` after replacing one element with another. `nold` and `nnew` are the respective element counts before replacement.
 """
 update_inverse_proportion(::Val{true}, prev_proportion, nold, nnew) = prev_proportion * (big(nnew + 1) / nold) 
 update_inverse_proportion(::Val{false}, prev_proportion, nold, nnew) = prev_proportion * ((nnew + 1) / nold) 
