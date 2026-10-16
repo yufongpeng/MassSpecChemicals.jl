@@ -8,6 +8,7 @@ function isotopologues_elements_ms1(precise::Val, input_chemical, element_dictio
     abs_charge = max(1, abs(net_charge))
     msfix -= net_charge * ME
     msfix /= abs_charge
+    abundance = isvar(abundance) ? abundance.val : abundance
     if isempty(element_dictionary) 
         chemical = [isotopomerize(input_chemical, ElementsVector(String[], Int[]))]
         mass = [msfix]

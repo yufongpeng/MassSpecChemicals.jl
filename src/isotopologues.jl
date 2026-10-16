@@ -220,10 +220,10 @@ Isotopologues(::Isobars; kwargs...) = throw(ArgumentError("`Isobars` is not supp
 Isotopologues(::Isotopomers; kwargs...) = throw(ArgumentError("`Isotopomers` is not supported by `Isotopologues.`"))
 
 """
-    TandemIsotopologues(chemical; chemicalparser, product = nothing, proportion = nothing, abundance = 1, abtype = :max, threshold = rcrit(1e-4), precise = false, sort = false)
-    TandemIsotopologues(formula_name; chemicalparser, product = nothing, proportion = nothing, abundance = 1, abtype = :max, threshold = rcrit(1e-4), precise = false, sort = false)
-    TandemIsotopologues(chemicaltransition; chemicalparser, product = nothing, proportion = nothing, abundance = 1, abtype = :max, threshold = rcrit(1e-4), precise = false, sort = false)
-    TandemIsotopologues(formula_name_pair; chemicalparser, product = nothing, proportion = nothing, abundance = 1, abtype = :max, threshold = rcrit(1e-4), precise = false, sort = false)
+    TandemIsotopologues(chemical; chemicalparser, product = nothing, proportion = nothing, abundance = Var(1), abtype = :max, threshold = rcrit(1e-4), precise = false, sort = false)
+    TandemIsotopologues(formula_name; chemicalparser, product = nothing, proportion = nothing, abundance = Var(1), abtype = :max, threshold = rcrit(1e-4), precise = false, sort = false)
+    TandemIsotopologues(chemicaltransition; chemicalparser, product = nothing, proportion = nothing, abundance = Var(1), abtype = :max, threshold = rcrit(1e-4), precise = false, sort = false)
+    TandemIsotopologues(formula_name_pair; chemicalparser, product = nothing, proportion = nothing, abundance = Var(1), abtype = :max, threshold = rcrit(1e-4), precise = false, sort = false)
     TandemIsotopologues(tbl; threading = nothing, chemicalparser, threshold = rcrit(1e-4), kwargs...)
     TandemIsotopologues(chemicals; kwargs...)
 
@@ -242,7 +242,8 @@ For MSⁿ transitions, products can be any scheme, including `<:AbstractStructur
 
 # Keyword Arguments
 * `chemicalparser::AbstractChemicalParser`: parser for `formula_name`, `formula_name_pair` or `product`. The default parser is `ChemicalTransitionParser(ChemicalExpressionParser(; charge = 1, loss = 0, gain = 0))` (See [`ChemicalTransitionParser`](@ref)).
-* `abundance` sets the abundance of the precursor isotope specified by `abtype`. It can be a vector when the input is MSⁿ transition, and abundances are matched to MS stages from the end (the last element matches to the last MS stage).
+* `abundance` sets the abundance of the precursor isotope specified by `abtype`. It can be a vector when the input is MSⁿ transition, and abundances are matched to MS stages from the end (the last element matches to the last MS stage). 
+Default `Var(x)` indicates the abundance is obtained directly from input data. If abundance data is not available, it sets to `x`.
 If the length of `abundance` is smaller, the remaining elements are filled using `transmission`. It can also be column `Abundance` of `tbl`.
 * `abtype`.
     * `:max`: the most abundant isotopologue.
@@ -268,10 +269,10 @@ If the length of `abundance` is smaller, the remaining elements are filled using
 
 !!! note "Special precaution for applying to MSⁿ transition with chemical gain"
     After any [`ChemicalGain`](@ref), the subsequent products are considered randomly fragmented from the gained precursor without considering any structure introduced by chemical gain.
-"""
+""" 
 function TandemIsotopologues(input_chemical::AbstractChemical; 
             chemicalparser = ChemicalTransitionParser(ChemicalExpressionParser(; charge = 1, loss = 0, gain = 0)),
-            abundance = 1, 
+            abundance = Var(1), 
             transmission = 1, 
             abtype = Max(), 
             threshold = rcrit(1e-4), 
@@ -428,7 +429,7 @@ end
 
 TandemIsotopologues(input_chemical::Pair; 
             chemicalparser = ChemicalTransitionParser(ChemicalExpressionParser(; charge = 1, loss = 0, gain = 0)),
-            abundance = 1, 
+            abundance = Var(1), 
             transmission = 1, 
             abtype = Max(), 
             threshold = rcrit(1e-4), 
@@ -445,7 +446,7 @@ TandemIsotopologues(input_chemical::Pair;
 
 TandemIsotopologues(input_chemical::AbstractString; 
             chemicalparser = ChemicalTransitionParser(ChemicalExpressionParser(; charge = 1, loss = 0, gain = 0)),
-            abundance = 1, 
+            abundance = Var(1), 
             transmission = 1, 
             abtype = Max(), 
             threshold = rcrit(1e-4), 

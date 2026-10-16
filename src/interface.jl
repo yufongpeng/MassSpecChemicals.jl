@@ -168,6 +168,10 @@ Broadcast.broadcastable(x::AbstractScheme) = Ref(x)
 
 *(x::Criteria, y::Number) = Criteria(x.aval * y, x.rval * y)
 /(x::Criteria, y::Number) = Criteria(x.aval / y, x.rval / y)
+*(x::Var, y::Number) = Var(x.val * y)
+/(x::Var, y::Number) = Var(x.val / y)
+/(x::Var, y::Var) = x.val / y.val
+iterate(x::Var, i = 1) = i == 1 ? x.val : nothing
 
 +(x::IntervalSet, y::Number) = IntervalSet([r + y for r in x.items])
 -(x::IntervalSet, y::Number) = IntervalSet([r - y for r in x.items])

@@ -20,7 +20,7 @@ itit4 = TandemIsotopologues(string("[", chemicalformula(cps), "-H]-") => "-C3H5N
 itit5 = TandemIsotopologues(ChemicalSeries(ips[1], AdductIon(ioncore(ips[1]).fa1, "[M-H]-")); abtype = :total, threshold = crit(1e-8, 1e-8), transmission = 0.3, sort = true)
 itit6 = TandemIsotopologues(ChemicalSeries(ipsi1[3], LossSerine(), SN1Acyl()); abtype = :total, abundance = 1e5, threshold = crit(1e1, 1e-2), transmission = 0.5, precise = true, sort = true)
 
-itit7 = Isotopologues("[S8]2-" => "[S7]-"; abtype = :total, sort = true)
+itit7 = Isotopologues("[S8]2-" => "[S7]-"; abundance = MSC.Var(1) * 10, abtype = :total, sort = true)
 itit8 = Isotopologues("[C2H5[13C]OO]-" => "[C2H5]-"; abtype = :total, sort = true)
 itit9 = Isotopologues("[C2H5[13C]OO]-" => "-[13C]O2"; abtype = :total, sort = true)
 itit10 = Isotopologues("[C2H5[12C]OO]-" => "-[12C]O2"; abtype = :total, sort = true)

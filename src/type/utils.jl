@@ -51,3 +51,7 @@ struct Max <: AbstractAbundance end
 struct List <: AbstractAbundance end 
 struct Total <: AbstractAbundance end 
 struct Raw <: AbstractAbundance end 
+
+struct Var{T}
+    val::T
+end

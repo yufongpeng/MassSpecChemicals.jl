@@ -3,14 +3,14 @@
 function isotopologues_elements_ms2(precise::Val, precursor, product_sch, product, it1, element_precursor_dictionary, element_precursor, element_product, abundance, abtype, proportion, threshold, iter, gain, loss, sort; normalize = true)
     net_charge = charge(product)
     abs_charge = max(1, abs(net_charge))
-    if isempty(element_product)
-        throw(ArgumentError("Product chemical must contain at least one element."))
-    elseif gain 
+    isempty(element_product) && throw(ArgumentError("Product chemical must contain at least one element."))
+    threshold = crit(threshold)
+    if gain 
         msfix = get_fixmass(element_product)
         element_dictionary = get_element_dictionary(element_precursor)
-        proportion_cutoff = minimum(makecrit_value(crit(threshold), abundance)) * isotopicabundance(element_precursor) / abundance
+        proportion_cutoff = isvar(abundance) ? minimum(makecrit_value(threshold, isotopicabundance(element_precursor))) : minimum(makecrit_value(threshold, abundance)) * isotopicabundance(element_precursor) / abundance
         it2 = isotopologues_elements_ms1(precise, product_sch, element_dictionary, msfix, 1, Total(), proportion_cutoff, iter, sort; net_charge)
-        abundance_cutoff = minimum(makecrit_value(crit(threshold), abundance)) * maximum(it2.Abundance) * maximum(it1.Abundance) / abundance
+        abundance_cutoff = isvar(abundance) ? minimum(makecrit_value(threshold, maximum(it2.Abundance) * maximum(it1.Abundance))) : minimum(makecrit_value(threshold, abundance)) * maximum(it2.Abundance) * maximum(it1.Abundance) / abundance
         data = (
             Vector{Vector{Any}}(undef, length(precursor)),
             Vector{Vector{float(Int)}}(undef, length(precursor)),
@@ -43,7 +43,7 @@ function isotopologues_elements_ms2(precise::Val, precursor, product_sch, produc
         @inbounds ab_dict = map(eachindex(IndexLinear(), precursor)) do idp
             maximal_combination_composition(precise, it1.Element[idp], element_product_vp, leftover, it1.Abundance[idp] * proportion * it1.Preab[idp])
         end
-        proportion_cutoff = maximum(first, ab_dict) * minimum(makecrit_value(crit(threshold), abundance)) / abundance
+        proportion_cutoff = isvar(abundance) ? minimum(makecrit_value(threshold, maximum(first, ab_dict))) : maximum(first, ab_dict) * minimum(makecrit_value(threshold, abundance)) / abundance
         if iter 
             fn_main = isotopologues_elements_single_ms2_iter
             fn_push = sort ? push_data_iter_sort! : push_data_iter!
@@ -87,7 +87,7 @@ function isotopologues_elements_ms2(precise::Val, precursor, product_sch, produc
         @inbounds ab_dict = map(eachindex(IndexLinear(), precursor)) do idp 
             maximal_proportion_composition(precise, it1.Element[idp], element_product_vp, leftover, it1.Abundance[idp] * proportion)
         end
-        proportion_cutoff = maximum(first, ab_dict) * minimum(makecrit_value(crit(threshold), abundance)) / abundance 
+        proportion_cutoff = isvar(abundance) ? minimum(makecrit_value(threshold, maximum(first, ab_dict))) : maximum(first, ab_dict) * minimum(makecrit_value(threshold, abundance)) / abundance 
         if iter 
             fn_main = isotopologues_elements_single_ms2_iter
             fn_push = sort ? push_data_iter_sort! : push_data_iter!

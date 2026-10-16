@@ -12,7 +12,7 @@
     @test isapprox(itit3.Abundance2[2], itit4.Abundance2[2])
     @test isapprox(itit7.Abundance2[10],
         MSC.elements_abundance()["S"] ^ 6 * MSC.elements_abundance()["[33S]"] * MSC.elements_abundance()["[34S]"] * 
-        factorial(7, 5) 
+        factorial(7, 5) * 10
     )
     @test isapprox(itit8.Abundance2[2],
         MSC.elements_abundance()["[13C]"] ^ 1 * MSC.elements_abundance()["C"] ^ 1 * MSC.elements_abundance()["H"] ^ 5 * MSC.elements_abundance()["O"] ^ 2 * 2

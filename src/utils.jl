@@ -418,3 +418,6 @@ return_abundance(::Val{false}, x) = convert(float(Int), x)
 
 precise_exp(::Val{true}, y, x) = big(y) ^ x
 precise_exp(::Val{false}, y, x) = y ^ x
+
+isvar(::Var) = true
+isvar(x) = false
