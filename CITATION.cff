@@ -16,6 +16,7 @@ authors:
       - The Metabolomics Core Laboratory, NTU Centers of Genomic and Precision Medicine, National Taiwan University, Taipei, Taiwan.
     orcid: 'https://orcid.org/0000-0002-3597-8047'
 url: 'https://github.com/yufongpeng/MassSpecChemicals.jl'
+doi: 'https://doi.org/10.5281/zenodo.23313505'
 repository-code: 'https://github.com/yufongpeng/MassSpecChemicals.jl'
 abstract: Representing chemicals and ions in mass spectrometry.
 keywords:

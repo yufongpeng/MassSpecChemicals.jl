@@ -2,6 +2,7 @@
 
 [![Build Status](https://github.com/yufongpeng/MassSpecChemicals.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/yufongpeng/MassSpecChemicals.jl/actions/workflows/CI.yml?query=branch%3Amaster)
 [![Coverage](https://codecov.io/gh/yufongpeng/MassSpecChemicals.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/yufongpeng/MassSpecChemicals.jl)
+[![DOI](https://zenodo.org/badge/823522068.svg)](https://doi.org/10.5281/zenodo.23313505)
 
 A Julia package for representing chemicals and ions formed in mass spectrometers (MS).
 
