@@ -100,7 +100,7 @@ function chemicalelements(formula::AbstractString; loss = false, kwargs...)
             isempty(fn) || push!(v, [elements_decodes()[k] => v * (loss ? 1 : -1) for (k, v) in parse_compound(encode_isotopes(fn))])
         end
     end
-    vcat(v...)::Vector{Pair{String, Int}}
+    collect(Pair{String, Int}, Iterators.flatten(v))::Vector{Pair{String, Int}}
 end
 
 function encode_isotopes(formula::AbstractString)
@@ -173,6 +173,7 @@ reverse_elements(x::Vector{<:Pair}, loss) = loss ? [k => -v for (k, v) in x] : x
 reverse_elements(x::Dict, loss) = loss ? Dict(k => -v for (k, v) in x) : x
 reverse_elements(x::Dictionary, loss) = loss ? Dictionary(keys(x), [-v for v in x]) : x
 
+chemicalelements(cc::Electron; loss = false, kwargs...) = cc.elements
 chemicalelements(cc::Chemical; loss = false, kwargs...) = reverse_elements(cc.elements, loss)
 chemicalelements(cc::FormulaChemical; loss = false, kwargs...) = reverse_elements(cc.elements, loss)
 chemicalelements(isobars::Isobars; kwargs...) = chemicalelements(chemicalentity(isobars); kwargs...)::Vector{Pair{String, Int}}
@@ -194,7 +195,7 @@ function chemicalelements(x::IsotopomerizedSchemes; loss = false, kwargs...)
     elements = dictionary_elements(Dictionary, chemicalelements(chemicalparent(x); kwargs..., loss = false))
     reverse_elements(isotopeelements_vec(elements, x.isotopes), loss)
 end
-chemicalelements(x::ChemicalSchemes; kwargs...) = vcat((repeat(chemicalelements(k; kwargs...), v) for (k, v) in zip(x.schemes, x.number))...)
+chemicalelements(x::ChemicalSchemes; kwargs...) = collect(Pair{String, Int}, Iterators.flatten(repeat(chemicalelements(k; kwargs...), v) for (k, v) in zip(x.schemes, x.number)))
 function chemicalelements(x::Groupedisotopomerizedschemes; loss = false, kwargs...) 
     elements = dictionary_elements(Dictionary, chemicalelements(chemicalparent(x); kwargs..., loss = false))
     reverse_elements(isotopeelements_vec(elements, x.isotopes[begin]), loss)

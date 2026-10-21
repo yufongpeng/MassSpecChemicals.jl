@@ -32,7 +32,7 @@ function serieschemicaldata(input_chemical)
         sch[i], det[i], unique_elements(Vector{Pair}, elements_precursor)
     end
     for (s, d, e) in v 
-        all(x -> last(x) >=0, e) || throw(ArgumentError("Product can only contain elements restricted by precursor."))
+        all(x -> last(x) >= 0, e) || throw(ArgumentError("Product can only contain elements restricted by precursor."))
     end
     v
 end
