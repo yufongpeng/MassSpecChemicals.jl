@@ -4,50 +4,52 @@
     parse_chemical([parser::AbstractChemicalParser,] chemicals::AbstractVector; kwargs...) 
     parse_chemical([parser::AbstractChemicalParser,] pair::Pair; kwargs...)
 
-Parse a chemical name and construct a chemical object using `parser`. The default parser is `ChemicalTransitionParser()`. See [`ChemicalTransitionParser`](ref).
+Parse a chemical name and construct a chemical object using `parser`. The default parser is `ChemicalTransitionParser()`. See [`ChemicalTransitionParser`](ref), and documentation of each parser.
 """
 parse_chemical(name...; kwargs...) = parse_chemical(ChemicalTransitionParser(), name...; kwargs...)
-function parse_chemical(chemicalparser::ChemicalParser, name::AbstractString; kwargs...) 
-    property = copy(chemicalparser.property)
-    ks = first.(property)
+function parse_chemical(chemicalparser::ChemicalParser, name::AbstractString; new_attr = true, kwargs...) 
+    attribute = copy(chemicalparser.attribute)
+    ks = first.(attribute)
     for (k, v) in kwargs
         i = findfirst(==(k), ks)
         if isnothing(i) && !isnothing(v)
-            push!(property, k => v)
+            push!(attribute, k => v)
             push!(ks, k)
         elseif isnothing(i)
             continue
         else
-            property[i] = k => v 
+            attribute[i] = k => v 
         end
     end
-    filter!(x -> !isnothing(last(x)), property)
-    i = findfirst(==(:formula), first.(property))
+    filter!(x -> !isnothing(last(x)), attribute)
+    i = findfirst(==(:formula), first.(attribute))
     if isnothing(i)
-        i = findfirst(==(:elements), first.(property))
+        i = findfirst(==(:elements), first.(attribute))
         isnothing(i) && throw(ArgumentError("No formula or elements are given"))
     end 
-    fe = last(property[i])
-    deleteat!(property, i)
-    Chemical(name, chemicalelements(fe), property)
+    fe = last(attribute[i])
+    deleteat!(attribute, i)
+    elements = chemicalelements(fe)
+    (isempty(attribute) && !new_attr) ? Chemical(name, elements, nothing) : Chemical(name, elements, attribute)
 end
 
-function parse_chemical(chemicalparser::FormulaChemicalParser, name::AbstractString; kwargs...) 
-    property = copy(chemicalparser.property)
-    ks = first.(property)
+function parse_chemical(chemicalparser::FormulaChemicalParser, name::AbstractString; new_attr = true, kwargs...) 
+    attribute = copy(chemicalparser.attribute)
+    ks = first.(attribute)
     for (k, v) in kwargs
         i = findfirst(==(k), ks)
         if isnothing(i) && !isnothing(v)
-            push!(property, k => v)
+            push!(attribute, k => v)
             push!(ks, k)
         elseif isnothing(i)
             continue
         else
-            property[i] = k => v 
+            attribute[i] = k => v 
         end
     end
-    filter!(x -> !isnothing(last(x)), property)
-    FormulaChemical(chemicalelements(name), property)
+    filter!(x -> !isnothing(last(x)), attribute)
+    elements = chemicalelements(name)
+    (isempty(attribute) && !new_attr) ? FormulaChemical(elements, nothing) : FormulaChemical(elements, attribute)
 end
 
 function parse_adduction(chemicalparser, name, core; chemicalgain = nothing, kwargs...)
@@ -279,4 +281,3 @@ parse_adduct(::AdductParser{true}, x::NamedTuple; kwargs...) = Tuple(x)
 
 # parse_adduct(adduct::AbstractChemicalScheme) = (adduct, 1)
 # parse_adduct(::AbstractAdductParser, adduct::AbstractChemicalScheme) = (adduct, 1)
-

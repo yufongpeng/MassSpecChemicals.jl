@@ -17,11 +17,11 @@
         @test chemicalelements(ES("-C6H12", ["C" => -6, "H" => -12])) == chemicalelements(FS("C6H12", "C6H12"); loss = true)
         @test chemicalname(ES("-C6H12", ["C" => -6, "H" => -12])) == chemicalname(FS("-C6H12", "-C6H12"))
     end
-    @testset "getchemicalproperty" begin
-        @test getchemicalproperty(cglc, :name, "MISSING") == "Glucose"
-        @test getchemicalproperty(cglc, :doesnotexist, "DEFAULT") == "DEFAULT"
-        @test getchemicalproperty(icglc[1], :charge, 0) == charge(ioncore(icglc[1]))
-        @test getchemicalproperty(icglc[1], :abbreviation, "DEFAULT") == chemicalabbr(ioncore(icglc[1]))
+    @testset "getchemicalattr" begin
+        @test getchemicalattr(cglc, :name, "MISSING") == "Glucose"
+        @test getchemicalattr(cglc, :doesnotexist, "DEFAULT") == "DEFAULT"
+        @test getchemicalattr(icglc[1], :charge, 0) == charge(ioncore(icglc[1]))
+        @test getchemicalattr(icglc[1], :abbreviation, "DEFAULT") == chemicalabbr(ioncore(icglc[1]))
     end
 
     @testset "Basic chemical attributes" begin
@@ -84,13 +84,13 @@
 
     @testset "Scheme and loss/gain attributes" begin
         @test chemicalname(lossserine) == "Loss_Serine"
-        @test chemicalabbr(lossserine) == "-Ser"
+        @test chemicalabbr(lossserine) == "[-Ser]"
         @test chemicalformula(lossserine) == chemicalformula(chemicalelements(lossserine); ischemical = false)
         @test MSC.dictionary_elements(chemicalelements(lossserine)) == Dict("C" => -3, "H" => -5, "N" => -1, "O" => -2)
         @test isempty(isotopomersisotopes(lossserine))
 
         @test chemicalname(losshserine) == "Loss_[Serine+H]+"
-        @test chemicalabbr(losshserine) == "-[Ser+H]+"
+        @test chemicalabbr(losshserine) == "[-Ser-H]-"
         @test chemicalformula(losshserine) == chemicalformula(chemicalelements(losshserine); ischemical = false)
         @test isempty(isotopomersisotopes(losshserine))
 
@@ -100,7 +100,7 @@
         @test isempty(isotopomersisotopes(losshserinegainwater))
 
         @test chemicalname(lossserine; loss = true) == "Gain_Serine"
-        @test chemicalabbr(lossserine; loss = true) == "+Ser"
+        @test chemicalabbr(lossserine; loss = true) == "[+Ser]"
 
         @test chemicalname(losshserinegaincolossco) == "Loss_[Serine+H]+|+[CO]-[CO]"
         @test chemicalabbr(losshserinegaincolossco) == "[-Ser-H+CO-CO]-"
@@ -129,7 +129,7 @@
         @test chemicalformula(ps) == "C6H12NO8PC18H35OC20H31O"
         @test chemicalname(ips[1]) == "[(PS 18:0/20:4)-Ser-H]-"
         @test chemicalname(ionadduct(first(ipsi1))) == "Loss_[Serine[D3,13C3]+H]+"
-        @test chemicalabbr(ionadduct(first(ipsi1))) == "-[Ser[D3,13C3]+H]+"
+        @test chemicalabbr(ionadduct(first(ipsi1))) == "[-Ser[D3,13C3]-H]-"
         @test charge(ips[1]) == -1
 
         @test chemicalentity(Serine()) == Serine()
@@ -143,7 +143,7 @@
 
     @testset "Structural scheme attributes" begin
         @test chemicalname(LossProtonSerine()) == "Loss_[Serine+H]+"
-        @test chemicalabbr(LossProtonSerine()) == "-[Ser+H]+"
+        @test chemicalabbr(LossProtonSerine()) == "[-Ser-H]-"
         @test chemicalname(SN1Acyl()) == "Sn1_Acyl"
         @test chemicalabbr(SN1Acyl()) == "Sn1"
         @test chemicalname(SN2Acyl()) == "Sn2_Acyl"
@@ -196,8 +196,8 @@
         @test @test_noerror test_show(it3.Chemical[2])
         @test chemicalname(it3.Chemical[2]) == string(chemicalname(chemicalparent(it3.Chemical[2])), "[13C]")
         @test chemicalabbr(it3.Chemical[2]) == string(chemicalabbr(chemicalparent(it3.Chemical[2])), "[13C]")
-        @test chemicalname(itit14.Chemical[2]; bracket = true) == chemicalabbr(itit14.Chemical[2])
-        @test chemicalname(itit13.Chemical[4]; bracket = true) == chemicalabbr(itit13.Chemical[4])
+        @test chemicalname(itit14.Chemical[2]; bracket = true) == replace(chemicalname(itit13.Chemical[4]; bracket = true), "[CO]+" => "[CO]", "[CO2]" => "[CO2]-", "[18O]" => "[13C]")
+        @test chemicalabbr(itit14.Chemical[2]) == replace(chemicalabbr(itit13.Chemical[4]), "[-CO]-" => "[-CO]", "[+CO2[18O]]" => "[+CO2[13C]]-")
         @test chemicalformula(it3.Chemical[2]) == chemicalformula(chemicalelements(it3.Chemical[2]); ischemical = true)
         @test MSC.gain_elements(["D" => 5], isotopomersisotopes(it3.Chemical[2])) == filter(x -> !iselement(first(x)) && last(x) != 0, chemicalelements(it3.Chemical[2]))
         @test chemicalparent(it3.Chemical[2]) == it3.Chemical[2].parent
@@ -211,8 +211,9 @@
         @test @test_noerror test_show(git3.Chemical[2])
         @test chemicalname(git3.Chemical[2]) == string(chemicalname(chemicalparent(git3.Chemical[2])), "(+1)")
         @test chemicalabbr(git3.Chemical[2]) == chemicalname(git3.Chemical[2])
-        @test chemicalname(gitit14.Chemical[2]; bracket = true) == chemicalabbr(gitit14.Chemical[2])
-        @test chemicalname(gitit13.Chemical[4]; bracket = true) == chemicalabbr(gitit13.Chemical[4])
+        @test chemicalname(gitit14.Chemical[2]; bracket = true) == replace(chemicalname(gitit13.Chemical[2]; bracket = true), "[CO]+" => "[CO]", "[CO2]" => "[CO2]-")
+        @test chemicalabbr(gitit14.Chemical[4]) == replace(chemicalabbr(gitit13.Chemical[4]), "[-CO(-1)]-" => "[-CO(-1)]", "[+CO2]" => "[+CO2]-")
+
         @test chemicalformula(first(chemicalspecies(git3.Chemical[2]))) == chemicalformula(chemicalelements(first(chemicalspecies(git3.Chemical[2]))))
         @test MSC.gain_elements(["D" => 5], isotopomersisotopes(first(chemicalspecies(git3.Chemical[2])))) == filter(!iselement ∘ first, chemicalelements(first(chemicalspecies(git3.Chemical[2]))))
         @test groupedisotopomersabundance(git3.Chemical[2]) == git3.Chemical[2].abundance

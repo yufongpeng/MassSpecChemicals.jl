@@ -25,6 +25,7 @@ abstract type StructuralChemicalScheme <: AbstractStructuralScheme end
 
 struct RandomProductScheme <: AbstractStructuralScheme end
 
+abstract type AbstractSchemeWrapper <: AbstractScheme end
 """
     StructuralElementalScheme{T, S} <: AbstractCompleteScheme{T, S} end
 
@@ -53,6 +54,8 @@ Single scheme involving a chemical change. The elements are fixed, and can be re
 Single isotopomer can be set by using [`Isotopomers`](@ref) as field `chemical`. 
 Elemental scheme can be redirected to the corresponding isotopic labeled scheme in [`AdductIon`](@ref) by dispatching on core chemical and existing scheme, 
 or looking up the `property` for generic [`Chemical`](@ref).
+
+For any types `T` being entry of `StandardChemical` or having zero-argument method, calling `ElementalScheme(::Bool, T)` gives the scheme with `StandardChemical[T]` or `T()`.
 """
 struct ElementalScheme{Bool, T<:AbstractChemical} <: AbstractElementalScheme
     chemical::T
@@ -60,6 +63,8 @@ struct ElementalScheme{Bool, T<:AbstractChemical} <: AbstractElementalScheme
         new{gain, T}(x)
     end
 end
+
+ElementalScheme(gain::Bool, ::Type{T}) where {T <: AttributedChemical} = ElementalScheme(gain, haskey(StandardChemical, T) ? StandardChemical[T] : T())
 
 """
     ChemicalGain(chemical)
@@ -76,20 +81,20 @@ Chemical loss of `chemical`, i.e. `ElementalScheme(false, chemical)`. See [`Elem
 ChemicalLoss(x) = ElementalScheme(false, x)
 
 """
-    ChemicalSchemes{T<:AbstractScheme} <: AbstractScheme
+    ChemicalSchemes{T<:AbstractScheme} <: AbstractSchemeWrapper
 
 Multiple chemical schemes.
 
 # Fields
 * `schemes::Vector{Pair{T, Int}}`: scheme => number vector. The number v is the times of the scheme in the chemical schemes. 
 """
-struct ChemicalSchemes{T<:AbstractScheme} <: AbstractScheme
+struct ChemicalSchemes{T<:AbstractScheme} <: AbstractSchemeWrapper
     schemes::Vector{T}
     number::Vector{Int}
 end 
 
 """
-    IsotopomerizedSchemes{T<:ChemicalSchemes} <: AbstractScheme
+    IsotopomerizedSchemes{T<:ChemicalSchemes} <: AbstractSchemeWrapper
 
 Multiple chemical schemes with delocalized isotopic replacements.
 
@@ -97,7 +102,7 @@ Multiple chemical schemes with delocalized isotopic replacements.
 * `schemes::T`: parent scheme.
 * `isotopes::ElementsVector`: delocalized isotopic replacements.
 """
-struct IsotopomerizedSchemes{T<:ChemicalSchemes} <: AbstractScheme 
+struct IsotopomerizedSchemes{T<:ChemicalSchemes} <: AbstractSchemeWrapper 
     parent::T
     isotopes::ElementsVector
 end
@@ -125,7 +130,7 @@ function IsotopomerizedSchemes(chemical::AbstractScheme, fullelements::Dict)
 end
 
 """
-    Groupedisotopomerizedschemes{T<:AbstractScheme, N} <: AbstractScheme
+    Groupedisotopomerizedschemes{T<:AbstractScheme, N} <: AbstractSchemeWrapper
 
 Isotopomerized schemes grouped by mass-shift index.
 
@@ -136,7 +141,7 @@ Isotopomerized schemes grouped by mass-shift index.
 * `isotopes::Vector{ElementsVector}`: Isotopes-number pairs of isotopic replacements of each isotopomers.
 * `abundance::Vector{N}`: abundance of each isotopomers.
 """
-struct Groupedisotopomerizedschemes{T<:AbstractScheme, N} <: AbstractScheme
+struct Groupedisotopomerizedschemes{T<:AbstractScheme, N} <: AbstractSchemeWrapper
     parent::T 
     index::Int
     isotope::String
@@ -230,7 +235,7 @@ Elemental schemes.
 """
 const ElementalSchemes = Union{<:AbstractElementalScheme, <:ChemicalSchemes{<:AbstractElementalScheme}, <:IsotopomerizedSchemes{<:ChemicalSchemes{<:AbstractElementalScheme}}, <:Groupedisotopomerizedschemes{<:ChemicalSchemes{<:AbstractElementalScheme}}}
 
-@deprecate ChemicalSchema ChemicalSchemes
+@deprecate ChemicalSchema ChemicalSchemes # del
 @deprecate IsotopomerizedSchema IsotopomerizedSchemes
 @deprecate Groupedisotopomerizedschema Groupedisotopomerizedschemes
 @deprecate CompleteSchema CompleteSchemes

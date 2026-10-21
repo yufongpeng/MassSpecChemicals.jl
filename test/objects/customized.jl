@@ -104,10 +104,10 @@ function chemicalelements(m::FattyAcid; kwargs...)
         "O"     => 2
     ])
 end
-chemicaln13C(m::FattyAcid; kwargs...) = getchemicalproperty(m, :n13C, 0)
-chemicalncb(m::FattyAcid; kwargs...) = getchemicalproperty(m, :ncb, 0)
-chemicalnD(m::FattyAcid; kwargs...) = getchemicalproperty(m, :nD, 0)
-chemicalndb(m::FattyAcid; kwargs...) = getchemicalproperty(m, :ndb, 0)
+chemicaln13C(m::FattyAcid; kwargs...) = getchemicalattr(m, :n13C, 0)
+chemicalncb(m::FattyAcid; kwargs...) = getchemicalattr(m, :ncb, 0)
+chemicalnD(m::FattyAcid; kwargs...) = getchemicalattr(m, :nD, 0)
+chemicalndb(m::FattyAcid; kwargs...) = getchemicalattr(m, :ndb, 0)
 
 function chemicalelements(m::DiacylPS; kwargs...)
     fa1 = chemicalelements(m.fa1)
@@ -133,25 +133,32 @@ chemicalndb(m::DiacylPS; kwargs...) = chemicalndb(m.fa1; kwargs...) + chemicalnd
 # Interface AbstractScheme
 struct LossSerine <: AbstractStructuralScheme end
 struct LossProtonSerine <: AbstractStructuralScheme end
-struct Serine{T} <: AbstractChemicalWrapper{T} 
-    chemical::T 
+struct Serine <: AbstractChemical
+    name::String 
+    elements::Vector{Pair{String, Int}}
+    abbreviation::String 
 end
+function hash(x::Serine, h::UInt) 
+    h = hash(Serine, h)
+    h = hash(x.name, h)
+    h = hash(sum(hash, MSC.sort_unique_elements(x.elements); init = zero(h)), h)
+    h = hash(x.abbreviation, h)
+end
+==(x::Serine, y::Serine) = x.name == y.name && MSC.sort_unique_elements(x.elements) == MSC.sort_unique_elements(y.elements) && x.abbreviation == y.abbreviation
+copy(x::Serine) = Serine(x.name, copy(x.elements), x.abbreviation)
+
 copy(x::LossSerine) = x 
 copy(x::LossProtonSerine) = x 
 
 function Serine(; nD = 0, n13C = 0) 
-    nD == 0 && n13C == 0 && return Serine(Chemical("Serine", "C3H5NO2"; abbreviation = "Ser"))
+    nD == 0 && n13C == 0 && return Serine("Serine", ["C" => 3, "H" => 5, "N" => 1, "O" => 2], "Ser")
     @assert 0 <= n13C < 4
     nC = 3 - n13C 
-    reprC = nC > 1 ? string("C", nC) : nC > 0 ? "C" : ""
-    repr13C = n13C > 1 ? string("[13C]", n13C) : n13C > 0 ? "[13C]" : ""
     @assert 0 <= nD < 5
     nH = 5 - nD 
-    reprH = nH > 1 ? string("H", nH) : nH > 0 ? "H" : ""
-    reprD = nD > 1 ? string("D", nD) : nH > 0 ? "D" : ""
-    nD == 0 && return Serine(Chemical("Serine[13C$(n13C > 1 ? n13C : "")]", "$(reprC)$(repr13C)H5NO2"; abbreviation = "Ser[13C$(n13C > 1 ? n13C : "")]"))
-    n13C == 0 && return Serine(Chemical("Serine[D$(nD > 1 ? nD : ""))]", "C3$(reprH)$(reprD)NO2"; abbreviation = "Ser[D$(nD > 1 ? nD : ""))]"))
-    Serine(Chemical("Serine[D$(nD > 1 ? nD : ""),13C$(n13C > 1 ? n13C : "")]", "$(reprC)$(repr13C)$(reprH)$(reprD)NO2"; abbreviation = "Ser[D$(nD > 1 ? nD : ""),13C$(n13C > 1 ? n13C : "")]"))
+    nD == 0 && return Serine("Serine[13C$(n13C > 1 ? n13C : "")]", ["C" => nC, "[13C]" => n13C, "H" => 5, "N" => 1, "O" => 2], "Ser[13C$(n13C > 1 ? n13C : "")]")
+    n13C == 0 && return Serine("Serine[D$(nD > 1 ? nD : ""))]", ["C" => 3, "H" => nH, "D" => nD, "N" => 1, "O" => 2], "Ser[D$(nD > 1 ? nD : ""))]")
+    Serine("Serine[D$(nD > 1 ? nD : ""),13C$(n13C > 1 ? n13C : "")]", ["C" => nC, "[13C]" => n13C, "H" => nH, "D" => nD, "N" => 1, "O" => 2], "Ser[D$(nD > 1 ? nD : ""),13C$(n13C > 1 ? n13C : "")]")
 end
 set_scheme!("[-H-Ser]-", LossProtonSerine())
 set_scheme!("[-Ser-H]-", LossProtonSerine())
@@ -170,7 +177,7 @@ const DiacylPSmHS = MSC.AIType(DiacylPS, MSC.SESType(LossProtonSerine))
 
 elementalscheme(precursor::DiacylPS, product::LossSerine) = ChemicalLoss(Serine(; nD = first(precursor.headgroup), n13C = last(precursor.headgroup)))
 elementalscheme(precursor::DiacylPSmH, product::LossSerine) = ChemicalLoss(Serine(; nD = first(ioncore(precursor).headgroup), n13C = last(ioncore(precursor).headgroup)))
-elementalscheme(precursor::DiacylPS, product::LossProtonSerine) = ChemicalLoss(AdductIon(Serine(; nD = first(precursor.headgroup), n13C = last(precursor.headgroup)), ChemicalGain(Proton())))
+elementalscheme(precursor::DiacylPS, product::LossProtonSerine) = ChemicalLoss(AdductIon(Serine(; nD = first(precursor.headgroup), n13C = last(precursor.headgroup)), ChemicalGain(Proton)))
 
 # `LossSerine()` -> `LossProtonSerine()` for 
 # adductionscheme(precursor::DiacylPSmH, product::SES{LossSerine}) = completescheme(ioncore(precursor), LossProtonSerine())
@@ -178,10 +185,10 @@ adductionscheme(precursor::DiacylPSmH, product::LossSerine) = completescheme(ion
 # adductionscheme(precursor::DiacylPSmS, product::SES{<:LossProton}) = completescheme(ioncore(precursor), LossProtonSerine())
 adductionscheme(precursor::DiacylPSmS, product::LossProton) = completescheme(ioncore(precursor), LossProtonSerine())
 
-chemicalname(::LossSerine; n = 1, loss = false, delim = "", kwargs...) = string(delim, loss ? "Gain_" : "Loss_", n > 1 ? n : "", "Serine")
-chemicalname(::LossProtonSerine; n = 1, loss = false, delim = "", kwargs...) = string(delim, loss ? "Gain_" : "Loss_", n > 1 ? n : "", "[Serine+H]+")
-chemicalabbr(::LossSerine; n = 1, loss = false, delim = "", kwargs...) = string(delim, loss ? "+" : "-", n > 1 ? n : "", "Ser")
-chemicalabbr(::LossProtonSerine; n = 1, loss = false, delim = "", kwargs...) = string(delim, loss ? "+" : "-", n > 1 ? n : "", "[Ser+H]+")
+chemicalname(::LossSerine; n = 1, loss = false, delim = "", predelim = false, postdelim = false, kwargs...) = string(predelim ? delim : "", loss ? "Gain_" : "Loss_", n > 1 ? n : "", "Serine", postdelim ? delim : "")
+chemicalname(::LossProtonSerine; n = 1, loss = false, delim = "", predelim = false, postdelim = false, kwargs...) = string(predelim ? delim : "", loss ? "Gain_" : "Loss_", n > 1 ? n : "", "[Serine+H]+", postdelim ? delim : "")
+chemicalabbr(::LossSerine; n = 1, loss = false, kwargs...) = string("[", loss ? "+" : "-", n > 1 ? n : "", "Ser]")
+chemicalabbr(::LossProtonSerine; n = 1, loss = false, kwargs...) = string("[", loss ? "+" : "-", n > 1 ? n : "", "Ser", loss ? "+" : "-", n > 1 ? n : "", "H", "]", n > 1 ? n : "", "-")
 
 struct SN1Acyl <: StructuralChemicalScheme end
 struct SN2Acyl <: StructuralChemicalScheme end
@@ -193,10 +200,10 @@ struct SN2Acyl <: StructuralChemicalScheme end
 # detectedchemical(precursor::DiacylPSmH, product::SN2Acyl) = AdductIon(ioncore(precursor).fa2, ChemicalLoss(Proton()))
 # detectedchemical(precursor::DiacylPSmHS, product::SN1Acyl) = AdductIon(ioncore(precursor).fa1, ChemicalLoss(Proton()))
 # detectedchemical(precursor::DiacylPSmHS, product::SN2Acyl) = AdductIon(ioncore(precursor).fa2, ChemicalLoss(Proton()))
-elementalscheme(precursor::DiacylPSmH, product::SN1Acyl) = AdductIon(ioncore(precursor).fa1, ChemicalLoss(Proton()))
-elementalscheme(precursor::DiacylPSmH, product::SN2Acyl) = AdductIon(ioncore(precursor).fa2, ChemicalLoss(Proton()))
-elementalscheme(precursor::DiacylPSmHS, product::SN1Acyl) = AdductIon(ioncore(precursor).fa1, ChemicalLoss(Proton()))
-elementalscheme(precursor::DiacylPSmHS, product::SN2Acyl) = AdductIon(ioncore(precursor).fa2, ChemicalLoss(Proton()))
+elementalscheme(precursor::DiacylPSmH, product::SN1Acyl) = AdductIon(ioncore(precursor).fa1, ChemicalLoss(Proton))
+elementalscheme(precursor::DiacylPSmH, product::SN2Acyl) = AdductIon(ioncore(precursor).fa2, ChemicalLoss(Proton))
+elementalscheme(precursor::DiacylPSmHS, product::SN1Acyl) = AdductIon(ioncore(precursor).fa1, ChemicalLoss(Proton))
+elementalscheme(precursor::DiacylPSmHS, product::SN2Acyl) = AdductIon(ioncore(precursor).fa2, ChemicalLoss(Proton))
 
 chemicalname(::SN1Acyl; n = 1, kwargs...) = string(n > 1 ? n : "", "Sn1_Acyl")
 chemicalname(::SN2Acyl; n = 1, kwargs...) = string(n > 1 ? n : "", "Sn2_Acyl")

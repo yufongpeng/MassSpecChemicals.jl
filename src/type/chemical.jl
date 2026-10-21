@@ -1,63 +1,104 @@
 """
-    Chemical <: AbstractChemical
+    AttributedChemical <: AbstractChemical
 
-Unstructured chemical type with its name, elements (formula), and additional properties.
+Abstract type for chemicals with additional attributes. The storage can be accessed by [`getchemicalattr`](@ref), and the property name can be accessed by [`getchemicalattrname`](@ref).
+
+For Base functions, `copy`, `hash`, and `==`, generic methods are defined.
+"""
+abstract type AttributedChemical <: AbstractChemical end
+
+"""
+    ChemicalAttribute
+
+Mutable object carrying attributes.
+
+# Fields
+* `attribute::Union{Nothing, Vector{Pair{Symbol, Any}}}`: the pairs represent names and values.
+"""
+mutable struct ChemicalAttribute
+    attribute::Union{Nothing, Vector{Pair{Symbol, Any}}}
+end
+
+"""
+    Chemical <: AttributedChemical
+
+Unstructured chemical type with its name, elements (formula), and additional attributes.
 
 # Fields 
 * `name::String`: a unique chemical name.
 * `elements::Vector{Pair{String, Int}}`: chemical elements.
-* `property::Vector{Pair{Symbol, Any}}`: additional properties; the pairs represent names and values.
+* `attribute::Union{Nothing, ChemicalAttribute}`: additional attributes.
 
 # Constructors
-    Chemical(name::AbstractString, elements::Vector{Pair{String, Int}}, property::Vector{Pair{Symbol, Any}})
-    Chemical(name::AbstractString, elements::Dict{String, Int}, property::Vector{Pair{Symbol, Any}})
-    Chemical(name::AbstractString, formula::AbstractString, property::Vector{Pair{Symbol, Any}})
-    Chemical(name::AbstractString, elements::Vector{Pair{String, Int}}; kwargs...)
-    Chemical(name::AbstractString, elements::Dict{String, Int}; kwargs...)
-    Chemical(name::AbstractString, formula::AbstractString; kwargs...)
+    Chemical(name::AbstractString, elements::Vector{Pair{String, Int}}, attribute)
+    Chemical(name::AbstractString, elements::Dict{String, Int}, attribute)
+    Chemical(name::AbstractString, formula::AbstractString, attribute)
+    Chemical(name::AbstractString, elements::Vector{Pair{String, Int}}; new_attr = true, kwargs...)
+    Chemical(name::AbstractString, elements::Dict{String, Int}; new_attr = true, kwargs...)
+    Chemical(name::AbstractString, formula::AbstractString; new_attr = true, kwargs...)
 
-`kwargs` are collected into field `property`.
+## Arguments
+* `new_attr::Bool`: whether allowing adding new attributes afterwards. If `kwargs` is not empty, it is automatically set `true`.
+* `kwargs` are collected into field `attribute`.
 """
-struct Chemical <: AbstractChemical
+struct Chemical <: AttributedChemical
     name::String
     elements::Vector{Pair{String, Int}}
-    property::Vector{Pair{Symbol, Any}}
+    attribute::Union{Nothing, ChemicalAttribute}
 end
 
-Chemical(name::AbstractString, elements; kwargs...) = Chemical(name, elements, collect(kwargs))
-Chemical(name::AbstractString, formula::AbstractString, property) = Chemical(name, chemicalelements(formula), property)
-Chemical(name::AbstractChemical, elements::Dict, property) = Chemical(name, collect(elements), property)
+_chemicalattribute(::Nothing) = nothing
+_chemicalattribute(attribute::ChemicalAttribute) = attribute
+_chemicalattribute(attribute::AbstractVector{<:Pair{Symbol}}) =
+    ChemicalAttribute(Pair{Symbol, Any}[first(pair) => last(pair) for pair in attribute])
+_chemicalattribute(attribute::AbstractVector{<:Any}) = 
+    ChemicalAttribute(Pair{Symbol, Any}[first(pair) => last(pair) for pair in attribute])
+_chemicalattribute(new_attr::Bool, kwargs) =
+    isempty(kwargs) ? (new_attr ? ChemicalAttribute(nothing) : nothing) :
+    ChemicalAttribute(Pair{Symbol, Any}[key => value for (key, value) in kwargs])
+
+_chemicalelements(elements::Vector{Pair{String, Int}}) = elements
+_chemicalelements(elements) = collect(Pair{String, Int}, elements)
+_chemicalelements(formula::AbstractString) = chemicalelements(formula)
+
+Chemical(name::AbstractString, elements, attribute) =
+    Chemical(String(name), _chemicalelements(elements), _chemicalattribute(attribute))
+Chemical(name::AbstractString, elements; new_attr = true, kwargs...) =
+    Chemical(String(name), _chemicalelements(elements), _chemicalattribute(new_attr, kwargs))
 
 """
-    FormulaChemical <: AbstractChemical
+    FormulaChemical <: AttributedChemical
 
-Unstructured chemical type with elements (formula), and additional properties. Chemical name will be formula.
+Unstructured chemical type with elements (formula), and additional attributes. Chemical name will be formula.
 
 # Fields 
 * `elements::Vector{Pair{String, Int}}`: chemical elements.
-* `property::Vector{Pair{Symbol, Any}}`: additional properties; the pairs represent names and values.
+* `attribute::Union{Nothing, ChemicalAttribute}`: additional attributes.
 
 # Constructors
-    FormulaChemical(elements::Vector{Pair{String, Int}}, property::Vector{Pair{Symbol, Any}})
-    FormulaChemical(elements::Dict{String, Int}, property::Vector{Pair{Symbol, Any}})
-    FormulaChemical(formula::AbstractString, property::Vector{Pair{Symbol, Any}})
-    FormulaChemical(elements::Vector{Pair{String, Int}}; kwargs...)
-    FormulaChemical(elements::Dict{String, Int}; kwargs...)
-    FormulaChemical(formula::AbstractString; kwargs...)
+    FormulaChemical(elements::Vector{Pair{String, Int}}, attribute)
+    FormulaChemical(elements::Dict{String, Int}, attribute)
+    FormulaChemical(formula::AbstractString, attribute)
+    FormulaChemical(elements::Vector{Pair{String, Int}}; new_attr = true, kwargs...)
+    FormulaChemical(elements::Dict{String, Int}; new_attr = true, kwargs...)
+    FormulaChemical(formula::AbstractString; new_attr = true, kwargs...)
 
-`kwargs` are collected into field `property`.
+## Arguments
+* `new_attr::Bool`: whether allowing adding new attributes afterwards. If `kwargs` is not empty, it is automatically set `true`.
+* `kwargs` are collected into field `attribute`.
 """
-struct FormulaChemical <: AbstractChemical
+struct FormulaChemical <: AttributedChemical
     elements::Vector{Pair{String, Int}}
-    property::Vector{Pair{Symbol, Any}}
+    attribute::Union{Nothing, ChemicalAttribute}
+    FormulaChemical(elements, attribute) = new(_chemicalelements(elements), _chemicalattribute(attribute))
 end
 
-FormulaChemical(elements; kwargs...) = FormulaChemical(elements, collect(kwargs))
-FormulaChemical(formula::AbstractString, property) = FormulaChemical(chemicalelements(formula), property)
-FormulaChemical(elements::Dict, property) = FormulaChemical(collect(elements), property)
+FormulaChemical(elements; new_attr = true, kwargs...) =
+    FormulaChemical(_chemicalelements(elements), _chemicalattribute(new_attr, kwargs))
 
+abstract type AbstractChemicalWrapper <: AbstractChemical end
 """
-    ChemicalTransition{T<:AbstractChemicalScheme} <: AbstractChemical
+    ChemicalTransition{T<:AbstractChemicalScheme} <: AbstractChemicalWrapper
 
 Chemical transition in MSⁿ. Products can be any subtype of `AbstractChemicalScheme` representing chemical entity or species.
 
@@ -66,11 +107,11 @@ Chemical transition in MSⁿ. Products can be any subtype of `AbstractChemicalSc
 
 # Constructors
     ChemicalTransition(transition::Vector)
-    ChemicalTransition(precursor, products...)`
+    ChemicalTransition(precursor, products...)
     
 `products` are pushed into `precursor` to construct `transition`.
 """
-struct ChemicalTransition{T<:AbstractChemicalScheme} <: AbstractChemical
+struct ChemicalTransition{T<:AbstractChemicalScheme} <: AbstractChemicalWrapper
     transition::Vector{T}
 end
 
@@ -82,7 +123,7 @@ _transition(x::ChemicalTransition) = chemicaltransition(x)
 _transition(x) = x
 
 """
-    Isobars{T<:AbstractChemical, N} <: AbstractChemical
+    Isobars{T<:AbstractChemical, N} <: AbstractChemicalWrapper
 
 Chemicals with similar m/z.
 
@@ -95,7 +136,7 @@ Chemicals with similar m/z.
     Isobars(chemicals::Vector{<:ChemicalTransition}, abundance::Vector)
     Isobars(chemicals::Vector{<:ChemicalTransition}, abundance::Matrix)
 """
-struct Isobars{T<:AbstractChemical, N} <: AbstractChemical
+struct Isobars{T<:AbstractChemical, N} <: AbstractChemicalWrapper
     chemicals::Vector{T}
     abundance::VecOrMat{N}
     function Isobars(chemicals::Vector{T}, abundance::Vector{N}) where {T, N}
@@ -137,8 +178,10 @@ struct ElementsVector
     numbers::Vector{Int}
 end
 
+ElementsVector() = ElementsVector(String[], Int[])
+
 """
-    Isotopomers{T<:AbstractChemical} <: AbstractChemical
+    Isotopomers{T<:AbstractChemical} <: AbstractChemicalWrapper
 
 Chemicals differed from isotopic replacement location.
 
@@ -154,7 +197,7 @@ Chemicals differed from isotopic replacement location.
 
 All minor isotopes are regarded as isotopic replacement in `fullformula` and `fullelements`.
 """
-struct Isotopomers{T<:AbstractChemical} <: AbstractChemical
+struct Isotopomers{T<:AbstractChemical} <: AbstractChemicalWrapper
     parent::T 
     isotopes::ElementsVector
 end
@@ -182,7 +225,7 @@ function Isotopomers(chemical::AbstractChemical, fullelements::Dict)
 end
 
 """
-    Groupedisotopomers{T<:AbstractChemical, N} <: AbstractChemical
+    Groupedisotopomers{T<:AbstractChemical, N} <: AbstractChemicalWrapper
 
 Isotopomerized chemicals grouped by mass-shift index.
 
@@ -193,7 +236,7 @@ Isotopomerized chemicals grouped by mass-shift index.
 * `isotopes::Vector{ElementsVector}`: Isotopes-number pairs of isotopic replacements of each isotopomers.
 * `abundance::Vector{N}`: abundance of each isotopomers.
 """
-struct Groupedisotopomers{T<:AbstractChemical, N} <: AbstractChemical
+struct Groupedisotopomers{T<:AbstractChemical, N} <: AbstractChemicalWrapper
     parent::T 
     index::Int
     isotope::String
@@ -222,298 +265,603 @@ _ChemicalSeries(v::ChemicalTransition) = (chemicaltransition(v)..., )
 _ChemicalSeries(v::AbstractChemicalScheme) = (v, ) 
 
 """
-    AbstractChemicalWrapper{T<:AbstractChemical} <: AbstractChemical 
-    
-Abstract type for all types wrapping a chemical of type `T` as field `chemical`. By default, all attributes come from `chemical`. 
-"""
-abstract type AbstractChemicalWrapper{T<:AbstractChemical} <: AbstractChemical end
-
-"""
-    Electron{T} <: AbstractChemicalWrapper{T}
-    Electron(constructor, args...; kwargs...) 
-    Electron(name = "Electron", elements = Pair{String, Int}[]; charge = -1, abbreviation = "e")
+    Electron <: AttributedChemical
 
 Electron.
 
 # Fields 
-* `chemical::T`.
+* `name::String`
+* `elements::Vector{Pair{String, Int}}`
+* `abbreviation::String`
+* `attribute::Union{Nothing, ChemicalAttribute}`
+
+# Constructors
+    Electron(; new_attr = true, name = "Electron", elements = Pair{String, Int}[], abbreviation = "e", kwargs...)
+
+## Arguments
+* `new_attr::Bool`: whether allowing adding new attributes afterwards. If `kwargs` is not empty, it is automatically set `true`.
+* `kwargs` are collected into field `attribute`.
+
+# Additional Attributes
+* `charge::Int`: `-1`.
 """
-struct Electron{T} <: AbstractChemicalWrapper{T}
-    chemical::T
+struct Electron <: AttributedChemical
+    name::String
+    elements::Vector{Pair{String, Int}}
+    abbreviation::String
+    attribute::Union{Nothing, ChemicalAttribute}
 end 
 """
-    Proton{T} <: AbstractChemicalWrapper{T}
-    Proton(constructor, args...; kwargs...) 
-    Proton(name = "Proton", elements = ["H" => 1]; charge = 1, abbreviation = "H")
+    Proton <: AttributedChemical
 
 Proton.
 
-# Fields 
-* `chemical::T`.
+# Fields
+* `name::String`
+* `elements::Vector{Pair{String, Int}}`
+* `abbreviation::String`
+* `attribute::Union{Nothing, ChemicalAttribute}`
+
+# Constructors
+    Proton(; new_attr = true, name = "Proton", elements = ["H" => 1], abbreviation = "H", kwargs...)
+
+## Arguments
+* `new_attr::Bool`: whether allowing adding new attributes afterwards. If `kwargs` is not empty, it is automatically set `true`.
+* `kwargs` are collected into field `attribute`.
+
+# Additional Attributes
+* `charge::Int`: `1`.
 """
-struct Proton{T} <: AbstractChemicalWrapper{T}
-    chemical::T
+struct Proton <: AttributedChemical
+    name::String
+    elements::Vector{Pair{String, Int}}
+    abbreviation::String
+    attribute::Union{Nothing, ChemicalAttribute}
 end 
 """
-    Water{T} <: AbstractChemicalWrapper{T}
-    Water(constructor, args...; kwargs...) 
-    Water(name = "Water", elements = ["H" => 2, "O" => 1]; charge = 0, abbreviation = "H2O")
+    Water <: AttributedChemical
 
 Water.
 
-# Fields 
-* `chemical::T`.
+# Fields
+* `name::String`
+* `elements::Vector{Pair{String, Int}}`
+* `abbreviation::String`
+* `attribute::Union{Nothing, ChemicalAttribute}`
 
-# Attributes (default)
-* `name`: `"Water"`.
-* `chemicalelements`: `Pair{String, Int}["H" => 2, "O" => 1]`.
-* `charge`: `0`.
-* `abbreviation`: `"H2O"`.
+# Constructors
+    Water(; new_attr = true, name = "Water", elements = ["H" => 2, "O" => 1], abbreviation = "H2O", kwargs...)
+
+## Arguments
+* `new_attr::Bool`: whether allowing adding new attributes afterwards. If `kwargs` is not empty, it is automatically set `true`.
+* `kwargs` are collected into field `attribute`.
+
+# Additional Attributes
+* `charge::Int`: `0`.
 """
-struct Water{T} <: AbstractChemicalWrapper{T}
-    chemical::T
+struct Water <: AttributedChemical
+    name::String
+    elements::Vector{Pair{String, Int}}
+    abbreviation::String
+    attribute::Union{Nothing, ChemicalAttribute}
 end 
 """
-    Ammonia{T} <: AbstractChemicalWrapper{T}
-    Ammonia(constructor, args...; kwargs...) 
-    Ammonia(name = "Ammonia", elements = ["N" => 1, "H" => 3]; charge = 0, abbreviation = "NH3")
+    Ammonia <: AttributedChemical
 
 Ammonia.
 
-# Fields 
-* `chemical::T`.
+# Fields
+* `name::String`
+* `elements::Vector{Pair{String, Int}}`
+* `abbreviation::String`
+* `attribute::Union{Nothing, ChemicalAttribute}`
+
+# Constructors
+    Ammonia(; new_attr = true, name = "Ammonia", elements = ["N" => 1, "H" => 3], abbreviation = "NH3", kwargs...)
+
+## Arguments
+* `new_attr::Bool`: whether allowing adding new attributes afterwards. If `kwargs` is not empty, it is automatically set `true`.
+* `kwargs` are collected into field `attribute`.
+
+# Additional Attributes
+* `charge::Int`: `0`.
 """
-struct Ammonia{T} <: AbstractChemicalWrapper{T}
-    chemical::T
+struct Ammonia <: AttributedChemical
+    name::String
+    elements::Vector{Pair{String, Int}}
+    abbreviation::String
+    attribute::Union{Nothing, ChemicalAttribute}
 end 
 """
-    Ammonium{T} <: AbstractChemicalWrapper{T}
-    Ammonium(constructor, args...; kwargs...) 
-    Ammonium(name = "Ammonium", elements = ["N" => 1, "H" => 4]; charge = 1, abbreviation = "NH4")
+    Ammonium <: AttributedChemical
 
 Ammonium.
 
-# Fields 
-* `chemical::T`.
+# Fields
+* `name::String`
+* `elements::Vector{Pair{String, Int}}`
+* `abbreviation::String`
+* `attribute::Union{Nothing, ChemicalAttribute}`
+
+# Constructors
+    Ammonium(; new_attr = true, name = "Ammonium", elements = ["N" => 1, "H" => 4], abbreviation = "NH4", kwargs...)
+
+## Arguments
+* `new_attr::Bool`: whether allowing adding new attributes afterwards. If `kwargs` is not empty, it is automatically set `true`.
+* `kwargs` are collected into field `attribute`.
+
+# Additional Attributes
+* `charge::Int`: `1`.
 """
-struct Ammonium{T} <: AbstractChemicalWrapper{T}
-    chemical::T
+struct Ammonium <: AttributedChemical
+    name::String
+    elements::Vector{Pair{String, Int}}
+    abbreviation::String
+    attribute::Union{Nothing, ChemicalAttribute}
 end 
 """
-    Sodium{T} <: AbstractChemicalWrapper{T}
-    Sodium(constructor, args...; kwargs...) 
-    Sodium(name = "Sodium", elements = ["Na" => 1]; charge = 1, abbreviation = "Na")
+    Sodium <: AttributedChemical
 
 Sodium.
 
-# Fields 
-* `chemical::T`.
+# Fields
+* `name::String`
+* `elements::Vector{Pair{String, Int}}`
+* `abbreviation::String`
+* `attribute::Union{Nothing, ChemicalAttribute}`
+
+# Constructors
+    Sodium(; new_attr = true, name = "Sodium", elements = ["Na" => 1], abbreviation = "Na", kwargs...)
+
+## Arguments
+* `new_attr::Bool`: whether allowing adding new attributes afterwards. If `kwargs` is not empty, it is automatically set `true`.
+* `kwargs` are collected into field `attribute`.
+
+# Additional Attributes
+* `charge::Int`: `1`.
 """
-struct Sodium{T} <: AbstractChemicalWrapper{T}
-    chemical::T
+struct Sodium <: AttributedChemical
+    name::String
+    elements::Vector{Pair{String, Int}}
+    abbreviation::String
+    attribute::Union{Nothing, ChemicalAttribute}
 end 
 """
-    Potassium{T} <: AbstractChemicalWrapper{T}
-    Potassium(constructor, args...; kwargs...) 
-    Potassium(name = "Potassium", elements = ["K" => 1]; charge = 1, abbreviation = "K")
+    Potassium <: AttributedChemical
 
 Potassium.
 
-# Fields 
-* `chemical::T`.
+# Fields
+* `name::String`
+* `elements::Vector{Pair{String, Int}}`
+* `abbreviation::String`
+* `attribute::Union{Nothing, ChemicalAttribute}`
+
+# Constructors
+    Potassium(; new_attr = true, name = "Potassium", elements = ["K" => 1], abbreviation = "K", kwargs...)
+
+## Arguments
+* `new_attr::Bool`: whether allowing adding new attributes afterwards. If `kwargs` is not empty, it is automatically set `true`.
+* `kwargs` are collected into field `attribute`.
+
+# Additional Attributes
+* `charge::Int`: `1`.
 """
-struct Potassium{T} <: AbstractChemicalWrapper{T}
-    chemical::T
+struct Potassium <: AttributedChemical
+    name::String
+    elements::Vector{Pair{String, Int}}
+    abbreviation::String
+    attribute::Union{Nothing, ChemicalAttribute}
 end 
 """
-    Lithium{T} <: AbstractChemicalWrapper{T}
-    Lithium(constructor, args...; kwargs...) 
-    Lithium(name = "Lithium", elements = ["Li" => 1]; charge = 1, abbreviation = "Li")
+    Lithium <: AttributedChemical
 
 Lithium.
 
-# Fields 
-* `chemical::T`.
+# Fields
+* `name::String`
+* `elements::Vector{Pair{String, Int}}`
+* `abbreviation::String`
+* `attribute::Union{Nothing, ChemicalAttribute}`
+
+# Constructors
+    Lithium(; new_attr = true, name = "Lithium", elements = ["Li" => 1], abbreviation = "Li", kwargs...)
+
+## Arguments
+* `new_attr::Bool`: whether allowing adding new attributes afterwards. If `kwargs` is not empty, it is automatically set `true`.
+* `kwargs` are collected into field `attribute`.
+
+# Additional Attributes
+* `charge::Int`: `1`.
 """
-struct Lithium{T} <: AbstractChemicalWrapper{T}
-    chemical::T
+struct Lithium <: AttributedChemical
+    name::String
+    elements::Vector{Pair{String, Int}}
+    abbreviation::String
+    attribute::Union{Nothing, ChemicalAttribute}
 end 
 """
-    Silver{T} <: AbstractChemicalWrapper{T}
-    Silver(constructor, args...; kwargs...) 
-    Silver(name = "Silver", elements = ["Ag" => 1]; charge = 1, abbreviation = "Ag")
+    Silver <: AttributedChemical
 
 Silver.
 
-# Fields 
-* `chemical::T`.
+# Fields
+* `name::String`
+* `elements::Vector{Pair{String, Int}}`
+* `abbreviation::String`
+* `attribute::Union{Nothing, ChemicalAttribute}`
+
+# Constructors
+    Silver(; new_attr = true, name = "Silver", elements = ["Ag" => 1], abbreviation = "Ag", kwargs...)
+
+## Arguments
+* `new_attr::Bool`: whether allowing adding new attributes afterwards. If `kwargs` is not empty, it is automatically set `true`.
+* `kwargs` are collected into field `attribute`.
+
+# Additional Attributes
+* `charge::Int`: `1`.
 """
-struct Silver{T} <: AbstractChemicalWrapper{T}
-    chemical::T
+struct Silver <: AttributedChemical
+    name::String
+    elements::Vector{Pair{String, Int}}
+    abbreviation::String
+    attribute::Union{Nothing, ChemicalAttribute}
 end 
 """
-    Acetate{T} <: AbstractChemicalWrapper{T}
-    Acetate(constructor, args...; kwargs...) 
-    Acetate(name = "Acetate", elements = ["C" => 1, "H" => 3, "C" => 1, "O" => 1, "O" => 1]; 
-            charge = -1, abbreviation = "OAc")
+    Acetate <: AttributedChemical
 
 Acetate.
 
-# Fields 
-* `chemical::T`.
+# Fields
+* `name::String`
+* `elements::Vector{Pair{String, Int}}`
+* `abbreviation::String`
+* `attribute::Union{Nothing, ChemicalAttribute}`
+
+# Constructors
+    Acetate(; new_attr = true, name = "Acetate", elements = ["C" => 1, "H" => 3, "C" => 1, "O" => 1, "O" => 1], abbreviation = "OAc", kwargs...)
+
+## Arguments
+* `new_attr::Bool`: whether allowing adding new attributes afterwards. If `kwargs` is not empty, it is automatically set `true`.
+* `kwargs` are collected into field `attribute`.
+
+# Additional Attributes
+* `charge::Int`: `-1`.
 """
-struct Acetate{T} <: AbstractChemicalWrapper{T}
-    chemical::T
+struct Acetate <: AttributedChemical
+    name::String
+    elements::Vector{Pair{String, Int}}
+    abbreviation::String
+    attribute::Union{Nothing, ChemicalAttribute}
 end 
 """
-    Formate{T} <: AbstractChemicalWrapper{T}
-    Formate(constructor, args...; kwargs...) 
-    Formate(name = "Formate", elements = ["H" => 1, "C" => 1, "O" => 1, "O" => 1]; 
-            charge = -1, abbreviation = "OFo")
+    Formate <: AttributedChemical
 
 Formate.
 
-# Fields 
-* `chemical::T`.
+# Fields
+* `name::String`
+* `elements::Vector{Pair{String, Int}}`
+* `abbreviation::String`
+* `attribute::Union{Nothing, ChemicalAttribute}`
+
+# Constructors
+    Formate(; new_attr = true, name = "Formate", elements = ["H" => 1, "C" => 1, "O" => 1, "O" => 1], abbreviation = "OFo", kwargs...)
+
+## Arguments
+* `new_attr::Bool`: whether allowing adding new attributes afterwards. If `kwargs` is not empty, it is automatically set `true`.
+* `kwargs` are collected into field `attribute`.
+
+# Additional Attributes
+* `charge::Int`: `-1`.
 """
-struct Formate{T} <: AbstractChemicalWrapper{T}
-    chemical::T
+struct Formate <: AttributedChemical
+    name::String
+    elements::Vector{Pair{String, Int}}
+    abbreviation::String
+    attribute::Union{Nothing, ChemicalAttribute}
 end 
 """
-    AceticAcid{T} <: AbstractChemicalWrapper{T}
-    AceticAcid(constructor, args...; kwargs...) 
-    AceticAcid(name = "AceticAcid", elements = ["C" => 1, "H" => 3, "C" => 1, "O" => 1, "O" => 1, "H" => 1]; 
-            charge = 0, abbreviation = "HOAc")
+    AceticAcid <: AttributedChemical
 
 Acetic acid.
 
-# Fields 
-* `chemical::T`.
+# Fields
+* `name::String`
+* `elements::Vector{Pair{String, Int}}`
+* `abbreviation::String`
+* `attribute::Union{Nothing, ChemicalAttribute}`
+
+# Constructors
+    AceticAcid(; new_attr = true, name = "Acetic Acid", elements = ["C" => 1, "H" => 3, "C" => 1, "O" => 1, "O" => 1, "H" => 1], abbreviation = "HOAc", kwargs...)
+
+## Arguments
+* `new_attr::Bool`: whether allowing adding new attributes afterwards. If `kwargs` is not empty, it is automatically set `true`.
+* `kwargs` are collected into field `attribute`.
+
+# Additional Attributes
+* `charge::Int`: `0`.
 """
-struct AceticAcid{T} <: AbstractChemicalWrapper{T}
-    chemical::T
+struct AceticAcid <: AttributedChemical
+    name::String
+    elements::Vector{Pair{String, Int}}
+    abbreviation::String
+    attribute::Union{Nothing, ChemicalAttribute}
 end 
 """
-    FormicAcid{T} <: AbstractChemicalWrapper{T}
-    FormicAcid(constructor, args...; kwargs...) 
-    FormicAcid(name = "FormicAcid", elements = ["H" => 1, "C" => 1, "O" => 1, "O" => 1, "H" => 1]; 
-            charge = 0, abbreviation = "HOFo")
+    FormicAcid <: AttributedChemical
 
 Formic acid.
 
-# Fields 
-* `chemical::T`.
+# Fields
+* `name::String`
+* `elements::Vector{Pair{String, Int}}`
+* `abbreviation::String`
+* `attribute::Union{Nothing, ChemicalAttribute}`
+
+# Constructors
+    FormicAcid(; new_attr = true, name = "Formic Acid", elements = ["H" => 1, "C" => 1, "O" => 1, "O" => 1, "H" => 1], abbreviation = "HOFo", kwargs...)
+
+## Arguments
+* `new_attr::Bool`: whether allowing adding new attributes afterwards. If `kwargs` is not empty, it is automatically set `true`.
+* `kwargs` are collected into field `attribute`.
+
+# Additional Attributes
+* `charge::Int`: `0`.
 """
-struct FormicAcid{T} <: AbstractChemicalWrapper{T}
-    chemical::T
+struct FormicAcid <: AttributedChemical
+    name::String
+    elements::Vector{Pair{String, Int}}
+    abbreviation::String
+    attribute::Union{Nothing, ChemicalAttribute}
 end 
 """
-    MethylAcetate{T} <: AbstractChemicalWrapper{T}
-    MethylAcetate(constructor, args...; kwargs...) 
-    MethylAcetate(name = "MethylAcetate", elements = ["C" => 1, "H" => 3, "C" => 1, "O" => 1, "O" => 1, "C" => 1, "H" => 3]; 
-            charge = 0, abbreviation = "MeOAc")
+    MethylAcetate <: AttributedChemical
 
 Methyl acetate.
 
-# Fields 
-* `chemical::T`.
+# Fields
+* `name::String`
+* `elements::Vector{Pair{String, Int}}`
+* `abbreviation::String`
+* `attribute::Union{Nothing, ChemicalAttribute}`
+
+# Constructors
+    MethylAcetate(; new_attr = true, name = "Methyl Acetate", elements = ["C" => 1, "H" => 3, "C" => 1, "O" => 1, "O" => 1, "C" => 1, "H" => 3], abbreviation = "MeOAc", kwargs...)
+
+## Arguments
+* `new_attr::Bool`: whether allowing adding new attributes afterwards. If `kwargs` is not empty, it is automatically set `true`.
+* `kwargs` are collected into field `attribute`.
+
+# Additional Attributes
+* `charge::Int`: `0`.
 """
-struct MethylAcetate{T} <: AbstractChemicalWrapper{T}
-    chemical::T
+struct MethylAcetate <: AttributedChemical
+    name::String
+    elements::Vector{Pair{String, Int}}
+    abbreviation::String
+    attribute::Union{Nothing, ChemicalAttribute}
 end 
 """
-    MethylFormate{T} <: AbstractChemicalWrapper{T}
-    MethylFormate(constructor, args...; kwargs...) 
-    MethylFormate(name = "MethylFormate", elements = ["C" => 1, "H" => 3, "C" => 1, "O" => 1, "O" => 1, "C" => 1, "H" => 3]; 
-            charge = 0, abbreviation = "MeOFo")
+    MethylFormate <: AttributedChemical
 
 Methyl formate.
 
-# Fields 
-* `chemical::T`.
+# Fields
+* `name::String`
+* `elements::Vector{Pair{String, Int}}`
+* `abbreviation::String`
+* `attribute::Union{Nothing, ChemicalAttribute}`
+
+# Constructors
+    MethylFormate(; new_attr = true, name = "Methyl Formate", elements = ["H" => 1, "C" => 1, "O" => 1, "O" => 1, "C" => 1, "H" => 3], abbreviation = "MeOFo", kwargs...)
+
+## Arguments
+* `new_attr::Bool`: whether allowing adding new attributes afterwards. If `kwargs` is not empty, it is automatically set `true`.
+* `kwargs` are collected into field `attribute`.
+
+# Additional Attributes
+* `charge::Int`: `0`.
 """
-struct MethylFormate{T} <: AbstractChemicalWrapper{T}
-    chemical::T
+struct MethylFormate <: AttributedChemical
+    name::String
+    elements::Vector{Pair{String, Int}}
+    abbreviation::String
+    attribute::Union{Nothing, ChemicalAttribute}
 end 
 """
-    Fluoride{T} <: AbstractChemicalWrapper{T}
-    Fluoride(constructor, args...; kwargs...) 
-    Fluoride(name = "Fluoride", elements = ["F" => 1]; charge = -1, abbreviation = "F")
+    Fluoride <: AttributedChemical
 
 Fluoride.
 
-# Fields 
-* `chemical::T`.
+# Fields
+* `name::String`
+* `elements::Vector{Pair{String, Int}}`
+* `abbreviation::String`
+* `attribute::Union{Nothing, ChemicalAttribute}`
+
+# Constructors
+    Fluoride(; new_attr = true, name = "Fluoride", elements = ["F" => 1], abbreviation = "F", kwargs...)
+
+## Arguments
+* `new_attr::Bool`: whether allowing adding new attributes afterwards. If `kwargs` is not empty, it is automatically set `true`.
+* `kwargs` are collected into field `attribute`.
+
+# Additional Attributes
+* `charge::Int`: `-1`.
 """
-struct Fluoride{T} <: AbstractChemicalWrapper{T}
-    chemical::T
+struct Fluoride <: AttributedChemical
+    name::String
+    elements::Vector{Pair{String, Int}}
+    abbreviation::String
+    attribute::Union{Nothing, ChemicalAttribute}
 end 
 """
-    Chloride{T} <: AbstractChemicalWrapper{T}
-    Chloride(constructor, args...; kwargs...) 
-    Chloride(name = "Chloride", elements = ["Cl" => 1]; charge = -1, abbreviation = "Cl")
+    Chloride <: AttributedChemical
 
 Chloride.
 
-# Fields 
-* `chemical::T`.
+# Fields
+* `name::String`
+* `elements::Vector{Pair{String, Int}}`
+* `abbreviation::String`
+* `attribute::Union{Nothing, ChemicalAttribute}`
+
+# Constructors
+    Chloride(; new_attr = true, name = "Chloride", elements = ["Cl" => 1], abbreviation = "Cl", kwargs...)
+
+## Arguments
+* `new_attr::Bool`: whether allowing adding new attributes afterwards. If `kwargs` is not empty, it is automatically set `true`.
+* `kwargs` are collected into field `attribute`.
+
+# Additional Attributes
+* `charge::Int`: `-1`.
 """
-struct Chloride{T} <: AbstractChemicalWrapper{T}
-    chemical::T
+struct Chloride <: AttributedChemical
+    name::String
+    elements::Vector{Pair{String, Int}}
+    abbreviation::String
+    attribute::Union{Nothing, ChemicalAttribute}
 end 
 """
-    Methenium{T} <: AbstractChemicalWrapper{T}
-    Methenium(constructor, args...; kwargs...) 
-    Methenium(name = "Methenium", elements = ["C" => 1, "H" => 3]; charge = -1, abbreviation = "Me")
+    Methenium <: AttributedChemical
 
 Methenium.
 
-# Fields 
-* `chemical::T`.
+# Fields
+* `name::String`
+* `elements::Vector{Pair{String, Int}}`
+* `abbreviation::String`
+* `attribute::Union{Nothing, ChemicalAttribute}`
 
-# Attributes (default)
-* `name`: `"Methenium"`.
-* `chemicalelements`: `Pair{String, Int}["C" => 1, "H" => 3]`.
-* `charge`: `1`.
-* `abbreviation`: `"Me"`.
+# Constructors
+    Methenium(; new_attr = true, name = "Methenium", elements = ["C" => 1, "H" => 3], abbreviation = "Me", kwargs...)
+
+## Arguments
+* `new_attr::Bool`: whether allowing adding new attributes afterwards. If `kwargs` is not empty, it is automatically set `true`.
+* `kwargs` are collected into field `attribute`.
+
+# Additional Attributes
+* `charge::Int`: `1`.
 """
-struct Methenium{T} <: AbstractChemicalWrapper{T}
-    chemical::T
+struct Methenium <: AttributedChemical
+    name::String
+    elements::Vector{Pair{String, Int}}
+    abbreviation::String
+    attribute::Union{Nothing, ChemicalAttribute}
 end 
 
-for fn in ["Electron", "Proton", "Water", "Ammonia", "Ammonium", "Sodium", "Potassium", "Lithium", "Silver", "Acetate", "Formate", "AceticAcid", "FormicAcid", "MethylAcetate", "MethylFormate", "Fluoride", "Chloride", "Methenium"]
-    expr_l = :(fn(constructor::Type{<:AbstractChemical}, args...; kwargs...)) 
-    expr_r = :(fn(constructor(args...; kwargs...)))
-    expr_l.args[1] = Symbol(fn)
-    expr_r.args[1] = Symbol(fn)
-    eval(Expr(:(=), expr_l, expr_r))
-end
+"""
+    const StandardChemical::Dict{Type, AbstractChemical}
 
-Electron(name::AbstractString = "Electron", elements = Pair{String, Int}[]; charge = -1, abbreviation = "e", kwargs...) = Electron(Chemical(name, elements; charge, abbreviation, kwargs...))
-Proton(name::AbstractString = "Proton", elements = ["H" => 1]; charge = 1, abbreviation = "H", kwargs...) = Proton(Chemical(name, elements; charge, abbreviation, kwargs...))
-Water(name::AbstractString = "Water", elements = ["H" => 2, "O" => 1]; charge = 0, abbreviation = "H2O", kwargs...) = Water(Chemical(name, elements; charge, abbreviation, kwargs...))
-Ammonia(name::AbstractString = "Ammonia", elements = ["N" => 1, "H" => 3]; charge = 0, abbreviation = "NH3", kwargs...) = Ammonia(Chemical(name, elements; charge, abbreviation, kwargs...))
-Ammonium(name::AbstractString = "Ammonium", elements = ["N" => 1, "H" => 4]; charge = 1, abbreviation = "NH4", kwargs...) = Ammonium(Chemical(name, elements; charge, abbreviation, kwargs...))
-Sodium(name::AbstractString = "Sodium", elements = ["Na" => 1]; charge = 1, abbreviation = "Na", kwargs...) = Sodium(Chemical(name, elements; charge, abbreviation, kwargs...))
-Potassium(name::AbstractString = "Potassium", elements = ["K" => 1]; charge = 1, abbreviation = "K", kwargs...) = Potassium(Chemical(name, elements; charge, abbreviation, kwargs...))
-Lithium(name::AbstractString = "Lithium", elements = ["Li" => 1]; charge = 1, abbreviation = "Li", kwargs...) = Lithium(Chemical(name, elements; charge, abbreviation, kwargs...))
-Silver(name::AbstractString = "Silver", elements = ["Ag" => 1]; charge = 1, abbreviation = "Ag", kwargs...) = Silver(Chemical(name, elements; charge, abbreviation, kwargs...))
-Acetate(name::AbstractString = "Acetate", elements = ["C" => 1, "H" => 3, "C" => 1, "O" => 1, "O" => 1]; charge = -1, abbreviation = "OAc", kwargs...) = Acetate(Chemical(name, elements; charge, abbreviation, kwargs...))
-Formate(name::AbstractString = "Formate", elements = ["H" => 1, "C" => 1, "O" => 1, "O" => 1]; charge = -1, abbreviation = "OFo", kwargs...) = Formate(Chemical(name, elements; charge, abbreviation, kwargs...))
-AceticAcid(name::AbstractString = "Acetic Acid", elements = ["C" => 1, "H" => 3, "C" => 1, "O" => 1, "O" => 1, "H" => 1]; charge = 0, abbreviation = "HOAc", kwargs...) = AceticAcid(Chemical(name, elements; charge, abbreviation, kwargs...))
-FormicAcid(name::AbstractString = "Formic Acid", elements = ["H" => 1, "C" => 1, "O" => 1, "O" => 1, "H" => 1]; charge = -1, abbreviation = "HOFo", kwargs...) = FormicAcid(Chemical(name, elements; charge, abbreviation, kwargs...))
-MethylAcetate(name::AbstractString = "Methyl Acetate", elements = ["C" => 1, "H" => 3, "C" => 1, "O" => 1, "O" => 1, "C" => 1, "H" => 3]; charge = 0, abbreviation = "MeOAc", kwargs...) = MethylAcetate(Chemical(name, elements; charge, abbreviation, kwargs...))
-MethylFormate(name::AbstractString = "Methyl Formate", elements = ["H" => 1, "C" => 1, "O" => 1, "O" => 1, "C" => 1, "H" => 3]; charge = 0, abbreviation = "MeOFo", kwargs...) = MethylFormate(Chemical(name, elements; charge, abbreviation, kwargs...))
-Fluoride(name::AbstractString = "Fluoride", elements = ["F" => 1]; charge = -1, abbreviation = "F", kwargs...) = Fluoride(Chemical(name, elements; charge, abbreviation, kwargs...))
-Chloride(name::AbstractString = "Chloride", elements = ["Cl" => 1]; charge = -1, abbreviation = "Cl", kwargs...) = Chloride(Chemical(name, elements; charge, abbreviation, kwargs...))
-Methenium(name::AbstractString = "Methenium", elements = ["C" => 1, "H" => 3]; charge = -1, abbreviation = "Me", kwargs...) = Methenium(Chemical(name, elements; charge, abbreviation, kwargs...))
+Standard or default chemicals of chemical types. The types are keys, and chemical instances are values. This is mainly used for schemes.
+
+Default keys:
+* `Electron`
+* `Proton`
+* `Water`
+* `Ammonia`
+* `Ammonium`
+* `Sodium`
+* `Potassium`
+* `Lithium`
+* `Silver`
+* `Acetate`
+* `Formate`
+* `AceticAcid`
+* `FormicAcid`
+* `MethylAcetate`
+* `MethylFormate`
+* `Fluoride`
+* `Chloride`
+* `Methenium`
+"""
+const StandardChemical = Dict{Type, AbstractChemical}()
+
+# Electron(::Nothing = nothing) = StandardChemical[Electron]
+# Proton(::Nothing = nothing) = StandardChemical[Proton]
+# Water(::Nothing = nothing) = StandardChemical[Water]
+# Ammonia(::Nothing = nothing) = StandardChemical[Ammonia]
+# Ammonium(::Nothing = nothing) = StandardChemical[Ammonium]
+# Sodium(::Nothing = nothing) = StandardChemical[Sodium]
+# Potassium(::Nothing = nothing) = StandardChemical[Potassium]
+# Lithium(::Nothing = nothing) = StandardChemical[Lithium]
+# Silver(::Nothing = nothing) = StandardChemical[Silver]
+# Acetate(::Nothing = nothing) = StandardChemical[Acetate]
+# Formate(::Nothing = nothing) = StandardChemical[Formate]
+# AceticAcid(::Nothing = nothing) = StandardChemical[AceticAcid]
+# FormicAcid(::Nothing = nothing) = StandardChemical[FormicAcid]
+# MethylAcetate(::Nothing = nothing) = StandardChemical[MethylAcetate]
+# MethylFormate(::Nothing = nothing) = StandardChemical[MethylFormate]
+# Fluoride(::Nothing = nothing) = StandardChemical[Fluoride]
+# Chloride(::Nothing = nothing) = StandardChemical[Chloride]
+# Methenium(::Nothing = nothing) = StandardChemical[Methenium]
+
+_attributedchemical(::Type{T}, name, elements, abbreviation; new_attr = true, kwargs...) where {T<:AttributedChemical} =
+    T(String(name), collect(Pair{String, Int}, elements), String(abbreviation), _chemicalattribute(new_attr, kwargs))
+
+Electron(; new_attr = true, name = "Electron", elements = Pair{String, Int}[], abbreviation = "e", kwargs...) = 
+    _attributedchemical(Electron, name, elements, abbreviation; new_attr, kwargs...)
+Proton(; new_attr = true, name = "Proton", elements = ["H" => 1], abbreviation = "H", kwargs...) = 
+    _attributedchemical(Proton, name, elements, abbreviation; new_attr, kwargs...)
+Water(; new_attr = true, name = "Water", elements = ["H" => 2, "O" => 1], abbreviation = "H2O", kwargs...) = 
+    _attributedchemical(Water, name, elements, abbreviation; new_attr, kwargs...)
+Ammonia(; new_attr = true, name = "Ammonia", elements = ["N" => 1, "H" => 3], abbreviation = "NH3", kwargs...) = 
+    _attributedchemical(Ammonia, name, elements, abbreviation; new_attr, kwargs...)
+Ammonium(; new_attr = true, name = "Ammonium", elements = ["N" => 1, "H" => 4], abbreviation = "NH4", kwargs...) = 
+    _attributedchemical(Ammonium, name, elements, abbreviation; new_attr, kwargs...)
+Sodium(; new_attr = true, name = "Sodium", elements = ["Na" => 1], abbreviation = "Na", kwargs...) = 
+    _attributedchemical(Sodium, name, elements, abbreviation; new_attr, kwargs...)
+Potassium(; new_attr = true, name = "Potassium", elements = ["K" => 1], abbreviation = "K", kwargs...) = 
+    _attributedchemical(Potassium, name, elements, abbreviation; new_attr, kwargs...)
+Lithium(; new_attr = true, name = "Lithium", elements = ["Li" => 1], abbreviation = "Li", kwargs...) = 
+    _attributedchemical(Lithium, name, elements, abbreviation; new_attr, kwargs...)
+Silver(; new_attr = true, name = "Silver", elements = ["Ag" => 1], abbreviation = "Ag", kwargs...) = 
+    _attributedchemical(Silver, name, elements, abbreviation; new_attr, kwargs...)
+Acetate(; new_attr = true, name = "Acetate", elements = ["C" => 1, "H" => 3, "C" => 1, "O" => 1, "O" => 1], abbreviation = "OAc", kwargs...) = 
+    _attributedchemical(Acetate, name, elements, abbreviation; new_attr, kwargs...)
+Formate(; new_attr = true, name = "Formate", elements = ["H" => 1, "C" => 1, "O" => 1, "O" => 1], abbreviation = "OFo", kwargs...) = 
+    _attributedchemical(Formate, name, elements, abbreviation; new_attr, kwargs...)
+AceticAcid(; new_attr = true, name = "Acetic Acid", elements = ["C" => 1, "H" => 3, "C" => 1, "O" => 1, "O" => 1, "H" => 1], abbreviation = "HOAc", kwargs...) = 
+    _attributedchemical(AceticAcid, name, elements, abbreviation; new_attr, kwargs...)
+FormicAcid(; new_attr = true, name = "Formic Acid", elements = ["H" => 1, "C" => 1, "O" => 1, "O" => 1, "H" => 1], abbreviation = "HOFo", kwargs...) = 
+    _attributedchemical(FormicAcid, name, elements, abbreviation; new_attr, kwargs...)
+MethylAcetate(; new_attr = true, name = "Methyl Acetate", elements = ["C" => 1, "H" => 3, "C" => 1, "O" => 1, "O" => 1, "C" => 1, "H" => 3], abbreviation = "MeOAc", kwargs...) = 
+    _attributedchemical(MethylAcetate, name, elements, abbreviation; new_attr, kwargs...)
+MethylFormate(; new_attr = true, name = "Methyl Formate", elements = ["H" => 1, "C" => 1, "O" => 1, "O" => 1, "C" => 1, "H" => 3], abbreviation = "MeOFo", kwargs...) = 
+    _attributedchemical(MethylFormate, name, elements, abbreviation; new_attr, kwargs...)
+Fluoride(; new_attr = true, name = "Fluoride", elements = ["F" => 1], abbreviation = "F", kwargs...) = 
+    _attributedchemical(Fluoride, name, elements, abbreviation; new_attr, kwargs...)
+Chloride(; new_attr = true, name = "Chloride", elements = ["Cl" => 1], abbreviation = "Cl", kwargs...) = 
+    _attributedchemical(Chloride, name, elements, abbreviation; new_attr, kwargs...)
+Methenium(; new_attr = true, name = "Methenium", elements = ["C" => 1, "H" => 3], abbreviation = "Me", kwargs...) = 
+    _attributedchemical(Methenium, name, elements, abbreviation; new_attr, kwargs...)
+
+push!(StandardChemical, Electron => Electron(; new_attr = false))
+push!(StandardChemical, Proton => Proton(; new_attr = false))
+push!(StandardChemical, Water => Water(; new_attr = false))
+push!(StandardChemical, Ammonia => Ammonia(; new_attr = false))
+push!(StandardChemical, Ammonium => Ammonium(; new_attr = false))
+push!(StandardChemical, Sodium => Sodium(; new_attr = false))
+push!(StandardChemical, Potassium => Potassium(; new_attr = false))
+push!(StandardChemical, Lithium => Lithium(; new_attr = false))
+push!(StandardChemical, Silver => Silver(; new_attr = false))
+push!(StandardChemical, Acetate => Acetate(; new_attr = false))
+push!(StandardChemical, Formate => Formate(; new_attr = false))
+push!(StandardChemical, AceticAcid => AceticAcid(; new_attr = false))
+push!(StandardChemical, FormicAcid => FormicAcid(; new_attr = false))
+push!(StandardChemical, MethylAcetate => MethylAcetate(; new_attr = false))
+push!(StandardChemical, MethylFormate => MethylFormate(; new_attr = false))
+push!(StandardChemical, Fluoride => Fluoride(; new_attr = false))
+push!(StandardChemical, Chloride => Chloride(; new_attr = false))
+push!(StandardChemical, Methenium => Methenium(; new_attr = false))
 
 """
-    const GenericChemical = Union{Chemical, FormulaChemical, <:AbstractChemicalWrapper{Chemical}, <:AbstractChemicalWrapper{FormulaChemical}}
+    const GenericChemical = Union{Chemical, FormulaChemical}
 
 Generic chemical types.
 """
-const GenericChemical = Union{Chemical, FormulaChemical, <:AbstractChemicalWrapper{Chemical}, <:AbstractChemicalWrapper{FormulaChemical}}
+const GenericChemical = Union{Chemical, FormulaChemical}
 
 """
     AbstractAdductIon{S, T} <: AbstractChemical

@@ -14,11 +14,11 @@ lossserine = ChemicalLoss(cserine)
 lossserinei = ChemicalLoss(cserinei)
 losshserine = ChemicalLoss(AdductIon(cserine, "[M+H]+"))
 losshserinei = ChemicalLoss(AdductIon(cserinei, "[M+H]+"))
-losshserinegainwater = ChemicalSchemes(ChemicalLoss(AdductIon(cserine, "[M+H]+")), ChemicalGain(Water()))
+losshserinegainwater = ChemicalSchemes(ChemicalLoss(AdductIon(cserine, "[M+H]+")), ChemicalGain(Water))
 losshserinegaincolossco = ChemicalSchemes(ChemicalLoss(AdductIon(cserine, "[M+H]+")), parse_chemical("+CO"), parse_chemical("-CO"))
 # Generic structure interface
 # Mix `[M-H]-` and neutral loss `lossserine` into `losshserine` for `AddductIon(cps, "[M-H]-")`
-push!(cps.property, :scheme => [
+pushchemicalattr!(cps, :scheme, [
     ChemicalLoss(Proton()) => [
         lossserine => losshserine
     ] 
@@ -26,7 +26,7 @@ push!(cps.property, :scheme => [
 # Change neutral loss `lossserine` to `lossserinei` for `cpsi1`
 # Change neutral loss `losshserine` to `losshserinei` for `cpsi1`
 # Change neutral loss `lossserine` to `lossserinei` for `AddductIon(cpsi1, "[M-H]-")`
-push!(cpsi1.property, :structure => [
+pushchemicalattr!(cpsi1, :structure, [
     nothing => [
         lossserine => lossserinei,
         losshserine => losshserinei
@@ -36,19 +36,19 @@ push!(cpsi1.property, :structure => [
     ]
 ])
 # Mix `[M-H]-` and neutral loss `lossserine` into `losshserine` for `AddductIon(cpsi1, "[M-H]-")`
-push!(cpsi1.property, :scheme => [
+pushchemicalattr!(cpsi1, :scheme, [
     ChemicalLoss(Proton()) => [
         lossserine => losshserine
     ] 
 ])
 # Change product `AdductIon(fa1, "[M-H]-")` to `AdductIon(fa1i, "[M-H]-")` for `AddductIon(cpsi2, "[M-H]-")`
-push!(fa1.property, :chemicalscheme => [
+pushchemicalattr!(fa1, :chemicalscheme, [
     ChemicalLoss(Proton()) => :sn1fa
 ])
-push!(fa1i.property, :chemicalscheme => [
+pushchemicalattr!(fa1i, :chemicalscheme, [
     ChemicalLoss(Proton()) => :sn1fa
 ])
-push!(cpsi2.property, :structure => [
+pushchemicalattr!(cpsi2, :structure, [
     ChemicalLoss(Proton()) => [
         :sn1fa => AdductIon(fa1i, ChemicalLoss(Proton()))     
     ],
@@ -57,7 +57,7 @@ push!(cpsi2.property, :structure => [
     ]
 ])
 # Mix `[M-H]-` and neutral loss `lossserine` into `losshserine` for `AddductIon(cpsi2, "[M-H]-")`
-push!(cpsi2.property, :scheme => [
+pushchemicalattr!(cpsi2, :scheme, [
     ChemicalLoss(Proton()) => [
         lossserine => losshserine
     ] 
@@ -74,11 +74,11 @@ icpsi2 = [ionize(cpsi2; adduct = losshserine), AdductIon(cpsi2, "[2M+H]+"), Addu
 @info "Defining chemical transitions"
 
 cp0 = ChemicalSeries(icps[3] => lossserine)
-cp1 = ChemicalSeries(icps[1], AdductIon(fa1, ChemicalLoss(Proton())))
+cp1 = ChemicalSeries(icps[1], AdductIon(fa1, ChemicalLoss(Proton)))
 cp2 = ChemicalSeries(icps[3] => lossserine => outputchemical(cp1))
 cp3 = ChemicalSeries(icps[3], cp1)
-cp4 = ChemicalSeries(ionize(isotopomerize(icps[3], ["[13C]" => 5]); adduct = ElementalScheme(false, Proton())) => isotopomerize(completescheme(icps[1], outputchemical(cp1)), ["[13C]" => 5]))
-cp5 = ChemicalSeries(ionize(isotopomerize(isotopomerize(icpsi1[3], ["[13C]" => 5]), ["D" => 2]), ElementalScheme(false, Proton())), ChemicalSeries(isotopomerize(completescheme(icpsi1[3], lossserine), ["D" => 1]), isotopomerize(completescheme(icpsi1[1], outputchemical(cp1)), ["[13C]" => 5])))
+cp4 = ChemicalSeries(ionize(isotopomerize(icps[3], ["[13C]" => 5]); adduct = ElementalScheme(false, Proton)) => isotopomerize(completescheme(icps[1], outputchemical(cp1)), ["[13C]" => 5]))
+cp5 = ChemicalSeries(ionize(isotopomerize(isotopomerize(icpsi1[3], ["[13C]" => 5]), ["D" => 2]), ElementalScheme(false, Proton)), ChemicalSeries(isotopomerize(completescheme(icpsi1[3], lossserine), ["D" => 1]), isotopomerize(completescheme(icpsi1[1], outputchemical(cp1)), ["[13C]" => 5])))
 cp6 = ChemicalSeries(icpsi2[3] => ionize(fa1, "[M-H]-"))
 cp7 = ChemicalSeries(icpsi1[3], lossserine) 
 pt1 = peak_table(MSScan(Isotopologues(icglc[1]; abundance = 1e5, threshold = crit(1e1, 1e-2))))

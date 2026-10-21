@@ -25,12 +25,15 @@ AdductParser(x::Bool, parser::AbstractChemicalParser) = AdductParser{x}(parser)
 Default chemical parser that parses an input string (chemical formula) into [`FormulaChemical`](@ref).
 
 # Fields 
-* `property::Vector{Pair{Symbol, Any}}`: additional attributes. These can be mutated, added, or deleted with keyword arguments of [`parse_chemical`](@ref). Values of `nothing` are deleted.
-  
-`kwargs` are collected into field `property`.
+* `attribute::Vector{Pair{Symbol, Any}}`: additional attributes. These can be mutated, added, or deleted with keyword arguments of [`parse_chemical`](@ref). Values of `nothing` are deleted.
+
+In function [`parse_chemical`](@ref), keyword argument `new_attr` determines whether allowing adding new attributes afterwards. The default is `true`.
+If the final attribute is not empty, it is automatically set `true`.
+
+`kwargs` are collected into field `attribute`. 
 """
 struct FormulaChemicalParser <: AbstractChemicalParser
-    property::Vector{Pair{Symbol, Any}}
+    attribute::Vector{Pair{Symbol, Any}}
 end
 FormulaChemicalParser(; kwargs...) = FormulaChemicalParser(collect(kwargs))
 
@@ -41,12 +44,15 @@ FormulaChemicalParser(; kwargs...) = FormulaChemicalParser(collect(kwargs))
 Chemical parser that parses an input string (chemical name) into [`Chemical`](@ref).
 
 # Fields 
-* `property::Vector{Pair{Symbol, Any}}`: additional attributes. It must include `:formula` or `:elements`. These can be mutated, added, or deleted with keyword arguments of [`parse_chemical`](@ref). Values of `nothing` are deleted.
+* `attribute::Vector{Pair{Symbol, Any}}`: additional attributes. It must include `:formula` or `:elements`. These can be mutated, added, or deleted with keyword arguments of [`parse_chemical`](@ref). Values of `nothing` are deleted.
 
-`kwargs` are collected into field `property`.
+In function [`parse_chemical`](@ref), keyword argument `new_attr` determines whether allowing adding new attributes afterwards. The default is `true`.
+If the final attribute is not empty, it is automatically set `true`.
+
+`kwargs` are collected into field `attribute`.
 """
 struct ChemicalParser <: AbstractChemicalParser
-    property::Vector{Pair{Symbol, Any}}
+    attribute::Vector{Pair{Symbol, Any}}
 end
 ChemicalParser(; kwargs...) = ChemicalParser(collect(kwargs))
 

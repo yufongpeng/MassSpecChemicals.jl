@@ -1,12 +1,37 @@
-# implement == and hash for concrete type 
-==(x::Chemical, y::Chemical) = x.name == y.name && sort_unique_elements(x.elements) == sort_unique_elements(y.elements) && sort(x.property; by = first) == sort(y.property; by = first)
-==(x::FormulaChemical, y::FormulaChemical) = sort_unique_elements(x.elements) == sort_unique_elements(y.elements) && sort(x.property; by = first) == sort(y.property; by = first)
+# implement copy, ==, and hash for concrete type 
+_chemicalattributes_equal(x::Nothing, y::Nothing) = true
+_chemicalattributes_equal(x::ChemicalAttribute, y::Nothing) = isnothing(x.attribute) || isempty(x.attribute)
+_chemicalattributes_equal(x::Nothing, y::ChemicalAttribute) = isnothing(y.attribute) || isempty(y.attribute)
+function _chemicalattributes_equal(x::ChemicalAttribute, y::ChemicalAttribute) 
+    if isnothing(x.attribute) || isempty(x.attribute)
+        return isnothing(y.attribute) || isempty(y.attribute)
+    end 
+    sort(x.attribute; by = first) == sort(y.attribute; by = first)
+end
+function _chemicalelements_equal(x::Vector{Pair{String, Int}}, y::Vector{Pair{String, Int}}) 
+    x = unique_elements(x)
+    y = unique_elements(y)
+    length(x) == length(y) || return false
+    # all(in(y), x)
+    sort!(x) == sort!(y)
+end
+
+==(x::Chemical, y::Chemical) =
+    x.name == y.name && _chemicalelements_equal(x.elements, y.elements) && _chemicalattributes_equal(x.attribute, y.attribute)
+==(x::FormulaChemical, y::FormulaChemical) =
+    _chemicalelements_equal(x.elements, y.elements) && _chemicalattributes_equal(x.attribute, y.attribute)
+function ==(x::T, y::T) where {T<:AttributedChemical}
+    fields = fieldnames(T)
+    attrname = getchemicalattrname(T)
+    all(getfield(x, f) == getfield(y, f) for f in fields if f != :elements && f != attrname) &&
+        _chemicalelements_equal(x.elements, y.elements) &&
+        _chemicalattributes_equal(getchemicalattr(x, attrname, nothing), getchemicalattr(y, attrname, nothing))
+end
 ==(x::ChemicalTransition, y::ChemicalTransition) = x.transition == y.transition
 ==(x::Isobars, y::Isobars) = x.chemicals == y.chemicals && all(splat(isapprox), zip(x.abundance, y.abundance))
 ==(x::Isotopomers, y::Isotopomers) = x.parent == y.parent && x.isotopes == y.isotopes
 ==(x::Groupedisotopomers, y::Groupedisotopomers) = x.parent == y.parent && x.index == y.index && x.isotope == y.isotope && all(splat(==), zip(x.isotopes, y.isotopes)) && all(splat(isapprox), zip(x.abundance, y.abundance))
 ==(x::AdductIon, y::AdductIon) = x.core == y.core && x.adduct == y.adduct && x.ncore == y.ncore
-==(x::T, y::T) where {T<:AbstractChemicalWrapper} = x.chemical == y.chemical
 ==(x::ElementalScheme{T}, y::ElementalScheme{T}) where T = x.chemical == y.chemical
 ==(x::StructuralElementalScheme, y::StructuralElementalScheme) = x.structuralscheme == y.structuralscheme && x.elementalscheme == y.elementalscheme
 ==(x::ChemicalSchemes, y::ChemicalSchemes) = x.schemes == y.schemes 
@@ -20,17 +45,11 @@ function ==(x::ElementsVector, y::ElementsVector)
     @inbounds while true
         ix > lastindex(ixs) && iy > lastindex(iys) && break 
         if ix > lastindex(ixs)
-            if y.numbers[iys[iy]] == 0 
-                iy += 1
-            else
-                return false 
-            end
+            y.numbers[iys[iy]] == 0 || return false
+            iy += 1
         elseif iy > lastindex(iys)
-            if x.numbers[ixs[ix]] == 0 
-                iy += 1 
-            else
-                return false
-            end
+            x.numbers[ixs[ix]] == 0 || return false
+            iy += 1
         elseif x.elements[ixs[ix]] == y.elements[iys[iy]]
             x.numbers[ixs[ix]] == y.numbers[iys[iy]] || return false
             ix += 1 
@@ -49,18 +68,18 @@ end
 const ABUNDANCE_ROUNDING_DIGITS = 4
 abundance_rounding_digits() = ABUNDANCE_ROUNDING_DIGITS
 
-function hash(x::Chemical, h::UInt) 
-    h = hash(x.name, h) 
+_chemicalattributevalues(::Nothing) = nothing
+_chemicalattributevalues(attribute::ChemicalAttribute) = isnothing(attribute.attribute) ? nothing : sort(attribute.attribute; by = first)
+function hash(x::T, h::UInt) where {T<:AttributedChemical}
+    h = hash(T, h)
     h = hash(sum(hash, sort_unique_elements(x.elements); init = zero(h)), h)
-    h = hash(map(first, axes(x.property)), h)
-    h = hash(map(last, axes(x.property)), h)
-    hash(sum(hash, x.property; init = zero(h)), h)
-end
-function hash(x::FormulaChemical, h::UInt) 
-    h = hash(sum(hash, sort_unique_elements(x.elements); init = zero(h)), h)    
-    h = hash(map(first, axes(x.property)), h)
-    h = hash(map(last, axes(x.property)), h)
-    hash(sum(hash, x.property; init = zero(h)), h)
+    attrname = getchemicalattrname(T)
+    for f in fieldnames(T)
+        if f != :elements && f != attrname
+            h = hash(getfield(x, f), h)
+        end
+    end
+    hash(_chemicalattributevalues(getchemicalattr(x, attrname, nothing)), h)
 end
 hash(x::T, h::UInt) where {T<:ChemicalTransition} = hash(T, hash(x.transition, h))
 function hash(x::Isobars, h::UInt) 
@@ -97,7 +116,6 @@ function hash(x::AdductIon, h::UInt)
     h = hash(x.adduct, h)
     hash(x.ncore, h)
 end
-hash(x::T, h::UInt) where {T<:AbstractChemicalWrapper} = hash(T, hash(x.chemical, h))
 function hash(x::ElementalScheme{T}, h::UInt) where T
     h = hash(T, h) 
     hash(x.chemical, h)
@@ -138,15 +156,17 @@ function hash(x::ElementsVector, h::UInt)
     h
 end
 
-copy(x::T) where {T<:AbstractChemicalScheme} = T((copy(getfield(x, f)) for f in fieldnames(T))...)
-copy(x::Chemical) = Chemical(x.name, copy(x.elements), copy(x.property))
-copy(x::FormulaChemical) = FormulaChemical(copy(x.elements), copy(x.property))
+stringcopy(x::T) where T = copy(x)
+stringcopy(x::AbstractString) = x
+stringcopy(x::Nothing) = x
+
+copy(x::ChemicalAttribute) = ChemicalAttribute(isnothing(x.attribute) ? nothing : copy(x.attribute))
+copy(x::T) where {T<:AbstractChemicalScheme} = T((stringcopy(getfield(x, f)) for f in fieldnames(T))...)
 copy(x::ChemicalTransition) = ChemicalTransition(copy(x.transition))
 copy(x::Isobars) = Isobars(copy(x.chemicals), copy(x.abundance))
 copy(x::Isotopomers) = Isotopomers(copy(x.parent), copy(x.isotopes))
 copy(x::Groupedisotopomers) = Groupedisotopomers(copy(x.parent), x.index, x.isotope, [copy(y) for y in x.isotopes], copy(x.abundance))
 copy(x::AdductIon) = AdductIon(copy(x.core), copy(x.adduct), x.ncore) 
-copy(x::T) where {T<:AbstractChemicalWrapper} = T(copy(x.chemical))
 copy(x::ElementalScheme{T}) where T = ElementalScheme(T, copy(x.chemical))
 copy(x::StructuralElementalScheme) = StructuralElementalScheme(copy(x.structuralscheme), copy(x.elementalscheme)) 
 copy(x::ChemicalSchemes) = ChemicalSchemes(copy(x.schemes)) 

@@ -7,7 +7,7 @@ import Base: show, length, +, -, *, /, isless, isequal, in, union, intersect, it
 
 export 
     # Types
-    AbstractChemical, Chemical, FormulaChemical, ChemicalTransition, ChemicalSeries, Isobars, Isotopomers, AbstractChemicalWrapper, 
+    AbstractChemical, AttributedChemical, ChemicalAttribute, Chemical, FormulaChemical, ChemicalTransition, ChemicalSeries, Isobars, Isotopomers,
     AbstractAdductIon, AdductIon,
     AbstractScheme, AbstractElementalScheme, AbstractStructuralScheme, StructuralChemicalScheme, AbstractCompleteScheme, 
     ElementalScheme, ChemicalGain, ChemicalLoss, 
@@ -15,6 +15,7 @@ export
     CompleteSchemes, StructuralSchemes, ElementalSchemes, 
 
     # Default chemical for scheme 
+    StandardChemical,
     Electron, 
     Proton, 
     Water, 
@@ -44,6 +45,9 @@ export
     parse_chemical, parse_adduct, 
     ChemicalParser, FormulaChemicalParser, AdductParser, ChemicalExpressionParser, ChemicalTransitionParser, ChemicalEntityParser, ChemicalSchemeParser, 
 
+    # Attributes manipulation
+    getchemicalattr, getchemicalattrname, pushchemicalattr!, pushchemicalattr_new!,
+
     # Attributes
     chemicalformula, chemicalelements, chemicalname, chemicalabbr, chemicalsmiles, ioncore, ionadduct, ncore, charge, ncharge, retentiontime,
     mmi, molarmass, mz, 
@@ -53,7 +57,6 @@ export
     inputchemical, outputchemical,
     seriesanalyzedchemical, seriesanalyzedisotopes, seriesanalyzedcharge, 
     msstage, chemicaltransition, mass_shift_index, 
-    getchemicalproperty, 
     elementalscheme, structuralscheme, 
 
     # Scheme 
@@ -82,25 +85,25 @@ export
 
 
 abstract type AbstractChemicalScheme end
-@deprecate AbstractChemicalsSchema AbstractChemicalScheme
+@deprecate AbstractChemicalsSchema AbstractChemicalScheme # del
 """
     AbstractChemical <: AbstractChemicalScheme
 
 Abstract type for chemicals. 
     
 The attribute function [`chemicalname`](@ref) `-> String` (unique chemical name) is required for a concrete type of `AbstractChemical`. 
-It defaults to property `name`.
+It defaults to attribute `name`.
 
 At least one of the following attributes is required. They are interchangeable.
-* [`chemicalformula`](@ref) `-> String`: chemical formula. It defaults to property `:formula`.
-* [`chemicalelements`](@ref) `-> Vector{Pair{String, Int}}`: chemical elements. It defaults to property `:elements`.
+* [`chemicalformula`](@ref) `-> String`: chemical formula. It defaults to attribute `:formula`.
+* [`chemicalelements`](@ref) `-> Vector{Pair{String, Int}}`: chemical elements. It defaults to attribute `:elements`.
 
 The following attributes are optional, but generic functions are defined.
-* [`chemicalabbr`](@ref) `-> String`: abbreviation. It defaults to property `:abbreviation` and `chemicalname`. 
-* [`chemicalsmiles`](@ref) `-> String`: SMILES. It defaults to property `:SMILES` and `""`.
-* [`charge`](@ref) `-> Int`: charge state; positive for cation, negative for anion. It defaults to property `:charge` and `0`.
+* [`chemicalabbr`](@ref) `-> String`: abbreviation. It defaults to attribute `:abbreviation` and `chemicalname`. 
+* [`chemicalsmiles`](@ref) `-> String`: SMILES. It defaults to attribute `:SMILES` and `""`.
+* [`charge`](@ref) `-> Int`: charge state; positive for cation, negative for anion. It defaults to attribute `:charge` and `0`.
 * [`ncharge`](@ref) `-> Int`: number of charges.
-* [`retentiontime`](@ref) `-> AbstractFloat`: retention time. It defaults to property `:retentiontime` and `NaN`.
+* [`retentiontime`](@ref) `-> AbstractFloat`: retention time. It defaults to attribute `:retentiontime` and `NaN`.
 * [`mmi`](@ref) `-> AbstractFloat`: monoisotopic mass.
 * [`molarmass`](@ref) `-> AbstractFloat`: molar mass.
 * [`mz`](@ref) `-> AbstractFloat`: mass to charge ratio (m/z).
@@ -127,6 +130,8 @@ Specific methods for these attributes are defined for other intrinsic chemical t
 * Entity Level: attribute of the corresponding chemical entity.
 * Species Level: attribute of the corresponding chemical species.
 * Transition Level: attribute of the corresponding chemical transition.
+
+Base functions, `copy`, `hash`, and `==`, should be overloaded for any new concrete types.
 """
 abstract type AbstractChemical <: AbstractChemicalScheme end
 
@@ -156,6 +161,8 @@ Specific methods for these attributes are defined for other intrinsic scheme typ
 * Entity Level: attribute of the elemental scheme.
 * Species Level: attribute of the scheme itself.
 * Transition Level: only apply to schemes in `ChemicalTransition`; `Species Level` for each scheme.
+
+Base functions, `copy`, `hash`, and `==`, should be overloaded for any new concrete types.
 """
 abstract type AbstractScheme <: AbstractChemicalScheme end
 # mt, ccs 

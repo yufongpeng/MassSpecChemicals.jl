@@ -26,6 +26,9 @@ end
 
 Determine whether two chemicals are chemically equivalent.
 By default, both chemicals are transformed with [`ischemicalequaltransform`](@ref) and compared with [`istransformedchemicalequal`](@ref).
+
+For chemicals, their names, elemental composition, and other attributes for wrapper types  are compared.
+For scehemes, internal chemicals and other attributes for wrapper types are compared.
 """
 ischemicalequal(x::AbstractChemical, y::AbstractChemical) = istransformedchemicalequal(ischemicalequaltransform(x), ischemicalequaltransform(y))
 ischemicalequal(x::AbstractScheme, y::AbstractScheme) = istransformedchemicalequal(ischemicalequaltransform(x), ischemicalequaltransform(y))
@@ -48,34 +51,41 @@ Return the transformed object used when comparing chemicals with [`istransformed
 """
 ischemicalequaltransform(x::AbstractChemical) = x 
 ischemicalequaltransform(x::AbstractScheme) = x 
-ischemicalequaltransform(x::T) where {T<:AbstractChemicalWrapper} = ischemicalequaltransform(x.chemical)
 ischemicalequaltransform(x::Isobars) = length(x) == 1 ? ischemicalequaltransform(chemicalentity(x)) : x
 ischemicalequaltransform(x::Isotopomers) = isempty(unique_elements(x.isotopes)) ? x.parent : x 
 ischemicalequaltransform(x::Groupedisotopomers) = length(x.isotopes) > 1 ? x : isempty(unique_elements(x.isotopes[begin])) ? x.parent : Isotopomers(x.parent, x.isotopes[begin]) 
-ischemicalequaltransform(x::IsotopomerizedSchemes) = isempty(unique_elements(x.isotopes)) ? x.parent : x 
-ischemicalequaltransform(x::Groupedisotopomerizedschemes) = length(x.isotopes) > 1 ? x : isempty(unique_elements(x.isotopes[begin])) ? x.parent : IsotopomerizedSchemes(x.parent, x.isotopes[begin]) 
+# ischemicalequaltransform(x::IsotopomerizedSchemes) = isempty(unique_elements(x.isotopes)) ? x.parent : x 
+# ischemicalequaltransform(x::Groupedisotopomerizedschemes) = length(x.isotopes) > 1 ? x : isempty(unique_elements(x.isotopes[begin])) ? x.parent : IsotopomerizedSchemes(x.parent, x.isotopes[begin]) 
 ischemicalequaltransform(x::ElementalScheme{T}) where T = ElementalScheme(T, ischemicalequaltransform(x.chemical))
 ischemicalequaltransform(x::StructuralElementalScheme) = StructuralElementalScheme(ischemicalequaltransform(x.structuralscheme), ischemicalequaltransform(x.elementalscheme))
 ischemicalequaltransform(x::ChemicalTransition) = ChemicalTransition([ischemicalequaltransform(c) for c in chemicaltransition(x)])
-
+ischemicalequaltransform(x::ChemicalSchemes) = (length(x.schemes) == 1 && first(x.number) == 1) ? first(x.schemes) : x
+ischemicalequaltransform(x::IsotopomerizedSchemes) = isempty(unique_elements(x.isotopes)) ? ischemicalequaltransform(x.parent) : (length(x.parent.schemes) == 1 && first(x.parent.number) == 1) ? isotopomerize(first(x.parent.schemes), x.isotopes) : x
+ischemicalequaltransform(x::Groupedisotopomerizedschemes) = length(x.isotopes) > 1 ? x : isempty(unique_elements(x.isotopes[begin])) ? ischemicalequaltransform(x.parent) : isotopomerize(ischemicalequaltransform(x.parent), x.isotopes[begin])
 """
     istransformedchemicalequal(x::AbstractChemicalScheme, y::AbstractChemicalScheme) -> Bool
 
 Determine whether two chemicals are chemically equivalent after applying [`ischemicalequaltransform`](@ref).
-For [`Chemical`](@ref), the comparison uses the name and elemental composition. For [`FormulaChemical`](@ref), it uses the name.
+
+For chemicals, their names, elemental compositions, and other attributes for wrapper types are compared.
+For scehemes, internal chemicals and other attributes for wrapper types are compared.
 """
 istransformedchemicalequal(x::AbstractChemicalScheme, y::AbstractChemicalScheme) = false
-istransformedchemicalequal(x::AbstractChemical, y::AbstractChemical) = isequal(x, y)
+istransformedchemicalequal(x::AbstractChemical, y::AbstractChemical) = chemicalname(x) == chemicalname(y) && _chemicalelements_equal(chemicalelements(x), chemicalelements(y))
 istransformedchemicalequal(x::AbstractScheme, y::AbstractScheme) = isequal(x, y)
 istransformedchemicalequal(x::AbstractAdductIon, y::AbstractAdductIon) = ischemicalequal(ionadduct(x), ionadduct(y)) && ischemicalequal(ioncore(x), ioncore(y))
-istransformedchemicalequal(x::Chemical, y::Chemical) = 
-    isequal(chemicalname(x), chemicalname(y)) && isequal(sort_unique_elements(chemicalelements(x)), sort_unique_elements(chemicalelements(y)))
-istransformedchemicalequal(x::FormulaChemical, y::FormulaChemical) = 
-    isequal(chemicalname(x), chemicalname(y)) 
+istransformedchemicalequal(x::Chemical, y::Chemical) = x.name == y.name && _chemicalelements_equal(x.elements, y.elements)
+istransformedchemicalequal(x::FormulaChemical, y::FormulaChemical) = _chemicalelements_equal(x.elements, y.elements)
+istransformedchemicalequal(x::AbstractChemicalWrapper, y::AbstractChemical) = false
+istransformedchemicalequal(x::AbstractChemical, y::AbstractChemicalWrapper) = false
+istransformedchemicalequal(x::AbstractChemicalWrapper, y::AbstractChemicalWrapper) = x == y
 istransformedchemicalequal(x::Isobars, y::Isobars) = all(ischemicalequal(a, b) for (a, b) in zip(x.chemicals, y.chemicals)) && all(isapprox(a, b) for (a, b) in zip(x.abundance, y.abundance))
 istransformedchemicalequal(x::Isotopomers, y::Isotopomers) = ischemicalequal(x.parent, y.parent) && x.isotopes == y.isotopes
 istransformedchemicalequal(x::Groupedisotopomers, y::Groupedisotopomers) = ischemicalequal(x.parent, y.parent) && x.index == y.index && x.isotope == y.isotope && all(splat(==), zip(x.isotopes, y.isotopes)) && all(splat(isapprox), zip(x.abundance, y.abundance))
 istransformedchemicalequal(x::ChemicalTransition, y::ChemicalTransition) = all(ischemicalequal.(x.transition, y.transition))
+istransformedchemicalequal(x::AbstractSchemeWrapper, y::AbstractScheme) = false
+istransformedchemicalequal(x::AbstractScheme, y::AbstractSchemeWrapper) = false
+istransformedchemicalequal(x::AbstractSchemeWrapper, y::AbstractSchemeWrapper) = x == y
 istransformedchemicalequal(x::IsotopomerizedSchemes, y::IsotopomerizedSchemes) = istransformedchemicalequal(x.parent, y.parent) && x.isotopes == y.isotopes
 istransformedchemicalequal(x::Groupedisotopomerizedschemes, y::Groupedisotopomerizedschemes) = ischemicalequal(x.parent, y.parent) && x.index == y.index && x.isotope == y.isotope && all(splat(==), zip(x.isotopes, y.isotopes)) && all(splat(isapprox), zip(x.abundance, y.abundance))
 function istransformedchemicalequal(x::ChemicalSchemes, y::ChemicalSchemes) 
@@ -224,7 +234,7 @@ Loss_Me
 julia> loss_cd3 = ElementalScheme(false, Chemical("Me[D3]", "CD3"; charge = 1))
 Loss_Me[D3]
 
-julia> push!(chemical.property, :structure => [nothing => [loss_me => loss_cd3]])
+julia> pushchemicalattr!(chemical, :structure, [nothing => [loss_me => loss_cd3]])
 1-element Vector{Pair{Symbol, Any}}:
  :structure => Pair{Nothing, Vector{Pair{ElementalScheme{false, Chemical}, ElementalScheme{false, Chemical}}}}[nothing => [Loss_Me => Loss_Me[D3]]]
 
@@ -250,7 +260,7 @@ julia> begin
        fa1i = Chemical("FA 18:0[D5]", "C13D5H36O2") # Labeled fatty acid
        end;
 
-julia> push!(ps1.property, :structure => [
+julia> pushchemicalattr!(ps1, :structure, [
            nothing => [
                lossserine => lossserinei,
                losshserine => losshserinei
@@ -260,7 +270,7 @@ julia> push!(ps1.property, :structure => [
            ]
        ]);
 
-julia> push!(ps1.property, :scheme => [
+julia> pushchemicalattr!(ps1, :scheme, [
            ChemicalLoss(Proton()) => [
                lossserine => losshserine
            ] 
@@ -269,15 +279,15 @@ julia> push!(ps1.property, :scheme => [
 julia> detectedchemical(ChemicalSeries(ionize(ps1, ChemicalLoss(Proton())) => lossserine))
 [(PS[D3,13C3] 18:0/20:4)-Ser[D3,13C3]-H]-
 
-julia> push!(fa1.property, :chemicalscheme => [
+julia> pushchemicalattr!(fa1, :chemicalscheme, [
            ChemicalLoss(Proton()) => :sn1fa
        ]);
 
-julia> push!(fa1i.property, :chemicalscheme => [
+julia> pushchemicalattr!(fa1i, :chemicalscheme, [
            ChemicalLoss(Proton()) => :sn1fa
        ]);
 
-julia> push!(ps2.property, :structure => [
+julia> pushchemicalattr!(ps2, :structure, [
            ChemicalLoss(Proton()) => [
                :sn1fa => AdductIon(fa1i, ChemicalLoss(Proton()))     
            ],
@@ -286,7 +296,7 @@ julia> push!(ps2.property, :structure => [
            ]
        ]);
     
-julia> push!(ps2.property, :scheme => [
+julia> pushchemicalattr!(ps2, :scheme, [
            ChemicalLoss(Proton()) => [
                lossserine => losshserine
            ] 
@@ -701,7 +711,7 @@ function structure_search_elemental(chemical, precursor_schemes, product_schemes
 end
 
 function _structure_search(chemical, precursor_schemes, product_schemes)
-    schemes = getchemicalproperty(chemical, :structure, nothing)
+    schemes = getchemicalattr(chemical, :structure, nothing)
     isnothing(schemes) && return nothing
     i = findfirst(x -> first(x) == structuralscheme(precursor_schemes), schemes)
     isnothing(i) && return nothing
@@ -712,7 +722,7 @@ function _structure_search(chemical, precursor_schemes, product_schemes)
 end
 
 function chemicalscheme_search(chemical, scheme)
-    schemes = getchemicalproperty(chemical, :chemicalscheme, nothing)
+    schemes = getchemicalattr(chemical, :chemicalscheme, nothing)
     isnothing(schemes) && return nothing
     i = findfirst(x -> first(x) == structuralscheme(scheme), schemes)
     isnothing(i) && return nothing
@@ -723,7 +733,7 @@ end
 scheme_search(chemical, precursor_schemes::Nothing, product_schemes::CompleteSchemes) = product_schemes
 scheme_search(chemical, precursor_schemes::Nothing, product_schemes) = completescheme(chemical, product_schemes)
 function scheme_search(chemical, precursor_schemes, product_schemes)
-    schemes = getchemicalproperty(chemical, :scheme, nothing)
+    schemes = getchemicalattr(chemical, :scheme, nothing)
     isnothing(schemes) && return nothing
     i = findfirst(x -> first(x) == structuralscheme(precursor_schemes), schemes)
     # isnothing(i) && return StructuralElementalScheme(ChemicalSchemes(structuralscheme(precursor_schemes), structuralscheme(product_schemes)), ChemicalSchemes(elementalscheme(precursor_schemes), elementalscheme(product_schemes)))

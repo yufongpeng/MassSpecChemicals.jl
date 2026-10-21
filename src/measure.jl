@@ -148,6 +148,25 @@ charge(x::IsotopomerizedSchemes; kwargs...) = charge(chemicalparent(x); kwargs..
 charge(x::ChemicalSchemes; kwargs...) = sum(charge(k; kwargs...) * v for (k, v) in zip(x.schemes, x.number))
 charge(x::Groupedisotopomerizedschemes; kwargs...) = charge(chemicalparent(x); kwargs...)
 
+charge(::Electron; loss = false, kwargs...) = loss ? 1 : -1
+charge(::Proton; loss = false, kwargs...) = loss ? -1 : 1
+charge(::Water; loss = false, kwargs...) = 0
+charge(::Ammonia; loss = false, kwargs...) = 0
+charge(::Ammonium; loss = false, kwargs...) = loss ? -1 : 1
+charge(::Sodium; loss = false, kwargs...) = loss ? -1 : 1
+charge(::Potassium; loss = false, kwargs...) = loss ? -1 : 1
+charge(::Lithium; loss = false, kwargs...) = loss ? -1 : 1
+charge(::Silver; loss = false, kwargs...) = loss ? -1 : 1
+charge(::Acetate; loss = false, kwargs...) = loss ? 1 : -1
+charge(::Formate; loss = false, kwargs...) = loss ? 1 : -1
+charge(::AceticAcid; loss = false, kwargs...) = 0
+charge(::FormicAcid; loss = false, kwargs...) = 0
+charge(::MethylAcetate; loss = false, kwargs...) = 0
+charge(::MethylFormate; loss = false, kwargs...) = 0
+charge(::Fluoride; loss = false, kwargs...) = loss ? 1 : -1
+charge(::Chloride; loss = false, kwargs...) = loss ? 1 : -1
+charge(::Methenium; loss = false, kwargs...) = loss ? -1 : 1
+
 retentiontime(isobars::Isobars; kwargs...) = _isobar_species_attr(retentiontime, isobars; kwargs...)
 retentiontime(isotopomers::Isotopomers; kwargs...) = retentiontime(chemicalparent(isotopomers); kwargs...)
 retentiontime(isotopomers::Groupedisotopomers; kwargs...) = retentiontime(chemicalparent(isotopomers); kwargs...)
