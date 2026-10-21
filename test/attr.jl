@@ -37,9 +37,8 @@
         @test chemicalformula(cgld) == "C6H6D6O6"
         @test MSC.dictionary_elements(chemicalelements(cgld)) == Dict("C" => 6, "D" => 6, "H" => 6, "O" => 6)
 
-        @test chemicalname(fglc) == "C6H12O6"
-        @test chemicalabbr(fglc) == "Glc"
-        @test chemicalformula(fglc) == "C6H12O6"
+        @test chemicalname(fglc) == chemicalformula(fglc)
+        @test chemicalabbr(fglc) == "C6H12O6"
         @test MSC.dictionary_elements(chemicalelements(fglc)) == Dict("C" => 6, "H" => 12, "O" => 6)
 
         @test chemicalname(cps) == "PS 18:0/20:4"
@@ -50,6 +49,8 @@
         @test isnan(mz(cglc))
         @test isapprox(mmi(cpsi1) * 2 + mmi("H") - MSC.ME, mz(cpsi1, "[2M+H]+"))
         @test isapprox(molarmass(cpsi1), molarmass(chemicalformula(cpsi1)))
+
+        @test all(charge(v) == -charge(v; loss = true) for (k, v) in StandardChemical)
     end
 
     @testset "Adduct ion and wrapper attributes" begin

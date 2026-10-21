@@ -235,13 +235,6 @@ Elemental schemes.
 """
 const ElementalSchemes = Union{<:AbstractElementalScheme, <:ChemicalSchemes{<:AbstractElementalScheme}, <:IsotopomerizedSchemes{<:ChemicalSchemes{<:AbstractElementalScheme}}, <:Groupedisotopomerizedschemes{<:ChemicalSchemes{<:AbstractElementalScheme}}}
 
-@deprecate ChemicalSchema ChemicalSchemes # del
-@deprecate IsotopomerizedSchema IsotopomerizedSchemes
-@deprecate Groupedisotopomerizedschema Groupedisotopomerizedschemes
-@deprecate CompleteSchema CompleteSchemes
-@deprecate StructuralSchema StructuralSchemes
-@deprecate ElementalSchema ElementalSchemes
-
 """
     const CompleteSchemeChemical = AbstractCompleteScheme{T, <:AbstractChemical}
 

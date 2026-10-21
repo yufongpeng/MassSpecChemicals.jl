@@ -46,7 +46,7 @@ export
     ChemicalParser, FormulaChemicalParser, AdductParser, ChemicalExpressionParser, ChemicalTransitionParser, ChemicalEntityParser, ChemicalSchemeParser, 
 
     # Attributes manipulation
-    getchemicalattr, getchemicalattrname, pushchemicalattr!, pushchemicalattr_new!,
+    getchemicalattr, getchemicalattrname, pushchemicalattr!,
 
     # Attributes
     chemicalformula, chemicalelements, chemicalname, chemicalabbr, chemicalsmiles, ioncore, ionadduct, ncore, charge, ncharge, retentiontime,
@@ -85,7 +85,6 @@ export
 
 
 abstract type AbstractChemicalScheme end
-@deprecate AbstractChemicalsSchema AbstractChemicalScheme # del
 """
     AbstractChemical <: AbstractChemicalScheme
 

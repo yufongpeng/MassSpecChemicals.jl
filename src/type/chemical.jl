@@ -48,11 +48,12 @@ struct Chemical <: AttributedChemical
 end
 
 _chemicalattribute(::Nothing) = nothing
-_chemicalattribute(attribute::ChemicalAttribute) = attribute
-_chemicalattribute(attribute::AbstractVector{<:Pair{Symbol}}) =
-    ChemicalAttribute(Pair{Symbol, Any}[first(pair) => last(pair) for pair in attribute])
-_chemicalattribute(attribute::AbstractVector{<:Any}) = 
-    ChemicalAttribute(Pair{Symbol, Any}[first(pair) => last(pair) for pair in attribute])
+_chemicalattribute(attribute) = ChemicalAttribute(attribute)
+ChemicalAttribute(attribute::ChemicalAttribute) = attribute
+ChemicalAttribute(attribute::AbstractVector{<:Pair{<:AbstractString}}) = 
+    ChemicalAttribute(Pair{Symbol, Any}[Symbol(first(pair)) => last(pair) for pair in attribute])
+ChemicalAttribute(attribute::AbstractVector{<:Tuple}) = 
+    ChemicalAttribute(Pair{Symbol, Any}[Symbol(first(pair)) => last(pair) for pair in attribute])
 _chemicalattribute(new_attr::Bool, kwargs) =
     isempty(kwargs) ? (new_attr ? ChemicalAttribute(nothing) : nothing) :
     ChemicalAttribute(Pair{Symbol, Any}[key => value for (key, value) in kwargs])

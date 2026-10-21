@@ -1,10 +1,10 @@
 @info "Defining generic chemicals and schemes"
 
 cglc = Chemical("Glucose", ["C" => 6, "H" => 12, "O" => 6]; retentiontime = 1.5, abbreviation = "Glc", SMILES = "")
-fglc = FormulaChemical(["C" => 6, "H" => 12, "O" => 6]; retentiontime = 1.5, abbreviation = "Glc", SMILES = "")
+fglc = FormulaChemical(["C" => 6.0, "H" => 12.0, "O" => 6.0], nothing)
 cgld = Chemical("Glucose_d6", "C6H6D6O6"; retentiontime = 1.5, abbreviation = "Glc[D6]", SMILES = "")
-cps = Chemical("PS 18:0/20:4", "C44H78NO10P"; retentiontime = 7.8)
-cpsi1 = Chemical("PS[D3,13C3] 18:0/20:4", "C41[13C]3H75D3NO10P"; retentiontime = 7.8)
+cps = Chemical("PS 18:0/20:4", "C44H78NO10P", [("retentiontime", 7.8)])
+cpsi1 = Chemical("PS[D3,13C3] 18:0/20:4", "C41[13C]3H75D3NO10P", ["retentiontime" => 7.8])
 cpsi2 = Chemical("PS 18:0[D5]/20:4(5Z,8Z,11Z,14Z)", "C44H73D5NO10P"; retentiontime = 7.8)
 fa1 =  Chemical("FA 18:0", "C18H36O2")
 fa1i =  Chemical("FA 18:0[D5]", "C18D5H31O2")
@@ -16,10 +16,11 @@ losshserine = ChemicalLoss(AdductIon(cserine, "[M+H]+"))
 losshserinei = ChemicalLoss(AdductIon(cserinei, "[M+H]+"))
 losshserinegainwater = ChemicalSchemes(ChemicalLoss(AdductIon(cserine, "[M+H]+")), ChemicalGain(Water))
 losshserinegaincolossco = ChemicalSchemes(ChemicalLoss(AdductIon(cserine, "[M+H]+")), parse_chemical("+CO"), parse_chemical("-CO"))
+
 # Generic structure interface
 # Mix `[M-H]-` and neutral loss `lossserine` into `losshserine` for `AddductIon(cps, "[M-H]-")`
 pushchemicalattr!(cps, :scheme, [
-    ChemicalLoss(Proton()) => [
+    ChemicalLoss(Proton) => [
         lossserine => losshserine
     ] 
 ])
@@ -31,34 +32,34 @@ pushchemicalattr!(cpsi1, :structure, [
         lossserine => lossserinei,
         losshserine => losshserinei
     ],
-    ChemicalLoss(Proton()) => [
+    ChemicalLoss(Proton) => [
         lossserine => lossserinei  
     ]
 ])
 # Mix `[M-H]-` and neutral loss `lossserine` into `losshserine` for `AddductIon(cpsi1, "[M-H]-")`
 pushchemicalattr!(cpsi1, :scheme, [
-    ChemicalLoss(Proton()) => [
+    ChemicalLoss(Proton) => [
         lossserine => losshserine
     ] 
 ])
 # Change product `AdductIon(fa1, "[M-H]-")` to `AdductIon(fa1i, "[M-H]-")` for `AddductIon(cpsi2, "[M-H]-")`
 pushchemicalattr!(fa1, :chemicalscheme, [
-    ChemicalLoss(Proton()) => :sn1fa
+    ChemicalLoss(Proton) => :sn1fa
 ])
 pushchemicalattr!(fa1i, :chemicalscheme, [
-    ChemicalLoss(Proton()) => :sn1fa
+    ChemicalLoss(Proton) => :sn1fa
 ])
 pushchemicalattr!(cpsi2, :structure, [
-    ChemicalLoss(Proton()) => [
-        :sn1fa => AdductIon(fa1i, ChemicalLoss(Proton()))     
+    ChemicalLoss(Proton) => [
+        :sn1fa => AdductIon(fa1i, ChemicalLoss(Proton))     
     ],
     losshserine => [
-        :sn1fa => AdductIon(fa1i, ChemicalLoss(Proton()))     
+        :sn1fa => AdductIon(fa1i, ChemicalLoss(Proton))     
     ]
 ])
 # Mix `[M-H]-` and neutral loss `lossserine` into `losshserine` for `AddductIon(cpsi2, "[M-H]-")`
 pushchemicalattr!(cpsi2, :scheme, [
-    ChemicalLoss(Proton()) => [
+    ChemicalLoss(Proton) => [
         lossserine => losshserine
     ] 
 ])
