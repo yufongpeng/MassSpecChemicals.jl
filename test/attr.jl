@@ -164,7 +164,7 @@
     end
 
     @testset "SchemeStructure and SchemeVector" begin 
-        @test MSC.SchemeStructure() == MSC.SchemeStructure(MSC.SchemeVector(), nothing)
+        @test MSC.SchemeStructure() == copy(MSC.SchemeStructure(MSC.SchemeVector(MSC.SchemeVector()), nothing))
         @test MSC.SchemeStructure(; merger = MSC.SchemeVector((ChemicalLoss(Proton), (lossserine, losshserine), ))) == MSC.SchemeStructure(; merger = MSC.SchemeVector([ChemicalLoss(Proton) => (lossserine => losshserine)]))
         @test MSC.SchemeStructure(; transformer = MSC.SchemeVector((nothing, [(lossserine, lossserinei), (ifa1, ifa1i)], ))) == MSC.SchemeStructure(; transformer = MSC.SchemeVector([nothing => [ifa1 => ifa1i, lossserine => lossserinei]]))
         @test MSC.SchemeStructure(; transformer = MSC.SchemeVector([(nothing, [(lossserine, lossserinei)], ), (ChemicalLoss(Proton), [(lossserine, lossserinei), (ifa1, ifa1i)])])) == MSC.SchemeStructure(; transformer = MSC.SchemeVector([ChemicalLoss(Proton) => [lossserine => lossserinei, ifa1 => ifa1i], nothing => [lossserine => lossserinei]]))
