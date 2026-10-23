@@ -9,7 +9,7 @@ import MassSpecChemicals:
     chemicalsmiles, 
     completescheme, 
     elementalscheme, 
-    adductionscheme, 
+    detectedscheme, 
     detectedchemical, 
     charge
 import Base: copy, hash, == 

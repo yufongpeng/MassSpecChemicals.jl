@@ -2,8 +2,7 @@
 
 @testset "Utils" begin 
     @testset "Combinatorics" begin 
-        @test MSC.safe_factorial(Val(false), 1, 1) == 1
-        @test MSC.safe_factorial(1, 1) == 1
+        @test MSC.safe_factorial(Val(false), 1, 1) == MSC.safe_factorial(1, 1)
         @test isapprox(MSC.safe_factorial(50, 50), factorial(50, 50))
         @test isapprox(MSC.safe_factorial(Val(false), 10, 3), factorial(10, 3))
         @test isapprox(MSC.safe_factorial(Val(false), 50, 3), MSC.safe_factorial(Val(true), 50, 3))

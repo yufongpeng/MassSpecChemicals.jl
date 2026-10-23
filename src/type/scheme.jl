@@ -64,7 +64,7 @@ struct ElementalScheme{Bool, T<:AbstractChemical} <: AbstractElementalScheme
     end
 end
 
-ElementalScheme(gain::Bool, ::Type{T}) where {T <: AttributedChemical} = ElementalScheme(gain, haskey(StandardChemical, T) ? StandardChemical[T] : T())
+ElementalScheme(gain::Bool, ::Type{T}) where {T <: AbstractChemical} = ElementalScheme(gain, haskey(StandardChemical, T) ? StandardChemical[T] : T())
 
 """
     ChemicalGain(chemical)

@@ -1,11 +1,31 @@
+"""
+    getchemicalattr(chemical::AbstractChemicalScheme) -> Union{ChemicalAttribute, Nothing}
+
+Get where the `chemical` stores additional attributes. The name of storage depends on `getchemicalattrname`.
+"""
 function getchemicalattr(chemical::T) where {T <: AbstractChemicalScheme} 
     attr = getchemicalattrname(T)
     isnothing(attr) ? nothing : getproperty(chemical, attr)
 end
-getchemicalattrname(chemical::T) where {T <: AbstractChemicalScheme} = getchemicalattrname(T)
+
+"""
+    getchemicalattrname(chemical::AbstractChemicalScheme) -> Union{Symbol, Nothing}
+    getchemicalattrname(::Type) -> Union{Symbol, Nothing}
+
+Get the name of storage where `chemical` stores additional attributes.
+`AttributedChemical` has default `:attribute`, while others have no default name.
+"""
+getchemicalattrname(::T) where {T <: AbstractChemicalScheme} = getchemicalattrname(T)
 getchemicalattrname(::Type{<: AttributedChemical}) = :attribute
 getchemicalattrname(::Type{<: AbstractChemicalScheme}) = nothing
 
+"""
+    pushchemicalattr!(chemical::AbstractChemicalScheme, attr::Symbol, value)
+    pushchemicalattr!(chemical::AbstractChemicalScheme, attr::AbstractString, value)
+
+Push `value` into `chemical` as a new attribute `attr`. If `attr` already exists, the `value` replaces the old one.
+"""
+pushchemicalattr!(chemical::AbstractChemicalScheme, attr::AbstractString, value) = pushchemicalattr!(chemical, Symbol(attr), value)
 function pushchemicalattr!(chemical::T, attr::Symbol, value) where {T <: AbstractChemicalScheme}
     hasproperty(T, attr) && return setproperty!(chemical, attr, value)
     attribute = getchemicalattr(chemical)
@@ -13,7 +33,12 @@ function pushchemicalattr!(chemical::T, attr::Symbol, value) where {T <: Abstrac
     if isnothing(attribute.attribute)
         attribute.attribute = Pair{Symbol, Any}[attr => value]
     else
-        push!(attribute.attribute, attr => value)
+        id = findfirst(==(attr) ∘ first, attribute.attribute)
+        if isnothing(id)
+            push!(attribute.attribute, attr => value)
+        else
+            attribute.attribute[id] = attr => value
+        end
     end
 end
 

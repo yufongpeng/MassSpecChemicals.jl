@@ -19,6 +19,67 @@ mutable struct ChemicalAttribute
     attribute::Union{Nothing, Vector{Pair{Symbol, Any}}}
 end
 
+const ChemicalSchemeNull = Union{Nothing, AbstractChemicalScheme}
+
+"""
+    SchemeVector
+
+# Fields
+* `vector::Vector{Pair{ChemicalSchemeNull, Vector{Pair{AbstractChemicalScheme, AbstractChemicalScheme}}}}`
+
+The constructor will try to convert any input into the correct vector type. Non vector input is vectorized.     
+Then the vector is converted to vector of pairs by fetching the first and the last element of each element in the vector. 
+Each of the last element is additionally converted to vector of pairs by the same method.
+
+For two-argument method, the aruments are regarded as a pair. For three-argument method, the argument becomes `[arg1 => [arg2 => arg3]]`.
+"""
+struct SchemeVector
+    vector::Vector{Pair{ChemicalSchemeNull, Vector{Pair{AbstractChemicalScheme, AbstractChemicalScheme}}}}
+    function SchemeVector(vec::Vector{Pair{ChemicalSchemeNull, Vector{Pair{AbstractChemicalScheme, AbstractChemicalScheme}}}}) 
+        new(_schemesort!(vec))
+    end
+    function SchemeVector(vec::AbstractVector) 
+        new(_schemesort!([first(x) => _scheme_vec_pair(last(x)) for x in vec]))
+    end
+end
+SchemeVector(x::SchemeVector) = x
+SchemeVector() = SchemeVector(Vector{Pair{ChemicalSchemeNull, Vector{Pair{AbstractChemicalScheme, AbstractChemicalScheme}}}}[])
+SchemeVector(x) = SchemeVector(vectorize(x))
+function _schemesort!(vec)
+    sort!(vec; by = first)
+    for x in vec 
+        sort!(last(x); by = first)
+    end
+    vec
+end
+_scheme_vec_pair(x) = _scheme_vec_pair(vectorize(x))
+_scheme_vec_pair(x::AbstractVector{<:Pair}) = x
+_scheme_vec_pair(x::AbstractVector) = [first(y) => last(y) for y in x]
+_scheme_vec_pair(x, y) = [x => y]
+_scheme_pair(x::Pair) = x
+_scheme_pair(x) = first(x) => last(x)
+_scheme_pair(x, y) = x => y
+
+SchemeVector(pre, postpair) = SchemeVector([pre => _scheme_vec_pair(postpair)])
+SchemeVector(pre, postold, postnew) = SchemeVector([pre => [postold => postnew]])
+
+"""
+    SchemeStructure
+
+# Fields
+* `transformer::Union{Nothing, SchemeVector}`
+* `merger::Union{Nothing, SchemeVector}`
+
+# Constructors
+    SchemeStructure(; transformer = nothing, merger = nothing)
+"""
+mutable struct SchemeStructure
+    transformer::Union{Nothing, SchemeVector}
+    merger::Union{Nothing, SchemeVector}
+end
+
+SchemeStructure(; transformer = nothing, merger = nothing) = SchemeStructure(transformer, merger)
+
 """
     Chemical <: AttributedChemical
 

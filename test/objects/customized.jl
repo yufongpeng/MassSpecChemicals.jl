@@ -181,9 +181,9 @@ elementalscheme(precursor::DiacylPS, product::LossProtonSerine) = ChemicalLoss(A
 
 # `LossSerine()` -> `LossProtonSerine()` for 
 # adductionscheme(precursor::DiacylPSmH, product::SES{LossSerine}) = completescheme(ioncore(precursor), LossProtonSerine())
-adductionscheme(precursor::DiacylPSmH, product::LossSerine) = completescheme(ioncore(precursor), LossProtonSerine())
+detectedscheme(precursor::DiacylPSmH, product::LossSerine) = completescheme(ioncore(precursor), LossProtonSerine())
 # adductionscheme(precursor::DiacylPSmS, product::SES{<:LossProton}) = completescheme(ioncore(precursor), LossProtonSerine())
-adductionscheme(precursor::DiacylPSmS, product::LossProton) = completescheme(ioncore(precursor), LossProtonSerine())
+detectedscheme(precursor::DiacylPSmS, product::LossProton) = completescheme(ioncore(precursor), LossProtonSerine())
 
 chemicalname(::LossSerine; n = 1, loss = false, delim = "", predelim = false, postdelim = false, kwargs...) = string(predelim ? delim : "", loss ? "Gain_" : "Loss_", n > 1 ? n : "", "Serine", postdelim ? delim : "")
 chemicalname(::LossProtonSerine; n = 1, loss = false, delim = "", predelim = false, postdelim = false, kwargs...) = string(predelim ? delim : "", loss ? "Gain_" : "Loss_", n > 1 ? n : "", "[Serine+H]+", postdelim ? delim : "")

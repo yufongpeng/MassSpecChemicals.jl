@@ -46,7 +46,10 @@ export
     ChemicalParser, FormulaChemicalParser, AdductParser, ChemicalExpressionParser, ChemicalTransitionParser, ChemicalEntityParser, ChemicalSchemeParser, 
 
     # Attributes manipulation
-    getchemicalattr, getchemicalattrname, pushchemicalattr!,
+    getchemicalattr, getchemicalattrname, pushchemicalattr!, 
+    
+    # SchemeStructure
+    pushschemetransformer!, pushschememerger!, schemetransformer, schemetransform, schememerger, schememerge, 
 
     # Attributes
     chemicalformula, chemicalelements, chemicalname, chemicalabbr, chemicalsmiles, ioncore, ionadduct, ncore, charge, ncharge, retentiontime,

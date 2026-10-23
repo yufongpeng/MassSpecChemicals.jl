@@ -23,6 +23,7 @@
     @test hash(copy(chemicaltransition(itit12.Chemical[11])[2])) == hash(chemicaltransition(itit12.Chemical[11])[2])
     @test copy(chemicaltransition(gitit12.Chemical[7])[2]) == chemicaltransition(gitit12.Chemical[7])[2]
     @test hash(copy(chemicaltransition(gitit12.Chemical[7])[2])) == hash(chemicaltransition(gitit12.Chemical[7])[2])
+    @test Chemical("Glucose", "C6H12O6"; abbreviation = "Glc") < Chemical("Glucose", "C6H12O6"; abbreviation = "Glucose")
 end
 
 @info "Running tests for Default chemical parsing"
@@ -36,8 +37,8 @@ end
     @test ischemicalequal(parse_chemical("+[NH4]+"), parse_chemical("[+NH4]+"))
     @test ischemicalequal(parse_chemical("C6H12O6"), FormulaChemical("C6H12O6"))
     @test ischemicalequal(parse_chemical(ChemicalTransitionParser(ChemicalEntityParser(FormulaChemicalParser(; retentiontime = 5))), "[C6H12O6]+"; chemicaltype = "Organic", retentiontime = 1.5), AdductIon(FormulaChemical("C6H12O6"; chemicaltype = "Organic", retentiontime = 1.5), "[M]+"))
-    @test ischemicalequal(parse_chemical("[C6H12O6+H]+"), AdductIon(FormulaChemical("C6H12O6"), ChemicalGain(Proton())))
-    @test ischemicalequal(parse_chemical("[C6H12O6+H]+" => "-H2O"), parse_chemical(AdductIon(FormulaChemical("C6H12O6"), ChemicalGain(Proton())), ChemicalLoss(Water())))
+    @test ischemicalequal(parse_chemical("[C6H12O6+H]+"), AdductIon(FormulaChemical("C6H12O6"), ChemicalGain(Proton)))
+    @test ischemicalequal(parse_chemical("[C6H12O6+H]+" => "-H2O"), parse_chemical(AdductIon(FormulaChemical("C6H12O6"), ChemicalGain(Proton)), ChemicalLoss(Water)))
     @test ischemicalequal(detectedchemical(parse_chemical("[C6H12O6+H]+" => "-H2O")), parse_chemical("[C6H12O6+H-H2O]+"))
     @test ischemicalequal(parse_chemical(ChemicalTransitionParser(ChemicalExpressionParser(; charge = 1)), "[C6H12O6+2H]2+", "C6H10O5"), parse_chemical(AdductIon(FormulaChemical("C6H12O6"), "[M+2H]2+") => AdductIon(FormulaChemical("C6H10O5"), "[M]+")))
     @test ischemicalequal(parse_chemical(ChemicalTransitionParser(ChemicalExpressionParser(; charge = 1, loss = 1)), "[C6H12O6+2H]2+ -> -H3O ->  -[CO2]"), parse_chemical(ChemicalSeries(AdductIon(FormulaChemical("C6H12O6"), "[M+2H]2+"), ChemicalSeries(ChemicalLoss(AdductIon(FormulaChemical("H3O"), "[M]+")), ChemicalLoss(FormulaChemical("CO2"))))))

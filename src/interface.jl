@@ -2,18 +2,82 @@
 _chemicalattributes_equal(x::Nothing, y::Nothing) = true
 _chemicalattributes_equal(x::ChemicalAttribute, y::Nothing) = isnothing(x.attribute) || isempty(x.attribute)
 _chemicalattributes_equal(x::Nothing, y::ChemicalAttribute) = isnothing(y.attribute) || isempty(y.attribute)
-function _chemicalattributes_equal(x::ChemicalAttribute, y::ChemicalAttribute) 
-    if isnothing(x.attribute) || isempty(x.attribute)
-        return isnothing(y.attribute) || isempty(y.attribute)
-    end 
-    sort(x.attribute; by = first) == sort(y.attribute; by = first)
-end
+_chemicalattributes_equal(x::ChemicalAttribute, y::ChemicalAttribute) = x == y
 function _chemicalelements_equal(x::Vector{Pair{String, Int}}, y::Vector{Pair{String, Int}}) 
     x = unique_elements(x)
     y = unique_elements(y)
     length(x) == length(y) || return false
     # all(in(y), x)
     sort!(x) == sort!(y)
+end
+
+function _chemicalelements_isless_equal(x::Vector{Pair{String, Int}}, y::Vector{Pair{String, Int}}) 
+    x = unique_elements(x)
+    y = unique_elements(y)
+    if length(x) == length(y) 
+        sort!(x) 
+        sort!(y)
+        x == y ? nothing : x < y
+    else
+        length(x) < length(y) 
+    end
+end
+
+function ==(x::ChemicalAttribute, y::ChemicalAttribute)
+    if isnothing(x.attribute) || isempty(x.attribute)
+        return isnothing(y.attribute) || isempty(y.attribute)
+    end 
+    sort(x.attribute; by = first) == sort(y.attribute; by = first)
+end
+
+function ==(x::SchemeStructure, y::SchemeStructure)
+    if isnothing(x.transformer) || isempty(x.transformer.vector)
+        isnothing(y.transformer) || isempty(y.transformer.vector) || return false
+    elseif isnothing(y.transformer) || isempty(y.transformer.vector)
+        return false
+    else
+        x.transformer == y.transformer || return false
+    end
+    if isnothing(x.merger) || isempty(x.merger.vector)
+        isnothing(y.merger) || isempty(y.merger.vector) || return false
+    elseif isnothing(y.merger) || isempty(y.merger.vector)
+        return false
+    else
+        x.merger == y.merger || return false
+    end
+    true
+end
+
+==(x::SchemeVector, y::SchemeVector) = x.vector == y.vector
+
+isless(::Nothing, ::AbstractChemicalScheme) = true
+isless(::AbstractChemicalScheme, ::Nothing) = false
+function isless(x::AbstractChemicalScheme, y::AbstractChemicalScheme)
+    nx = chemicalname(x) 
+    ny = chemicalname(y)
+    nx == ny || return nx < ny 
+    leq = _chemicalelements_isless_equal(chemicalelements(x), chemicalelements(y)) 
+    isnothing(leq) || return leq
+    x == y ? false : hash_isless(x, y)
+end
+
+function hash_isless(x::S, y::T) where {S, T}
+    px = propertynames(x)
+    py = propertynames(y)
+    ps = [px..., py...]
+    ps = sort!(unique(ps))
+    for p in ps
+        pinx = p in px
+        piny = p in py 
+        if pinx && piny 
+            hx = hash(getproperty(x, p))
+            hy = hash(getproperty(y, p))
+            hx == hy || return hx < hy
+        else
+            return piny
+        end
+    end
+    false
 end
 
 ==(x::Chemical, y::Chemical) =
@@ -68,8 +132,17 @@ end
 const ABUNDANCE_ROUNDING_DIGITS = 4
 abundance_rounding_digits() = ABUNDANCE_ROUNDING_DIGITS
 
-_chemicalattributevalues(::Nothing) = nothing
-_chemicalattributevalues(attribute::ChemicalAttribute) = isnothing(attribute.attribute) ? nothing : sort(attribute.attribute; by = first)
+function hash(x::SchemeVector, h::UInt)
+    hash(x.vector, h) 
+end
+function hash(x::SchemeStructure, h::UInt)
+    h = hash(SchemeStructure, h)
+    h = hash(x.transformer, h) 
+    hash(x.merger, h)
+end
+function hash(x::ChemicalAttribute, h::UInt)
+    isnothing(x.attribute) ? hash(nothing, h) : hash(sort(x.attribute; by = first), h)
+end
 function hash(x::T, h::UInt) where {T<:AttributedChemical}
     h = hash(T, h)
     h = hash(sum(hash, sort_unique_elements(x.elements); init = zero(h)), h)
@@ -79,7 +152,7 @@ function hash(x::T, h::UInt) where {T<:AttributedChemical}
             h = hash(getfield(x, f), h)
         end
     end
-    hash(_chemicalattributevalues(getchemicalattr(x, attrname, nothing)), h)
+    hash(getchemicalattr(x, attrname, nothing), h)
 end
 hash(x::T, h::UInt) where {T<:ChemicalTransition} = hash(T, hash(x.transition, h))
 function hash(x::Isobars, h::UInt) 
@@ -160,7 +233,9 @@ stringcopy(x::T) where T = copy(x)
 stringcopy(x::AbstractString) = x
 stringcopy(x::Nothing) = x
 
-copy(x::ChemicalAttribute) = ChemicalAttribute(isnothing(x.attribute) ? nothing : copy(x.attribute))
+copy(x::SchemeVector) = SchemeVector(stringcopy(x.vector))
+copy(x::SchemeStructure) = SchemeStructure(stringcopy(x.transformer), stringcopy(x.merger))
+copy(x::ChemicalAttribute) = ChemicalAttribute(stringcopy(x.attribute))
 copy(x::T) where {T<:AbstractChemicalScheme} = T((stringcopy(getfield(x, f)) for f in fieldnames(T))...)
 copy(x::ChemicalTransition) = ChemicalTransition(copy(x.transition))
 copy(x::Isobars) = Isobars(copy(x.chemicals), copy(x.abundance))

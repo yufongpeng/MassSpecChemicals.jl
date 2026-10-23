@@ -14,11 +14,17 @@ Charged chemicals formed in MS (adduct ions) with a specific adduct (chemical ga
 1. `Chemical`: an unstructured chemical that stores a name, elements, and other attributes.
 
     ```julia
-    Chemical(name::AbstractString, elements::Vector{Pair{String, Int}}; property...)
+    Chemical(name::AbstractString, elements::Vector{Pair{String, Int}}; attribute...)
 
-    Chemical(name::AbstractString, formula::String; property...)
+    Chemical(name::AbstractString, formula::AbstractString; attribute...)
 
-    Chemical(name::AbstractString, elements::Vector{Pair{String, Int}}, property::Vector{Pair{Symbol, Any}})
+    Chemical(name::AbstractString, elements::Vector{Pair{String, Int}}, attribute::Vector{Pair{Symbol, Any}})
+
+    Chemical(name::AbstractString, formula::AbstractString, attribute::Vector{Pair{Symbol, Any}})
+
+    Chemical(name::AbstractString, elements::Vector{Pair{String, Int}}, attribute::ChemicalAttribute)
+
+    Chemical(name::AbstractString, formula::AbstractString, attribute::ChemicalAttribute)
     ```
 
 2. `FormulaChemical`: an unstructured chemical that uses its formula as its name.
@@ -28,7 +34,13 @@ Charged chemicals formed in MS (adduct ions) with a specific adduct (chemical ga
 
     FormulaChemical(formula::AbstractString; property...)
 
-    FormulaChemical(elements::Vector{Pair{String, Int}}, property::Vector{Pair{Symbol, Any}})
+    FormulaChemical(elements::Vector{Pair{String, Int}}, attribute::Vector{Pair{Symbol, Any}})
+
+    FormulaChemical(formula::AbstractString, attribute::Vector{Pair{Symbol, Any}})
+
+    FormulaChemical(elements::Vector{Pair{String, Int}}, attribute::ChemicalAttribute)
+
+    FormulaChemical(formula::AbstractString, attribute::ChemicalAttribute)
     ```
 
 3. `AdductIon`: a charged chemical with a specific adduct or neutral loss.
@@ -60,7 +72,7 @@ Charged chemicals formed in MS (adduct ions) with a specific adduct (chemical ga
 
     Isotopomers(parent::AbstractChemical, fullformula::AbstractString)
 
-    Isotopomers(parent::AbstractChemical, fullelements::Dictionary)
+    Isotopomers(parent::AbstractChemical, fullelements::Dict)
 
     Isotopomers(parent::AbstractChemical, fullelements::Vector{Pair{String, Int}})
     ```
@@ -68,7 +80,7 @@ Charged chemicals formed in MS (adduct ions) with a specific adduct (chemical ga
 7. `Groupedisotopomers`: isotopomers grouped by mass-shift index relative to a reference isotope.
 
     ```julia
-    Groupedisotopomers(parent::AbstractChemical, index::Int, isotope::String, isotopes::Vector{Vector{Pair{String, Int}}}, abundance::Vector)
+    Groupedisotopomers(parent::AbstractChemical, index::Int, isotope::String, isotopes::Vector{ElementsVector}, abundance::Vector)
     ```
 
 Use `parse_chemical` to parse structural chemical expressions and pairs. Use `ChemicalSeries` to chain chemicals into a transition.
@@ -80,10 +92,10 @@ parse_chemical("[C6H12O6+H]+ -> [H2O+H]+") # protonated C6H12O6 fragmented to pr
 parse_chemical("[C6H12O6+H]+" => "-H2O") # protonated C6H12O6 and neutral loss H2O
 parse_chemical("[C6H12O6+2H]2+" => "-[H2O+H]+") # diprotonated C6H12O6 and loss of protonated H2O
 parse_chemical(ChemicalTransitionParser(ChemicalExpressionParser(; charge = 2, loss = 1)), "C6H14O6" => "-H3O") # C6H14O6 (charge = 2) and loss H3O (charge = 1)
-parse_chemical("[C6H12O6+2H]2+" => ChemicalLoss(Water())) # mixed parser with another chemical type
-ChemicalSeries(parse_chemical("[C6H12O6+2H]2+") => ChemicalLoss(Water())) # pairs
-ChemicalSeries(parse_chemical("[C6H12O6+2H]2+"), ChemicalLoss(Water())) # arguments
-ChemicalSeries([parse_chemical("[C6H12O6+2H]2+"), ChemicalLoss(Water())]) # vector
+parse_chemical("[C6H12O6+2H]2+" => ChemicalLoss(Water)) # mixed parser with another chemical type
+ChemicalSeries(parse_chemical("[C6H12O6+2H]2+") => ChemicalLoss(Water)) # pairs
+ChemicalSeries(parse_chemical("[C6H12O6+2H]2+"), ChemicalLoss(Water)) # arguments
+ChemicalSeries([parse_chemical("[C6H12O6+2H]2+"), ChemicalLoss(Water)]) # vector
 ```
 
 # Elements
@@ -151,32 +163,38 @@ Any chemical gain, loss, or fragmentation scheme is an instance of `AbstractSche
     * `ElementalScheme(gain, chemical::T) -> ElementalScheme{gain, T}`.
     * `ChemicalGain(chemical::T) -> ElementalScheme{true, T}`.
     * `ChemicalLoss(chemical::T) -> ElementalScheme{false, T}`.
+
+    If `T` is a key of the dictionary `StandardChemical` or has zero-argument method, the following constructors is available:
+    * `ElementalScheme(gain, chemical::Type{T}) -> ElementalScheme{gain, T}`
+    * `ChemicalGain(chemical::Type{T}) -> ElementalScheme{true, T}`.
+    * `ChemicalLoss(chemical::Typr{T}) -> ElementalScheme{false, T}`.
+
 2. `AbstractStructuralScheme`: a scheme containing only structural information, useful for defining rule-based fragmentation.
 3. `AbstractCompleteScheme`: a scheme containing both elemental and structural information. The default type is `StructuralElementalScheme`, which is stored in `AdductIon`.
 
 Multiple schemes are wrapped in `ChemicalSchemes`.
 
-Predefined chemicals used in schemes:
+Standard chemicals defined in `StandardChemical` are used in schemes construction:
 
-|Chemical|Abbreviation|
-|-------------|-----------------|
-|`Electron`|`"e"`|
-|`Proton`|`"H"`|
-|`Water`|`"H2O"`|
-|`Ammonia`|`"NH3"`|
-|`Ammonium`|`"[NH4]+"`|
-|`Sodium`|`"[Na]+"`|
-|`Potassium`|`"[K]+"`|
-|`Silver`|`"[Ag]+"`|
-|`OAc`|`"[OAc]-"`|
-|`OFo`|`"[OFo]-"`|
-|`Fluoride`|`"[F]-"`|
-|`Chloride`|`"[Cl]-"`|
-|`Methinium`|`"[Me]+"`|
-|`AceticAcid`|`"HOAc"`|
-|`FormicAcid`|`"HOFo"`|
-|`Methylacetate`|`"MeOAc"`|
-|`Methylformate`|`"MeOFo"`|
+|Chemical|Name|Abbreviation|
+|--------|----|-------------|
+|`Electron`|`"Electron"`|`"e"`|
+|`Proton`|`"Proton"`|`"H"`|
+|`Water`|`"Water"`|`"H2O"`|
+|`Ammonia`|`"Ammonia"`|`"NH3"`|
+|`Ammonium`|`"Ammonium"`|`"[NH4]+"`|
+|`Sodium`|`"Sodium"`|`"[Na]+"`|
+|`Potassium`|`"Potassium"`|`"[K]+"`|
+|`Silver`|`"Silver"`|`"[Ag]+"`|
+|`Acetate`|`"Acetate"`|`"[OAc]-"`|
+|`Formate`|`"Formate"`|`"[OFo]-"`|
+|`Fluoride`|`"Fluoride"`|`"[F]-"`|
+|`Chloride`|`"Chloride"`|`"[Cl]-"`|
+|`Methinium`|`"Methinium"`|`"[Me]+"`|
+|`AceticAcid`|`"Acetic Acid"`|`"HOAc"`|
+|`FormicAcid`|`"Formic Acid"`|`"HOFo"`|
+|`MethylAcetate`|`"Methyl Acetate"`|`"MeOAc"`|
+|`MethylFormate`|`"Methyl Formate"`|`"MeOFo"`|
 
 Use `parse_adduct` to parse adduct representations into valid schemes.
 ```julia
@@ -207,22 +225,22 @@ The package also provides a common interface for all subtypes of `AbstractAdduct
 core = Chemical("chm", "C6H6")
 # Default constructor is AdductIon
 ionize(core, "[M]+") # [chm]+
-ionize(core, ChemicalLoss(Electron())) # [chm]+
+ionize(core, ChemicalLoss(Electron)) # [chm]+
 ionize(core, "[2M-H]-") # [2chm-H]-
-ionize(core, ChemicalLoss(Proton()), 2) # [2chm-H]-
+ionize(core, ChemicalLoss(Proton), 2) # [2chm-H]-
 ionize(core; adduct = "[2M-H]-") # [2chm-H]-
-ionize(core; adduct = ChemicalLoss(Proton()), ncore = 2) # [2chm-H]-
+ionize(core; adduct = ChemicalLoss(Proton), ncore = 2) # [2chm-H]-
 # Assign constructor
 ionize(AdductIon, core, "[2M-H]-") # [2chm-H]-
-ionize(AdductIon, core, ChemicalLoss(Proton()), 2) # [2chm-H]-
+ionize(AdductIon, core, ChemicalLoss(Proton), 2) # [2chm-H]-
 ionize(AdductIon, core; adduct = "[2M-H]-") # [2chm-H]-
-ionize(AdductIon, core; adduct = ChemicalLoss(Proton()), ncore = 2) # [2chm-H]-
+ionize(AdductIon, core; adduct = ChemicalLoss(Proton), ncore = 2) # [2chm-H]-
 ```
 
 # API
 ## Attributes of `AbstractChemical`
 
-Attributes are interfaces for accessing properties and fields through `getchemicalproperty`, or functions for deriving values from other attributes.
+Attributes are interfaces for accessing properties and fields through `getchemicalattr`, or functions for deriving values from other attributes.
 
 |Attribute|Return type|Description|
 |----|----|-----------|
@@ -291,25 +309,25 @@ ncarbon(dg) == 39
 
 ### Instance-specific attributes
 
-For attributes defined in only some instances, users can use `getchemicalproperty` to handle missing attributes.
+For attributes defined in only some instances, users can use `getchemicalattr` to handle missing attributes.
 
 ```julia
-# Access the :carbonchains property through getchemicalproperty, defaulting to [chemical].
-carbonchains(chemical::Lipid) = getchemicalproperty(chemical, :carbonchains, [chemical])
+# Access the :carbonchains property through getchemicalattr, defaulting to [chemical].
+carbonchains(chemical::Lipid) = getchemicalattr(chemical, :carbonchains, [chemical])
 carbonchains(dg) == [fa1, fa2]
 carbonchains(fa1) == [fa1]
 ```
 
-The type `Chemical` stores any non-default attributes in the field `property`. Users can create objects with these attributes as keyword arguments, or add attributes by directly pushing the `attr_name => attr_value` pair to `chemical.property`, then defining an attribute function to access it.
+The type `Chemical` stores any non-default attributes in the field `attribute`. Users can create objects with these attributes as keyword arguments, or add attributes by `pushchemicalattr!`; then define an attribute function to access it.
 
 ```julia
 chemical = Chemical("18:0 PC-d9", "	C44H79NO8PD9"; lipidclass = "PC")
 
-lipidclass(chemical::Chemical) = getchemicalproperty(chemical, :lipidclass) # new attribute
+lipidclass(chemical::Chemical) = getchemicalattr(chemical, :lipidclass, "N/A") # new attribute
 lipidclass(chemical) == "PC"
 
-push!(chemical.property, :retentiontime => 10)
-retentiontime(chemical) == 10 # Already defined as accessing :retentiontime through getchemicalproperty
+pushchemicalattr!(chemical, :retentiontime, 10)
+retentiontime(chemical) == 10 # Already defined as accessing :retentiontime through getchemicalattr
 ```
 
 ### Additional attributes of `AbstractAdductIon`
@@ -319,45 +337,58 @@ retentiontime(chemical) == 10 # Already defined as accessing :retentiontime thro
 |`ionadduct`|`AbstractScheme`|adduct applied during ionization|
 |`ncore`|`Int`|number of core chemicals|
 
-When isotope labeling affects adduct-ion formation, there are two ways to provide the correct elemental scheme. For an object `adduct_ion`, let `chemical = ioncore(adduct_ion)::ChemicalType` and `adduct = ionadduct(adduct_ion)::Existing_Scheme`.
-1. If `ChemicalType` is a custom chemical type, define type-specific methods for `elementalscheme`:
+During adduct-ion construction, the correct elemental schemes are determined by function `completescheme`. It calls function `elementalscheme` internally, which returns an elemental scheme for input scheme with the appropriate elemental composition. There are two ways to modify the default behavior of these functions when isotope labeling affects adduct-ion formation. For an object `adduct_ion`, let `chemical = ioncore(adduct_ion)::ChemicalType` and `adduct = ionadduct(adduct_ion)::Existing_Scheme`.
+1. If `ChemicalType` is a custom chemical type, defining type-specific methods for `elementalscheme` is preferred:
     ```julia
     elementalscheme(chemical::ChemicalType, scheme::Affected_Scheme) # Ionization
     elementalscheme(adduct_ion::AdductIon{ChemicalType, Existing_Scheme}, scheme::Affected_Scheme) # Fragmentation (Neutral Loss)
     ```
     
-    `elementalscheme` returns an elemental scheme for `scheme` with the appropriate elemental composition.
-    
     For example, loss of `Me` from deuterium-labeled phosphatidylcholine (`DLPC`) may correspond to loss of `CD3` (`ElementalScheme{false, DLMe}`) rather than `CH3` (`ElementalScheme{false, Me}`) when the choline methyl group is labeled. In this case, extend `elementalscheme(::DLPC, ::ElementalScheme{false, Me})`.
     ```julia 
-    struct PC <: AbstractChemical end # Normal PC
-    struct DLPC <: AbstractChemical 
+    abstract type AbstractPC <: AbstractChemical end 
+    struct PC <: AbstractPC end # Normal PC
+    struct DLPC <: AbstractPC 
         location::Symbol
     end # Deuterium-labeled PC on methyl group (location = :Me) or other part
     struct Me <: AbstractChemical end # Methenium
     struct DLMe <: AbstractChemical end # Deuterium-labeled Methinium 
-    elementalscheme(pc::DLPC, ::ElementalScheme{false, Me}) = pc.location == :Me ? ChemicalLoss(DLMe()) : ChemicalLoss(Me())
-    ionize(DLPC(:Me); adduct = ChemicalLoss(Me())) # [DLPC-DLMe]-
+    elementalscheme(pc::DLPC, ::ElementalScheme{false, Me}) = pc.location == :Me ? ChemicalLoss(DLMe) : ChemicalLoss(Me)
+    ionize(DLPC(:Me); adduct = ChemicalLoss(Me)) # [DLPC-DLMe]-
     ```
     The following aliases can simplify type definitions:
-    * `ESType(gain, T)`: `ElementalScheme{gain, <:T}`.
-    * `CLType(T)`: `ElementalScheme{false, <:T}`.
-    * `CGType(gain, T)`: `ElementalScheme{true, <:T}`.
-    * `SESType(S, T)`: `StructuralElementalScheme{<:S, <:T}`.
-    * `SESType(S)`: `StructuralElementalScheme{<:S}`.
+    * `ESType(gain, T) === ElementalScheme{gain, <:T}`.
+    * `CLType(T) === ElementalScheme{false, <:T}`.
+    * `CGType(T) === ElementalScheme{true, <:T}`.
+    * `SESType(S, T) === StructuralElementalScheme{<:S, <:T}`.
+    * `SESType(S) === StructuralElementalScheme{<:S}`.
 
     For more details, see documentation of function `completescheme`.
 
-2. If `ChemicalType` is `Chemical`, define a `:structure` attribute for the chemical. Store ion-adduct-to-scheme-pair mappings in this attribute. `structure_search` looks up the mapping for the `adduct` key.
+2. If `ChemicalType` is generic, i.e. `Chemical` or `FormulaChemical`, user can use `pushschemetransformer!(chemical, precursor_scheme, product_scheme, transformed_scheme)` that maps `product_scheme` to `transformed_scheme` for the chemical with `precursor_scheme`.
     ```julia
     chemical = Chemical("18:0 PC-d9", "C44H79NO8PD9")
     loss_me = ChemicalLoss(Chemical("Me", "CH3"; charge = -1))
     loss_cd3 = ChemicalLoss(Chemical("Me[D3]", "CD3"; charge = -1))
-    push!(chemical.property, :structure => [nothing => [loss_me => loss_cd3]]) # Use nothing for core chemical
-    elementalscheme(chemical, ChemicalGain(Proton())) == ChemicalGain(Proton()) # No key Protonation()
+    pushschemetransformer!(chemical, nothing, loss_me, loss_cd3) # Use nothing for core chemical without scheme
+    elementalscheme(chemical, ChemicalGain(Proton)) == ChemicalGain(Proton) # No key for ChemicalGain(Proton)
     elementalscheme(chemical, loss_me) == loss_cd3
     ```
     For more details, see documentation of function `completescheme`.
+
+During MSⁿ analysis, additional schemes may be added to the precursor. Those schemes can be merged together into a specific scheme by extending `detectedscheme` for custom chemical types or `pushschememerger!`.
+
+```julia
+struct OAc <: AbstractChemical end
+struct MeOAc <: AbstractChemical end
+detectedscheme(pc::AIType(AbstractPC, SESType(OAc, OAc)),  ::CLType(MeOAc)) = completescheme(ioncore(pc), Me()) # Then Me can be further transformed for DLPC.
+detectedchemical(ionize(DLPC(:Me); adduct = ChemicalGain(OAc)), ChemicalLoss(MeOAc)) # [DLPC-DLMe]-
+gain_oac = ChemicalGain(Chemical("OAc", "CH3COO"; charge = -1))
+loss_meoac = ChemicalLoss(Chemical("MeOAc", "CH3COOCH3"))
+pushschememerger!(chemical, gain_oac, loss_meoac, loss_me)
+detectedscheme(chemical, loss_me) == loss_cd3
+```
+
 ## Isotopic abundance and Isotopologues
 Three related functions are provided:
 * `isotopicabundance`
