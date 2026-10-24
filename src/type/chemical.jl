@@ -840,64 +840,56 @@ Default keys:
 """
 const StandardChemical = Dict{Type, AbstractChemical}()
 
-# Electron(::Nothing = nothing) = StandardChemical[Electron]
-# Proton(::Nothing = nothing) = StandardChemical[Proton]
-# Water(::Nothing = nothing) = StandardChemical[Water]
-# Ammonia(::Nothing = nothing) = StandardChemical[Ammonia]
-# Ammonium(::Nothing = nothing) = StandardChemical[Ammonium]
-# Sodium(::Nothing = nothing) = StandardChemical[Sodium]
-# Potassium(::Nothing = nothing) = StandardChemical[Potassium]
-# Lithium(::Nothing = nothing) = StandardChemical[Lithium]
-# Silver(::Nothing = nothing) = StandardChemical[Silver]
-# Acetate(::Nothing = nothing) = StandardChemical[Acetate]
-# Formate(::Nothing = nothing) = StandardChemical[Formate]
-# AceticAcid(::Nothing = nothing) = StandardChemical[AceticAcid]
-# FormicAcid(::Nothing = nothing) = StandardChemical[FormicAcid]
-# MethylAcetate(::Nothing = nothing) = StandardChemical[MethylAcetate]
-# MethylFormate(::Nothing = nothing) = StandardChemical[MethylFormate]
-# Fluoride(::Nothing = nothing) = StandardChemical[Fluoride]
-# Chloride(::Nothing = nothing) = StandardChemical[Chloride]
-# Methenium(::Nothing = nothing) = StandardChemical[Methenium]
+"""
+    defaultchemicalkwarg(::Type{T}) -> NamedTuple
 
-_attributedchemical(::Type{T}, name, elements, abbreviation; new_attr = true, kwargs...) where {T<:AttributedChemical} =
-    T(String(name), collect(Pair{String, Int}, elements), String(abbreviation), _chemicalattribute(new_attr, kwargs))
+Default `name`, `elements` and `abbreviation` of standard chemical type `T`.
+"""
+defaultchemicalkwarg(::Type{<:AbstractChemical}) = (; )
+defaultchemicalkwarg(::Type{Electron}) = (; name = "Electron", elements = Pair{String, Int}[], abbreviation = "e")
+defaultchemicalkwarg(::Type{Proton}) = (; name = "Proton", elements = ["H" => 1], abbreviation = "H")
+defaultchemicalkwarg(::Type{Water}) = (; name = "Water", elements = ["H" => 2, "O" => 1], abbreviation = "H2O")
+defaultchemicalkwarg(::Type{Ammonia}) = (; name = "Ammonia", elements = ["N" => 1, "H" => 3], abbreviation = "NH3")
+defaultchemicalkwarg(::Type{Ammonium}) = (; name = "Ammonium", elements = ["N" => 1, "H" => 4], abbreviation = "NH4")
+defaultchemicalkwarg(::Type{Sodium}) = (; name = "Sodium", elements = ["Na" => 1], abbreviation = "Na")
+defaultchemicalkwarg(::Type{Potassium}) = (; name = "Potassium", elements = ["K" => 1], abbreviation = "K")
+defaultchemicalkwarg(::Type{Lithium}) = (; name = "Lithium", elements = ["Li" => 1], abbreviation = "Li")
+defaultchemicalkwarg(::Type{Silver}) = (; name = "Silver", elements = ["Ag" => 1], abbreviation = "Ag")
+defaultchemicalkwarg(::Type{Acetate}) = (; name = "Acetate", elements = ["C" => 1, "H" => 3, "C" => 1, "O" => 1, "O" => 1], abbreviation = "OAc")
+defaultchemicalkwarg(::Type{Formate}) = (; name = "Formate", elements = ["H" => 1, "C" => 1, "O" => 1, "O" => 1], abbreviation = "OFo")
+defaultchemicalkwarg(::Type{AceticAcid}) = (; name = "Acetic Acid", elements = ["C" => 1, "H" => 3, "C" => 1, "O" => 1, "O" => 1, "H" => 1], abbreviation = "HOAc")
+defaultchemicalkwarg(::Type{FormicAcid}) = (; name = "Formic Acid", elements = ["H" => 1, "C" => 1, "O" => 1, "O" => 1, "H" => 1], abbreviation = "HOFo")
+defaultchemicalkwarg(::Type{MethylAcetate}) = (; name = "Methyl Acetate", elements = ["C" => 1, "H" => 3, "C" => 1, "O" => 1, "O" => 1, "C" => 1, "H" => 3], abbreviation = "MeOAc")
+defaultchemicalkwarg(::Type{MethylFormate}) = (; name = "Methyl Formate", elements = ["H" => 1, "C" => 1, "O" => 1, "O" => 1, "C" => 1, "H" => 3], abbreviation = "MeOFo")
+defaultchemicalkwarg(::Type{Fluoride}) = (; name = "Fluoride", elements = ["F" => 1], abbreviation = "F")
+defaultchemicalkwarg(::Type{Chloride}) = (; name = "Chloride", elements = ["Cl" => 1], abbreviation = "Cl")
+defaultchemicalkwarg(::Type{Methenium}) = (; name = "Methenium", elements = ["C" => 1, "H" => 3], abbreviation = "Me")
 
-Electron(; new_attr = true, name = "Electron", elements = Pair{String, Int}[], abbreviation = "e", kwargs...) = 
-    _attributedchemical(Electron, name, elements, abbreviation; new_attr, kwargs...)
-Proton(; new_attr = true, name = "Proton", elements = ["H" => 1], abbreviation = "H", kwargs...) = 
-    _attributedchemical(Proton, name, elements, abbreviation; new_attr, kwargs...)
-Water(; new_attr = true, name = "Water", elements = ["H" => 2, "O" => 1], abbreviation = "H2O", kwargs...) = 
-    _attributedchemical(Water, name, elements, abbreviation; new_attr, kwargs...)
-Ammonia(; new_attr = true, name = "Ammonia", elements = ["N" => 1, "H" => 3], abbreviation = "NH3", kwargs...) = 
-    _attributedchemical(Ammonia, name, elements, abbreviation; new_attr, kwargs...)
-Ammonium(; new_attr = true, name = "Ammonium", elements = ["N" => 1, "H" => 4], abbreviation = "NH4", kwargs...) = 
-    _attributedchemical(Ammonium, name, elements, abbreviation; new_attr, kwargs...)
-Sodium(; new_attr = true, name = "Sodium", elements = ["Na" => 1], abbreviation = "Na", kwargs...) = 
-    _attributedchemical(Sodium, name, elements, abbreviation; new_attr, kwargs...)
-Potassium(; new_attr = true, name = "Potassium", elements = ["K" => 1], abbreviation = "K", kwargs...) = 
-    _attributedchemical(Potassium, name, elements, abbreviation; new_attr, kwargs...)
-Lithium(; new_attr = true, name = "Lithium", elements = ["Li" => 1], abbreviation = "Li", kwargs...) = 
-    _attributedchemical(Lithium, name, elements, abbreviation; new_attr, kwargs...)
-Silver(; new_attr = true, name = "Silver", elements = ["Ag" => 1], abbreviation = "Ag", kwargs...) = 
-    _attributedchemical(Silver, name, elements, abbreviation; new_attr, kwargs...)
-Acetate(; new_attr = true, name = "Acetate", elements = ["C" => 1, "H" => 3, "C" => 1, "O" => 1, "O" => 1], abbreviation = "OAc", kwargs...) = 
-    _attributedchemical(Acetate, name, elements, abbreviation; new_attr, kwargs...)
-Formate(; new_attr = true, name = "Formate", elements = ["H" => 1, "C" => 1, "O" => 1, "O" => 1], abbreviation = "OFo", kwargs...) = 
-    _attributedchemical(Formate, name, elements, abbreviation; new_attr, kwargs...)
-AceticAcid(; new_attr = true, name = "Acetic Acid", elements = ["C" => 1, "H" => 3, "C" => 1, "O" => 1, "O" => 1, "H" => 1], abbreviation = "HOAc", kwargs...) = 
-    _attributedchemical(AceticAcid, name, elements, abbreviation; new_attr, kwargs...)
-FormicAcid(; new_attr = true, name = "Formic Acid", elements = ["H" => 1, "C" => 1, "O" => 1, "O" => 1, "H" => 1], abbreviation = "HOFo", kwargs...) = 
-    _attributedchemical(FormicAcid, name, elements, abbreviation; new_attr, kwargs...)
-MethylAcetate(; new_attr = true, name = "Methyl Acetate", elements = ["C" => 1, "H" => 3, "C" => 1, "O" => 1, "O" => 1, "C" => 1, "H" => 3], abbreviation = "MeOAc", kwargs...) = 
-    _attributedchemical(MethylAcetate, name, elements, abbreviation; new_attr, kwargs...)
-MethylFormate(; new_attr = true, name = "Methyl Formate", elements = ["H" => 1, "C" => 1, "O" => 1, "O" => 1, "C" => 1, "H" => 3], abbreviation = "MeOFo", kwargs...) = 
-    _attributedchemical(MethylFormate, name, elements, abbreviation; new_attr, kwargs...)
-Fluoride(; new_attr = true, name = "Fluoride", elements = ["F" => 1], abbreviation = "F", kwargs...) = 
-    _attributedchemical(Fluoride, name, elements, abbreviation; new_attr, kwargs...)
-Chloride(; new_attr = true, name = "Chloride", elements = ["Cl" => 1], abbreviation = "Cl", kwargs...) = 
-    _attributedchemical(Chloride, name, elements, abbreviation; new_attr, kwargs...)
-Methenium(; new_attr = true, name = "Methenium", elements = ["C" => 1, "H" => 3], abbreviation = "Me", kwargs...) = 
-    _attributedchemical(Methenium, name, elements, abbreviation; new_attr, kwargs...)
+# User-provided kwargs override defaults; name, elements and abbreviation are fields, the rest become attributes
+function _attributedchemical(::Type{T}; new_attr = true, kwargs...) where {T<:AttributedChemical}
+    kw = (; pairs(defaultchemicalkwarg(T))..., kwargs...)
+    attr = Base.structdiff(kw, NamedTuple{(:name, :elements, :abbreviation)})
+    T(String(kw.name), collect(Pair{String, Int}, kw.elements), String(kw.abbreviation), _chemicalattribute(new_attr, pairs(attr)))
+end
+
+Electron(; kwargs...) = _attributedchemical(Electron; kwargs...)
+Proton(; kwargs...) = _attributedchemical(Proton; kwargs...)
+Water(; kwargs...) = _attributedchemical(Water; kwargs...)
+Ammonia(; kwargs...) = _attributedchemical(Ammonia; kwargs...)
+Ammonium(; kwargs...) = _attributedchemical(Ammonium; kwargs...)
+Sodium(; kwargs...) = _attributedchemical(Sodium; kwargs...)
+Potassium(; kwargs...) = _attributedchemical(Potassium; kwargs...)
+Lithium(; kwargs...) = _attributedchemical(Lithium; kwargs...)
+Silver(; kwargs...) = _attributedchemical(Silver; kwargs...)
+Acetate(; kwargs...) = _attributedchemical(Acetate; kwargs...)
+Formate(; kwargs...) = _attributedchemical(Formate; kwargs...)
+AceticAcid(; kwargs...) = _attributedchemical(AceticAcid; kwargs...)
+FormicAcid(; kwargs...) = _attributedchemical(FormicAcid; kwargs...)
+MethylAcetate(; kwargs...) = _attributedchemical(MethylAcetate; kwargs...)
+MethylFormate(; kwargs...) = _attributedchemical(MethylFormate; kwargs...)
+Fluoride(; kwargs...) = _attributedchemical(Fluoride; kwargs...)
+Chloride(; kwargs...) = _attributedchemical(Chloride; kwargs...)
+Methenium(; kwargs...) = _attributedchemical(Methenium; kwargs...)
 
 push!(StandardChemical, Electron => Electron(; new_attr = false))
 push!(StandardChemical, Proton => Proton(; new_attr = false))
