@@ -1,5 +1,11 @@
 # ==========================================================================================================================
 # Mid level MSn
+"""
+    isotopologues_elements_msn(precise::Val{true}, element_vp_vec, msfix_vec, abundance, abtype, threshold, sort)
+    isotopologues_elements_msn(precise::Val{false}, element_vp_vec, msfix_vec, abundance, abtype, threshold, sort)
+
+Generate isotopologues for a series of elements compositions `element_vp_vec`.
+"""
 function isotopologues_elements_msn(precise::Val, element_vp_vec, msfix_vec, abundance, abtype, threshold, sort) 
     max_vp_vec = map(x -> maximal_abundance_elements_composition(precise, x), element_vp_vec)
     max_proportion = [prod(first(x)) for x in max_vp_vec]
@@ -18,7 +24,11 @@ function isotopologues_elements_msn(precise::Val, element_vp_vec, msfix_vec, abu
     end
     (; Element = parallel_gain_elements!(els), Mass = mass, Abundance = abv)
 end
+"""
+    isotopologues_elements_msx(element_vp, msfix, max_vp, proportion_cutoff, precise, abs_charge)
 
+Generate isotopologues for a single element composition `element_vp`.
+"""
 function isotopologues_elements_msx(element_vp, msfix, max_vp, proportion_cutoff, precise, abs_charge)
     isempty(element_vp) && return (; Element = [ElementsVector(String[], Int[])], Mass = [mmi(element_vp) + msfix], Abundance = [float(1)])
     isotopes, els, mass, abv, _ = isotopologues_elements_single(precise, element_vp, msfix, 1.0, Max(), rcrit(proportion_cutoff), max_vp..., false, abs_charge)
@@ -28,6 +38,11 @@ end
 
 # ==========================================================================================================================
 # Low level MSn
+"""
+    combinemsx(precise, tbls, abundance_cutoff, maxab)
+
+Combine series of chemical loss isotopologues into sereies of transition isotopologues.
+"""
 function combinemsx(precise, tbls, abundance_cutoff, maxab)
     els = Vector{ElementsVector}[]
     mass = Vector{float(Int)}[]

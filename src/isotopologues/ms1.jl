@@ -1,7 +1,15 @@
 # ==========================================================================================================================
 # Mid level MS1
+"""
+    isotopologues_elements_ms1(precise, input_chemical, input_formula::AbstractString, abundance, abtype, threshold, iter, sort; net_charge = charge(input_chemical))
+    isotopologues_elements_ms1(precise, input_chemical, input_chemical::Vector, abundance, abtype, threshold, iter, sort; net_charge = charge(input_chemical))
+    isotopologues_elements_ms1(precise::Val{true}, input_chemical, element_dictionary::Dict, msfix, abundance, abtype, threshold, iter, sort; net_charge = charge(input_chemical))
+    isotopologues_elements_ms1(precise::Val{false}, input_chemical, element_dictionary::Dict, msfix, abundance, abtype, threshold, iter, sort; net_charge = charge(input_chemical))
+
+Generate isotopologues for the given chemical.
+"""
 isotopologues_elements_ms1(precise::Val, input_chemical, x::AbstractString, abundance, abtype, threshold, iter, sort; net_charge = charge(input_chemical)) = 
-    isotopologues_elements(precise, input_chemical,chemicalelements(x), abundance, abtype, threshold, iter, sort; net_charge)
+    isotopologues_elements(precise, input_chemical, chemicalelements(x), abundance, abtype, threshold, iter, sort; net_charge)
 isotopologues_elements_ms1(precise::Val, input_chemical, input_element::Vector, abundance, abtype, threshold, iter, sort; net_charge = charge(input_chemical)) = 
     isotopologues_elements_ms1(precise, input_chemical, get_element_dictionary_fixmass(input_element)..., abundance, abtype, threshold, iter, sort; net_charge)
 function isotopologues_elements_ms1(precise::Val, input_chemical, element_dictionary::Dict, msfix, abundance, abtype, threshold, iter, sort; net_charge = charge(input_chemical))
@@ -42,7 +50,11 @@ function isotopologues_elements_ms1(precise::Val, input_chemical, element_dictio
         (; Chemical = chemical, Mass = mass, Abundance = abv)
     end
 end
+"""
+    isotopologues_elements_single(precise, element_vp, msfix, abundance, abtype, threshold, max_proportion, max_vp, iter, abs_charge);
 
+Generate isotopologues for a single element composition `element_vp`.
+"""
 function isotopologues_elements_single(precise::Val, element_vp::Vector, msfix, abundance, abtype, threshold, max_proportion, max_vp::Vector, iter, abs_charge)
     total, abundance_cutoff, proportion_cutoff = abundance_threshold_vec(abtype, abundance, threshold, max_proportion, element_vp)
     max_proportion[begin] *= total
@@ -57,7 +69,11 @@ function isotopologues_elements_single(precise::Val, element_vp::Vector, msfix, 
     els, mass, abv, preab = fn_comb(precise, tbls, abundance_cutoff, msfix, prod(max_proportion), 1.0)
     vcat((tbl.Isotope for tbl in tbls)...), els, mass, abv, preab
 end
+"""
+    subisotopologues(element_vp, max_proportion, max_vp, proportioon_cutoff, precise, abs_charge)
 
+Generate subisotopologues for the given element composition `element_vp`.
+"""
 function subisotopologues(element_vp, max_proportion, max_vp, proportioon_cutoff, precise, abs_charge)
     isempty(element_vp) && return (; Isotope = String[], Number = Int[empty(max_vp)], Mass = [mmi(element_vp)], Abundance = [float(1)])
     isotopes = elements_isotopes()[first(element_vp)]
@@ -71,7 +87,11 @@ function subisotopologues(element_vp, max_proportion, max_vp, proportioon_cutoff
     id = sortperm(abundance_chemical; rev = true)
     (; Isotope = isotopes[begin + 1:end], Number = element_chemical[id], Mass = mass_chemical[id], Abundance = abundance_chemical[id]) 
 end
+"""
+    subisotopologues_iter(element_vp, max_proportion, max_vp, proportioon_cutoff, precise, abs_charge)
 
+Generate subisotopologues for the given element composition `element_vp` and data for further iteration.
+"""
 function subisotopologues_iter(element_vp, max_proportion, max_vp, proportioon_cutoff, precise, abs_charge)
     isempty(element_vp) && return (; Isotope = String[], Number = Int[empty(max_vp)], Mass = [mmi(element_vp)], Abundance = [float(1)], Preab = [float(1)])
     isotopes = elements_isotopes()[first(element_vp)]
@@ -363,6 +383,11 @@ end
 
 # ==========================================================================================================================
 # Low level combination
+"""
+    combinesubisotopologues(precise, tbls, abundance_cutoff, ms, maxab, preab)
+    
+Combines subisotopologues into isotopologues.
+"""
 function combinesubisotopologues(precise, tbls, abundance_cutoff, ms, maxab, preab)
     els = Vector{Int}[]
     mass = float(Int)[]
@@ -408,7 +433,11 @@ function combinesubisotopologues(precise, tbls, abundance_cutoff, ms, maxab, pre
     end
     els, mass, abv, nothing
 end
-
+"""
+    combinesubisotopologues_iter(precise, tbls, abundance_cutoff, ms, maxab, preab)
+    
+Combines subisotopologues into isotopologues with data for further iteration.
+"""
 function combinesubisotopologues_iter(precise, tbls, abundance_cutoff, ms, maxab, preab)
     els = Vector{Int}[]
     mass = float(Int)[]
@@ -458,58 +487,3 @@ function combinesubisotopologues_iter(precise, tbls, abundance_cutoff, ms, maxab
     end
     els, mass, abv, preabv
 end
-
-# function combinesubisotopologues!(els, mass, abv, tbls, abundance_cutoff, el, ms, maxab, eln, isn, nisotopes)
-#     eln == lastindex(tbls) && return combinesubisotopologues_end!(els, mass, abv, tbls, abundance_cutoff, el, ms, maxab, isn)
-#     i = 0
-#     @inbounds while i < length(tbls[eln].Abundance)
-#         el[isn:isn + nisotopes[eln] - 1] .= tbls[eln].Number[i + 1]
-#         combinesubisotopologues!(els, mass, abv, tbls, abundance_cutoff, el, ms + tbls[eln].Mass[i + 1], maxab * tbls[eln].Abundance[i + 1], eln + 1, isn + nisotopes[eln], nisotopes) || break
-#         i += 1
-#     end
-#     el[isn:isn + nisotopes[eln] - 1] .= tbls[eln].Number[begin]
-#     i > 0
-# end
-
-# function combinesubisotopologues_end!(els, mass, abv, tbls, abundance_cutoff, el, ms, maxab, isn)
-#     i = 0
-#     @inbounds while i < length(tbls[end].Abundance)
-#         ab = maxab * tbls[end].Abundance[i + 1]
-#         ab < abundance_cutoff && break
-#         i += 1
-#         el[isn:end] .= tbls[end].Number[i]
-#         push!(els, copy(el))
-#         push!(abv, ab)
-#         push!(mass, ms + tbls[end].Mass[i])
-#     end
-#     el[isn:end] .= tbls[end].Number[begin]
-#     i > 0
-# end
-
-# function combinesubisotopologues_iter!(els, mass, abv, preabv, tbls, abundance_cutoff, el, ms, maxab, preab, eln, isn, nisotopes)
-#     eln == lastindex(tbls) && return combinesubisotopologues_end_iter!(els, mass, abv, preabv, tbls, abundance_cutoff, el, ms, maxab, preab, isn)
-#     i = 0
-#     @inbounds while i < length(tbls[eln].Abundance)
-#         el[isn:isn + nisotopes[eln] - 1] .= tbls[eln].Number[i + 1]
-#         combinesubisotopologues_iter!(els, mass, abv, preabv, tbls, abundance_cutoff, el, ms + tbls[eln].Mass[i + 1], maxab * tbls[eln].Abundance[i + 1], preab * tbls[eln].Preab[i + 1], eln + 1, isn + nisotopes[eln], nisotopes) || break
-#         i += 1
-#     end
-#     el[isn:isn + nisotopes[eln] - 1] .= tbls[eln].Number[begin]
-#     i > 0
-# end
-
-# function combinesubisotopologues_end_iter!(els, mass, abv, preabv, tbls, abundance_cutoff, el, ms, maxab, preab, isn)
-#     i = 0
-#     @inbounds while i < length(tbls[end].Abundance)
-#         ab = maxab * tbls[end].Abundance[i + 1]
-#         ab < abundance_cutoff && break
-#         i += 1
-#         el[isn:end] .= tbls[end].Number[i]
-#         push!(els, copy(el))
-#         push!(abv, ab)
-#         push!(mass, ms + tbls[end].Mass[i])
-#         push!(preabv, preab * tbls[end].Preab[i])
-#     end
-#     el[isn:end] .= tbls[end].Number[begin]
-#     i > 0
-# end

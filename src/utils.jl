@@ -113,27 +113,6 @@ makecrit_delta(c::Criteria, x) = (zero_center_interval(c.aval) + x, zero_center_
 makecrit_delta(c::Criteria{Missing}, x) = (zero_center_interval(c.rval * x) + x, )
 makecrit_delta(c::Criteria{A, Missing}, x) where A = (zero_center_interval(c.aval) + x, )
 
-_convert(::Type{T}, x::S) where {T, S} = T(x)
-_convert(::Type{T}, x::T) where T = x
-_convert(::Type{T}, x::Tuple) where T = T.(x)
-_convert(::Type{T}, x::NTuple{N, S}) where {T, N, S} = T.(x)
-_convert(::Type{T}, x::AbstractVector{S}) where {T, S} = T.(x)
-_convert(::Type{T}, x::NTuple{N, T}) where {T, N} = x
-_convert(::Type{T}, x::AbstractVector{T}) where T = x
-function _vec_macth(regex, p) 
-    if eltype(p) <: AbstractString 
-        map(p) do x 
-            m = match(regex, x)
-            isnothing(m) ? 0 : parse(Int, first(m.captures))
-        end
-    else
-        map(p) do x 
-            m = match(regex, string(x))
-            isnothing(m) ? 0 : parse(Int, first(m.captures))
-        end
-    end
-end
-
 """
     SESType(S::Type, T::Type) -> Type{StructuralElementalScheme{<:S, <:T}}
     SESType(S::Type) -> Type{StructuralElementalScheme{<:S}}
@@ -214,6 +193,27 @@ function allcolnum(::Type{T}, p, col; error = true, init = []) where T
     _convert(T, p[icol][id])
 end
 
+_convert(::Type{T}, x::S) where {T, S} = T(x)
+_convert(::Type{T}, x::T) where T = x
+_convert(::Type{T}, x::Tuple) where T = T.(x)
+_convert(::Type{T}, x::NTuple{N, S}) where {T, N, S} = T.(x)
+_convert(::Type{T}, x::AbstractVector{S}) where {T, S} = T.(x)
+_convert(::Type{T}, x::NTuple{N, T}) where {T, N} = x
+_convert(::Type{T}, x::AbstractVector{T}) where T = x
+function _vec_macth(regex, p) 
+    if eltype(p) <: AbstractString 
+        map(p) do x 
+            m = match(regex, x)
+            isnothing(m) ? 0 : parse(Int, first(m.captures))
+        end
+    else
+        map(p) do x 
+            m = match(regex, string(x))
+            isnothing(m) ? 0 : parse(Int, first(m.captures))
+        end
+    end
+end
+
 """
     preabtype(::AbstractAbundance)
 
@@ -280,6 +280,11 @@ abundance_threshold(::List, abundance, threshold, first_proportion, max_proporti
 abundance_threshold(::Total, abundance, threshold, first_proportion, max_proportion = first_proportion) = abundance, minimum(makecrit_value(crit(threshold), abundance * max_proportion)) 
 abundance_threshold(::Raw, abundance, threshold, first_proportion, max_proportion = first_proportion) = abundance, minimum(makecrit_value(crit(threshold), abundance * max_proportion)) 
 
+"""
+    abtypeop(::AbstractAbundance) -> Union{Function, Nothing}
+
+Return the corresponding operation function for the given abundance type.
+"""
 abtypeop(::Max) = maximum
 abtypeop(::Input) = first
 abtypeop(::List) = sum
@@ -347,13 +352,29 @@ function _normalize_abundance!(abvector, abundance, abtype, available_abtype = [
     end
 end
 
+"""
+    tuplize(x)
+
+Convert `x` to a tuple if it is not already a tuple.
+"""
 tuplize(x::Tuple) = x
 tuplize(x) = (x, )
+
+"""
+    vectorize(x)
+
+Convert `x` to a vector if it is not already a vector or vector-like object (including dictionaries).
+"""
 vectorize(x::AbstractDict) = x
 vectorize(x::SplitApplyCombine.Dictionaries.AbstractDictionary) = x
 vectorize(x::AbstractVector) = x
 # vectorize(x::AbstractVector, n::Int) = n == lastindex(x) ? x : n > lastindex(x) ? vcat(x, repeat([last(x)], n - lastindex(x))) : x[begin:begin + n - 1]
 vectorize(x) = [x]
+"""
+    vectorize(x, n)
+
+Convert `x` to a vector and repeat it to match length `n`.
+"""
 vectorize(x, n) = repeat([x], n)
 
 # stirling_approx(n) = (n + 0.5) * log2(n) - n * log2(exp(1)) + (log2(2) + log2(pi))/2
@@ -361,7 +382,18 @@ const log2exp = log2(exp(1))
 const halflog2pi = (log2(2) + log2(pi))/2
 const log2typemaxint = log2(typemax(Int))
 
+"""
+    stirling_approx(n)
+
+Approximate the logarithm (base 2) of the factorial of `n` using Stirling's approximation.
+"""
 stirling_approx(n) = (n + 0.5) * log2(max(n, 1)) 
+"""
+    stirling_approx_multinomial(x::AbstractVector)
+    stirling_approx_multinomial(x...) 
+
+Approximate the logarithm (base 2) of the multinomial coefficient for the given parameters `x` using Stirling's approximation.
+"""
 function stirling_approx_multinomial(x::AbstractVector) 
     s = sum(>(1), x)
     s == 1 ? 0.0 : stirling_approx(sum(x)) - sum(stirling_approx, x) - halflog2pi * (s - 1)
@@ -370,13 +402,41 @@ function stirling_approx_multinomial(x...)
     s = sum(>(1), x)
     s == 1 ? 0.0 : stirling_approx(sum(x)) - sum(stirling_approx, x) - halflog2pi * (s - 1)
 end
-stirling_approx_factorial(n, k) = (n + 0.5) * log2(max(n, 1)) - (k + 0.5) * log2(max(k, 1)) + (n - k) * log2exp
+"""
+    stirling_approx_factorial(n, k)
 
+Approximate the logarithm (base 2) of the factorial ratio `n! / k!` using Stirling's approximation.
+"""
+stirling_approx_factorial(n, k) = (n + 0.5) * log2(max(n, 1)) - (k + 0.5) * log2(max(k, 1)) + (n - k) * log2exp
+"""
+    check_overflow_multinomial(x)
+    check_overflow_multinomial(x...)
+    check_overflow_multinomial(x::Vector{Int})
+
+Check if the multinomial coefficient for the given parameters `x` would overflow the maximum integer value.
+"""
 check_overflow_multinomial(x) = false
 check_overflow_multinomial(x...) = stirling_approx_multinomial(x...) > log2typemaxint
 check_overflow_multinomial(x::Vector{Int}) = stirling_approx_multinomial(x) > log2typemaxint
-check_overflow_factorial(n, k) = stirling_approx_factorial(n, k) > log2typemaxint
+"""
+    check_overflow_factorial(n, k)
 
+Check if the factorial ratio `n! / k!` would overflow the maximum integer value.
+"""
+check_overflow_factorial(n, k) = stirling_approx_factorial(n, k) > log2typemaxint
+"""
+    safe_multinomial(::Val{true}, x::Vector{Int})
+    safe_multinomial(::Val{false}, x::Vector{Int})
+    safe_multinomial(x::Vector{Int})
+    safe_multinomial(::Val{true}, x...)
+    safe_multinomial(::Val{false}, x...)
+    safe_multinomial(x...)
+    safe_multinomial(::Val{true}, ::Type)
+    safe_multinomial(::Val{false}, ::Type)
+    safe_multinomial(::Type)
+
+Compute the multinomial coefficient safely, using big integers if necessary to avoid overflow.
+"""
 safe_multinomial(::Val{true}, x::Vector{Int}) = multinomial((big(y) for y in x)...)
 safe_multinomial(::Val{false}, x::Vector{Int}) = check_overflow_multinomial(x) ? multinomial((big(y) for y in x)...) : safe_multinomial(x)
 function safe_multinomial(x::Vector{Int})
@@ -386,13 +446,11 @@ function safe_multinomial(x::Vector{Int})
         multinomial((big(y) for y in x)...)
     end
 end
-    
 safe_multinomial(::T) where T = one(T)
 safe_multinomial(::Val{true}, ::T) where T = one(T)
 safe_multinomial(::Val{false}, ::T) where T = one(T)
 safe_multinomial(::Val{true}, x...) = multinomial(big.(x)...)
 safe_multinomial(::Val{false}, x...) = check_overflow_multinomial(x...) ? multinomial((big(y) for y in x)...) : safe_multinomial(x...)
-
 function safe_multinomial(x...)
     try 
         multinomial(x...)
@@ -401,6 +459,13 @@ function safe_multinomial(x...)
     end
 end
 
+"""
+    safe_factorial(::Val{true}, n, k)
+    safe_factorial(::Val{false}, n, k)
+    safe_factorial(n, k)
+
+Compute the factorial ratio `n! / k!` safely, using big integers if necessary to avoid overflow.
+"""
 safe_factorial(x::Val, n::T, k) where T = n == k ? one(T) : _safe_factorial(x, n, k)
 _safe_factorial(::Val{true}, n, k) = factorial(big(n), k)
 _safe_factorial(::Val{false}, n, k) = check_overflow_factorial(n, k) ? factorial(big(n), k) : _safe_factorial(n, k)
@@ -413,9 +478,21 @@ function _safe_factorial(n, k)
     end
 end
 
+"""
+    return_abundance(::Val{true}, abundance)
+    return_abundance(::Val{false}, abundance)
+
+Return the abundance value, converting to float if necessary.
+"""
 return_abundance(::Val{true}, x) = x 
 return_abundance(::Val{false}, x) = convert(float(Int), x) 
 
+"""
+    precise_exp(::Val{true}, y, x)
+    precise_exp(::Val{false}, y, x)
+
+Compute the exponentiation safely, using big integers if necessary to avoid overflow.
+"""
 precise_exp(::Val{true}, y, x) = big(y) ^ x
 precise_exp(::Val{false}, y, x) = y ^ x
 

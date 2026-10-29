@@ -453,7 +453,11 @@ function peak_table(transitiontable::Table; groupedisotopomers = true, isotope =
         Table(collect(NamedTuple, gt))
     end
 end
+"""
+    find_nearest_peak(alg::LocalMaxima, convolution, i, k) -> Union{Int, Nothing}
 
+Find the nearest peak in a convolution array for index `i` within a range of `k` amount of indices.
+"""
 function find_nearest_peak(alg::LocalMaxima, convolution, i, k)
     j = findfirst(>(alg.threshold * maximum(k)), k)
     ihwhm = floor(Int, length(k) / 2) - j + 1
@@ -497,13 +501,21 @@ function find_nearest_peak(alg::LocalMaxima, convolution, i, k)
         nothing 
     end
 end
+"""
+    bin_offset(outmass, binmass, binsize, nbin_multiplier) -> Int
 
+Calculate the offset of a mass relative to a bin.
+"""
 function bin_offset(outmass, binmass, binsize, nbin_multiplier)
     x = round(Int, (outmass - binmass) / binsize)
     # x == 0 ? 1 : x > 0 ? x + 1 : nbin_multiplier + x + 1
     x == 0 ? x : x > 0 ? nbin_multiplier - x : -x
 end
+"""
+    binnify(mass, binsize, init = first(mass)) -> Tuple{Vector{Float64}, Vector{Int}}
 
+Calculate the binned mass and corresponding bin indices for a given mass array.
+"""
 function binnify(mass, binsize, init = first(mass))
     binmass = similar(mass)
     ibins = zeros(Int, length(binmass))

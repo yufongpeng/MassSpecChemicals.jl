@@ -103,6 +103,11 @@ function chemicalelements(formula::AbstractString; loss = false, kwargs...)
     collect(Pair{String, Int}, Iterators.flatten(v))::Vector{Pair{String, Int}}
 end
 
+"""
+    encode_isotopes(formula::AbstractString) -> AbstractString
+
+Encodes isotopes in a chemical formula string.
+"""
 function encode_isotopes(formula::AbstractString)
     f = string(formula)
     f2 = f
@@ -121,10 +126,15 @@ chemicalformula(cc::FormulaChemical; unique = false, kwargs...) = chemicalformul
 chemicalformula(isobars::Isobars; kwargs...) = chemicalformula(chemicalentity(isobars); kwargs...)::String
 function chemicalformula(x::Isotopomers; kwargs...) 
     elements = dictionary_elements(Dictionary, chemicalelements(chemicalparent(x); loss = false))
-    chemicalformula(isotopeelements(elements, x.isotopes); kwargs...)
+    chemicalformula(isotopeelements_dict(elements, x.isotopes); kwargs...)
 end
 
-function isotopeelements(elements, isotopes)
+"""
+    isotopeelements_dict(elements, isotopes)
+
+Adjusts element counts based on isotopic composition.
+"""
+function isotopeelements_dict(elements, isotopes)
     for (k, v) in isotopes
         e = get(elements_parents(), k, k) 
         k == e && continue 
@@ -135,11 +145,16 @@ function isotopeelements(elements, isotopes)
     end
     elements
 end
-isotopeelements_vec(elements, isotopes) = collect(pairs(isotopeelements(elements, isotopes)))
+"""
+    isotopeelements_vec(elements, isotopes) -> Vector{Pair}
+
+Constructs a vector of element-count pairs adjusted for isotopic composition.
+"""
+isotopeelements_vec(elements, isotopes) = collect(pairs(isotopeelements_dict(elements, isotopes)))
 
 function chemicalformula(x::Groupedisotopomers; kwargs...) 
     elements = dictionary_elements(Dictionary, chemicalelements(chemicalparent(x); loss = false))
-    chemicalformula(isotopeelements(elements, x.isotopes[begin]); kwargs...)
+    chemicalformula(isotopeelements_dict(elements, x.isotopes[begin]); kwargs...)
 end
 chemicalformula(ct::ChemicalTransition; kwargs...) = chemicalformula(chemicalentity(ct); kwargs...)::String
 
@@ -149,13 +164,18 @@ chemicalformula(sch::ElementalScheme{true}; loss = false, kwargs...) = chemicalf
 chemicalformula(x::ChemicalSchemes; kwargs...) = chemicalformula(chemicalelements(x; loss = false); kwargs..., ischemical = false)
 function chemicalformula(x::IsotopomerizedSchemes; kwargs...)
     elements = dictionary_elements(Dictionary, chemicalelements(chemicalparent(x); loss = false))
-    chemicalformula(isotopeelements(elements, x.isotopes); kwargs..., ischemical = false)
+    chemicalformula(isotopeelements_dict(elements, x.isotopes); kwargs..., ischemical = false)
 end
 function chemicalformula(x::Groupedisotopomerizedschemes; kwargs...) 
     elements = dictionary_elements(Dictionary, chemicalelements(chemicalparent(x); loss = false))
-    chemicalformula(isotopeelements(elements, x.isotopes[begin]); kwargs..., ischemical = false)
+    chemicalformula(isotopeelements_dict(elements, x.isotopes[begin]); kwargs..., ischemical = false)
 end
 
+"""
+    reverse_formula(x, ischemical, loss) -> AbstractString
+
+Reverses the chemical formula string based on `loss` and `ischemical`.
+"""
 function reverse_formula(x, ischemical, loss) 
     if isempty(x)
         x
@@ -167,7 +187,12 @@ function reverse_formula(x, ischemical, loss)
         loss ? replace(x, "+" => "-", "-" => "+") : x
     end
 end
-    
+
+"""
+    reverse_elements(x::T, loss) -> T
+
+Reverses the element counts based on `loss`.
+"""
 reverse_elements(x::ElementsVector, loss) = loss ? ElementsVector(x.elements, [-v for v in x.numbers]) : x
 reverse_elements(x::Vector{<:Pair}, loss) = loss ? [k => -v for (k, v) in x] : x
 reverse_elements(x::Dict, loss) = loss ? Dict(k => -v for (k, v) in x) : x

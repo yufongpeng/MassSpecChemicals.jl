@@ -1,10 +1,15 @@
 const MIN_PROPORTION = 1e-3
+"""
+    min_propotion() -> Number
+
+Get the minimum proportion for isotopic abundance. The default value is the constant `MIN_PROPORTION` which is `1e-3`.
+"""
 min_propotion() = MIN_PROPORTION
 
 """
-    detectedchemicaldata(precursor, product)
+    detectedchemicaldata(precursor, product) -> Tuple{AbstractChemicalScheme, AbstractChemical, Vector{Pair{String, Int}}}
 
-Detected chemical and dictionary of elements.
+Get complete scheme or chemical, detected chemical, and elements.
 """
 function detectedchemicaldata(precursor, product)
     sch = completescheme(precursor, product)
@@ -13,9 +18,9 @@ function detectedchemicaldata(precursor, product)
 end
 
 """
-    serieschemicaldata(input_chemical; precursor)
+    serieschemicaldata(input_chemical; precursor) -> Vector{Tuple{AbstractChemicalScheme, AbstractChemical, Vector{Pair{String, Int}}}}
 
-Series of detected chemicals and dictionaries of elements.
+Get series of complete schemes or chemicals, detected chemicals, and elements.
 """
 function serieschemicaldata(input_chemical)
     sch = AbstractChemicalScheme[]
@@ -53,9 +58,10 @@ function seriesisotopomerize(transitions::Vector{<:AbstractChemicalScheme}, els:
 end
 
 """
-    maximal_abundance_elements_composition(precise::Val, elements, prev = 1.0) -> Tuple{Vector{<:AbstractFloat}, Vector{Vector{Int}}}
+    maximal_abundance_elements_composition(precise::Val{true}, elements, prev = 1.0) -> Tuple{Vector{<:AbstractFloat}, Vector{Vector{Int}}}
+    maximal_abundance_elements_composition(precise::Val{false}, elements, prev = 1.0) -> Tuple{Vector{<:AbstractFloat}, Vector{Vector{Int}}}
 
-Isotope composition of maximal abundance for each subisotopologues.
+Isotope composition of maximal abundance for each subisotopologues. `precise` determines whether to use big integer and floating-point arithmetic.
 """
 function maximal_abundance_elements_composition(precise::Val, elements)
     max_vps = Vector(undef, length(elements))
@@ -90,9 +96,10 @@ function maximal_abundance_elements_composition(precise::Val, elements)
 end
 
 """
-    maximal_abundance_elements_composition_check(precise::Val, elements::Vector, abtype) -> Tuple{Vector{<:AbstractFloat}, Vector{Vector{Int}}}
+    maximal_abundance_elements_composition_check(precise::Val{true}, elements::Vector, abtype) -> Tuple{Vector{<:AbstractFloat}, Vector{Vector{Int}}}
+    maximal_abundance_elements_composition_check(precise::Val{false}, elements::Vector, abtype) -> Tuple{Vector{<:AbstractFloat}, Vector{Vector{Int}}}
 
-Isotope composition of maximal abundance for each subisotopologues with additional floating point error check.
+Isotope composition of maximal abundance for each subisotopologues with additional floating point error check. `precise` determines whether to use big integer and floating-point arithmetic.
 """
 function maximal_abundance_elements_composition_check(precise::Val, element_vp, abtype)
     first_proportion = isotopicabundance(precise, element_vp)
@@ -115,9 +122,10 @@ function maximal_abundance_elements_composition_check(precise::Val, element_vp, 
 end
 
 """
-    distribute_element(update_fn, precise::Val, prev, e::String, element_precursor::Dict, pn::Int) -> AbstractFloat
+    distribute_element(update_fn, precise::Val{true}, prev, e::String, element_precursor::Dict, pn::Int) -> Tuple{AbstractFloat, Vector{Int}}
+    distribute_element(update_fn, precise::Val{false}, prev, e::String, element_precursor::Dict, pn::Int) -> Tuple{AbstractFloat, Vector{Int}}
 
-For parent element `e`, distribute isotopes from `element_precursor` into product containing `pn` of `e`; then update `prev` using `update_fn`.
+For parent element `e`, distribute isotopes from `element_precursor` into product containing `pn` amount of `e`; then update value `prev` using `update_fn`. `precise` determines whether to use big integer and floating-point arithmetic.
 """
 function distribute_element(update_fn, precise, prev, e, element_precursor, pn)
     pre = [get(element_precursor, x, 0) for x in elements_isotopes()[e]]
@@ -142,9 +150,10 @@ function distribute_element(update_fn, precise, prev, e, element_precursor, pn)
 end
 
 """
-    maximal_proportion_composition(precise::Val, element_precursor::Dict, element_product, element_name_loss, prev = 1.0)
+    maximal_proportion_composition(precise::Val{true}, element_precursor::Dict, element_product, element_name_loss, prev = 1.0) -> Tuple{AbstractFloat, Vector{Int}}
+    maximal_proportion_composition(precise::Val{false}, element_precursor::Dict, element_product, element_name_loss, prev = 1.0) -> Tuple{AbstractFloat, Vector{Int}}
 
-Estimate the most abundant product isotopologue composition for `element_product` derived from `element_precursor`. Return its isotope counts and proportion among all possible isotopologues.
+Estimate the most abundant product isotopologue composition for `element_product` derived from `element_precursor`. Return its isotope counts and proportion among all possible isotopologues. `precise` determines whether to use big integer and floating-point arithmetic.
 """
 function maximal_proportion_composition(precise::Val, element_precursor::Dict, element_product, element_name_loss, prev = 1.0)
     max_vps = Vector{Any}(undef, length(element_product))
@@ -158,6 +167,12 @@ function maximal_proportion_composition(precise::Val, element_precursor::Dict, e
     return_abundance(precise, prev), vcat(max_vps...)
 end
 
+"""
+    update_maximal_proportion(precise::Val{true}, proportion, pre, pro) -> AbstractFloat
+    update_maximal_proportion(precise::Val{false}, proportion, pre, pro) -> AbstractFloat
+
+Update the maximal proportion for isotopic abundance based on the previous `proportion`, precursor counts `pre`, and product counts `pro`. `precise` determines whether to use big integer and floating-point arithmetic.
+"""
 update_maximal_proportion(::Val{true}, p, pre, pro) = 
     p * multinomial((big(x) for x in pro)...) / multinomial((big(x) for x in pre)...) * multinomial((big(x) - y for (x, y) in zip(pre, pro))...)
 
@@ -170,9 +185,10 @@ function update_maximal_proportion(::Val{false}, p, pre, pro)
 end
 
 """
-    maximal_combination_composition(precise::Val, element_precursor::Dict, element_product, element_name_loss, prev = 1.0)
+    maximal_combination_composition(precise::Val{true}, element_precursor::Dict, element_product, element_name_loss, prev = 1.0) -> Tuple{AbstractFloat, Vector{Int}}
+    maximal_combination_composition(precise::Val{false}, element_precursor::Dict, element_product, element_name_loss, prev = 1.0) -> Tuple{AbstractFloat, Vector{Int}}
 
-Estimate the most abundant product isotopologue composition for `element_product` derived from `element_precursor`. Return its isotope counts and the number of possible combinations.
+Estimate the most abundant product isotopologue composition for `element_product` derived from `element_precursor`. Return its isotope counts and the number of possible combinations. `precise` determines whether to use big integer and floating-point arithmetic.
 """
 function maximal_combination_composition(precise::Val, element_precursor::Dict, element_product, element_name_loss, prev = 1.0)
     max_vps = Vector{Any}(undef, length(element_product))
@@ -186,6 +202,12 @@ function maximal_combination_composition(precise::Val, element_precursor::Dict, 
     return_abundance(precise, prev), vcat(max_vps...)
 end
 
+"""
+    update_maximal_combination(precise::Val{true}, combination, pre, pro) -> AbstractFloat
+    update_maximal_combination(precise::Val{false}, combination, pre, pro) -> AbstractFloat
+
+Update the maximal combination for isotopic abundance based on the previous `combination`, precursor counts `pre`, and product counts `pro`.
+"""
 update_maximal_combination(::Val{true}, p, pre, pro) = 
     p * multinomial((big(x) for x in pro)...) * multinomial((big(x) - y for (x, y) in zip(pre, pro))...)
 
@@ -199,9 +221,10 @@ function update_maximal_combination(::Val{false}, p, pre, pro)
 end
 
 """
-    isotopologue_inverse_combination(precise::Val, enumbers, isotopes)
+    isotopologue_inverse_combination(precise::Val{true}, numbers, isotopes) -> AbstractFloat
+    isotopologue_inverse_combination(precise::Val{false}, numbers, isotopes) -> AbstractFloat
 
-Compute inverse of combination.
+Compute inverse of combination. `precise` determines whether to use big integer and floating-point arithmetic.
 """
 function isotopologue_inverse_combination(precise::Val, numbers, isotopes)
     # ignore_isotopes && return 1.0
@@ -213,7 +236,7 @@ end
 """
     unique_group_mz_ab(mztable, transitions, colmz, colab, gf = nothing)
 
-Group `transitions` by `gf`, create maps from group to id, and extract m/z values and abundance from `mztable`.
+Group `transitions` by function `gf`, create maps from group to id, and fetch m/z values and abundances from `mztable`.
 """
 function unique_group_mz_ab(mztable, transitions, colmz, colab, gf = nothing)
     if isnothing(gf)
@@ -250,7 +273,7 @@ function gf_parent_isotope(isotope = "[13C]")
 end
 
 """
-    get_isotopes(elements)
+    get_isotopes(elements) -> Vector{String}
 
 Get all isotopes of each element in `elements`.
 """
@@ -259,14 +282,14 @@ get_isotopes(x) = mapreduce(vcat, x) do e
 end
 
 """
-    get_nisotopes(elements)
+    get_nisotopes(elements) -> Vector{Int}
 
 Get number isotopes of each element in `elements`.
 """
 get_nisotopes(x) = [length(elements_isotopes()[first(e)]) for e in x]
 
 """
-    get_element_dictionary(input_element)
+    get_element_dictionary(input_element) -> Dict{String, Int}
 
 Element dictionary without isotopes.
 """
@@ -306,7 +329,7 @@ function get_fixmass(input_element)
 end
 
 """
-    get_element_dictionary_fixmass(input_element) -> Tuple{Dict,<:AbstractFloat}
+    get_element_dictionary_fixmass(input_element) -> Tuple{Dict{String, Int}, <:AbstractFloat}
 
 Element dictionary without isotopes, and mass of isotopes
 """
@@ -324,7 +347,7 @@ function get_element_dictionary_fixmass(input_element)
 end
 
 """
-    get_element_fixmass(input_element) -> Tuple{Vector{Pair{String, Int}},<:AbstractFloat}
+    get_element_fixmass(input_element) -> Tuple{Vector{Pair{String, Int}}, <:AbstractFloat}
 
 Element vector without isotopes, and mass of isotopes
 """
@@ -360,9 +383,10 @@ Total mass of the specified `elements`, weighted by their corresponding values i
 nmmi(isotopes::Vector{String}, v) = sum(elements_mass()[x] * n for (x, n) in zip(isotopes, v))
 
 """
-    update_abundance(precise::Val, prev_abundance, old_element, new_element, nold, nnew) -> AbstractFloat
+    update_abundance(precise::Val{true}, prev_abundance, old_element, new_element, nold, nnew) -> AbstractFloat
+    update_abundance(precise::Val{false}, prev_abundance, old_element, new_element, nold, nnew) -> AbstractFloat
 
-Update `prev_abundance` after replacing one `old_element` with `new_element`. `nold` and `nnew` are the respective element counts before replacement.
+Update `prev_abundance` after replacing one `old_element` with `new_element`. `nold` and `nnew` are the respective element counts before replacement. `precise` determines whether to use big integer and floating-point arithmetic.
 """
 function update_abundance(precise::Val, prev_abundance::T, old_element, new_element, nold, nnew) where T
     x = get(elements_abundance(), old_element, one(T))
@@ -378,17 +402,19 @@ update_abundance1(::Val{true}, prev_abundance, x, y, nold, nnew) = prev_abundanc
 update_abundance1(::Val{false}, prev_abundance, x, y, nold, nnew) = prev_abundance * (nold / (nnew + 1)) * (y / x)
 
 """
-    update_proportion(precise::Val, prev_proportion, nold, nnew) -> AbstractFloat
+    update_proportion(precise::Val{true}, prev_proportion, nold, nnew) -> AbstractFloat
+    update_proportion(precise::Val{false}, prev_proportion, nold, nnew) -> AbstractFloat
     
-Update `prev_proportion` after replacing one element with another. `nold` and `nnew` are the respective element counts before replacement.
+Update `prev_proportion` after replacing one element with another. `nold` and `nnew` are the respective element counts before replacement. `precise` determines whether to use big integer and floating-point arithmetic.
 """
 update_proportion(::Val{true}, prev_proportion, nold, nnew) = prev_proportion * (big(nold) / (nnew + 1)) 
 update_proportion(::Val{false}, prev_proportion, nold, nnew) = prev_proportion * (nold / (nnew + 1)) 
 
 """
-    update_inverse_proportion(precise::Val, prev_inverse_proportion, nold, nnew) -> AbstractFloat
+    update_inverse_proportion(precise::Val{true}, prev_inverse_proportion, nold, nnew) -> AbstractFloat
+    update_inverse_proportion(precise::Val{false}, prev_inverse_proportion, nold, nnew) -> AbstractFloat
 
-Update `prev_inverse_proportion` after replacing one element with another. `nold` and `nnew` are the respective element counts before replacement.
+Update `prev_inverse_proportion` after replacing one element with another. `nold` and `nnew` are the respective element counts before replacement. `precise` determines whether to use big integer and floating-point arithmetic.
 """
-update_inverse_proportion(::Val{true}, prev_proportion, nold, nnew) = prev_proportion * (big(nnew + 1) / nold) 
-update_inverse_proportion(::Val{false}, prev_proportion, nold, nnew) = prev_proportion * ((nnew + 1) / nold) 
+update_inverse_proportion(::Val{true}, prev_inverse_proportion, nold, nnew) = prev_inverse_proportion * (big(nnew + 1) / nold) 
+update_inverse_proportion(::Val{false}, prev_inverse_proportion, nold, nnew) = prev_inverse_proportion * ((nnew + 1) / nold) 

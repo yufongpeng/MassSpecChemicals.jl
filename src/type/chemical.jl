@@ -14,10 +14,44 @@ Mutable object carrying attributes.
 
 # Fields
 * `attribute::Union{Nothing, Vector{Pair{Symbol, Any}}}`: the pairs represent names and values.
+
+# Constructors
+    ChemicalAttribute(attribute::ChemicalAttribute)
+    ChemicalAttribute(attribute::AbstractVector{<:Pair{<:AbstractString}})
+    ChemicalAttribute(attribute::AbstractVector{<:Tuple})
 """
 mutable struct ChemicalAttribute
     attribute::Union{Nothing, Vector{Pair{Symbol, Any}}}
 end
+
+ChemicalAttribute(attribute::ChemicalAttribute) = attribute
+ChemicalAttribute(attribute::AbstractVector{<:Pair{<:AbstractString}}) = 
+    ChemicalAttribute(Pair{Symbol, Any}[Symbol(first(pair)) => last(pair) for pair in attribute])
+ChemicalAttribute(attribute::AbstractVector{<:Tuple}) = 
+    ChemicalAttribute(Pair{Symbol, Any}[Symbol(first(pair)) => last(pair) for pair in attribute])
+
+"""
+    buildattribute(::Nothing) -> Nothing
+    buildattribute(attribute) -> ChemicalAttribute
+    buildattribute(new_attr::Bool, kwargs) -> Union{Nothing, ChemicalAttribute}
+
+Constructs a `ChemicalAttribute` object or returns `nothing` if `new_attr` is `false` and no keyword arguments are provided.
+"""
+buildattribute(::Nothing) = nothing
+buildattribute(attribute) = ChemicalAttribute(attribute)
+buildattribute(new_attr::Bool, kwargs) =
+    isempty(kwargs) ? (new_attr ? ChemicalAttribute(nothing) : nothing) :
+    ChemicalAttribute(Pair{Symbol, Any}[key => value for (key, value) in kwargs])
+
+"""
+    buildelements(elements) -> Vector{Pair{String, Int}}
+    buildelements(formula::AbstractString) -> Vector{Pair{String, Int}}
+
+Constructs a vector of element-count pairs.
+"""
+buildelements(elements::Vector{Pair{String, Int}}) = elements
+buildelements(elements) = collect(Pair{String, Int}, elements)
+buildelements(formula::AbstractString) = chemicalelements(formula)
 
 const ChemicalSchemeNull = Union{Nothing, AbstractChemicalScheme}
 
@@ -108,25 +142,10 @@ struct Chemical <: AttributedChemical
     attribute::Union{Nothing, ChemicalAttribute}
 end
 
-_chemicalattribute(::Nothing) = nothing
-_chemicalattribute(attribute) = ChemicalAttribute(attribute)
-ChemicalAttribute(attribute::ChemicalAttribute) = attribute
-ChemicalAttribute(attribute::AbstractVector{<:Pair{<:AbstractString}}) = 
-    ChemicalAttribute(Pair{Symbol, Any}[Symbol(first(pair)) => last(pair) for pair in attribute])
-ChemicalAttribute(attribute::AbstractVector{<:Tuple}) = 
-    ChemicalAttribute(Pair{Symbol, Any}[Symbol(first(pair)) => last(pair) for pair in attribute])
-_chemicalattribute(new_attr::Bool, kwargs) =
-    isempty(kwargs) ? (new_attr ? ChemicalAttribute(nothing) : nothing) :
-    ChemicalAttribute(Pair{Symbol, Any}[key => value for (key, value) in kwargs])
-
-_chemicalelements(elements::Vector{Pair{String, Int}}) = elements
-_chemicalelements(elements) = collect(Pair{String, Int}, elements)
-_chemicalelements(formula::AbstractString) = chemicalelements(formula)
-
 Chemical(name::AbstractString, elements, attribute) =
-    Chemical(String(name), _chemicalelements(elements), _chemicalattribute(attribute))
+    Chemical(String(name), buildelements(elements), buildattribute(attribute))
 Chemical(name::AbstractString, elements; new_attr = true, kwargs...) =
-    Chemical(String(name), _chemicalelements(elements), _chemicalattribute(new_attr, kwargs))
+    Chemical(String(name), buildelements(elements), buildattribute(new_attr, kwargs))
 
 """
     FormulaChemical <: AttributedChemical
@@ -152,11 +171,11 @@ Unstructured chemical type with elements (formula), and additional attributes. C
 struct FormulaChemical <: AttributedChemical
     elements::Vector{Pair{String, Int}}
     attribute::Union{Nothing, ChemicalAttribute}
-    FormulaChemical(elements, attribute) = new(_chemicalelements(elements), _chemicalattribute(attribute))
+    FormulaChemical(elements, attribute) = new(buildelements(elements), buildattribute(attribute))
 end
 
 FormulaChemical(elements; new_attr = true, kwargs...) =
-    FormulaChemical(_chemicalelements(elements), _chemicalattribute(new_attr, kwargs))
+    FormulaChemical(buildelements(elements), buildattribute(new_attr, kwargs))
 
 abstract type AbstractChemicalWrapper <: AbstractChemical end
 """
@@ -866,30 +885,40 @@ defaultchemicalkwargs(::Type{Chloride}) = (; name = "Chloride", elements = ["Cl"
 defaultchemicalkwargs(::Type{Methenium}) = (; name = "Methenium", elements = ["C" => 1, "H" => 3], abbreviation = "Me")
 
 # User-provided kwargs override defaults; name, elements and abbreviation are fields, the rest become attributes
-function _attributedchemical(::Type{T}; new_attr = true, kwargs...) where {T<:AttributedChemical}
+"""
+    make_attributedchemical(::Type{T}; new_attr = true, kwargs...) -> AttributedChemical
+
+Create an attributed chemical of type `T` with default and user-provided keyword arguments. Default values are taken from [`defaultchemicalkwargs`](@ref).
+
+# Arguments
+* `::Type{T}`: the type of the attributed chemical to create.
+* `new_attr`: whether to build a new attribute.
+* `kwargs`: additional keyword arguments to override defaults.
+"""
+function make_attributedchemical(::Type{T}; new_attr = true, kwargs...) where {T<:AttributedChemical}
     kw = (; pairs(defaultchemicalkwargs(T))..., kwargs...)
     attr = Base.structdiff(kw, NamedTuple{(:name, :elements, :abbreviation)})
-    T(String(kw.name), collect(Pair{String, Int}, kw.elements), String(kw.abbreviation), _chemicalattribute(new_attr, pairs(attr)))
+    T(String(kw.name), collect(Pair{String, Int}, kw.elements), String(kw.abbreviation), buildattribute(new_attr, pairs(attr)))
 end
 
-Electron(; kwargs...) = _attributedchemical(Electron; kwargs...)
-Proton(; kwargs...) = _attributedchemical(Proton; kwargs...)
-Water(; kwargs...) = _attributedchemical(Water; kwargs...)
-Ammonia(; kwargs...) = _attributedchemical(Ammonia; kwargs...)
-Ammonium(; kwargs...) = _attributedchemical(Ammonium; kwargs...)
-Sodium(; kwargs...) = _attributedchemical(Sodium; kwargs...)
-Potassium(; kwargs...) = _attributedchemical(Potassium; kwargs...)
-Lithium(; kwargs...) = _attributedchemical(Lithium; kwargs...)
-Silver(; kwargs...) = _attributedchemical(Silver; kwargs...)
-Acetate(; kwargs...) = _attributedchemical(Acetate; kwargs...)
-Formate(; kwargs...) = _attributedchemical(Formate; kwargs...)
-AceticAcid(; kwargs...) = _attributedchemical(AceticAcid; kwargs...)
-FormicAcid(; kwargs...) = _attributedchemical(FormicAcid; kwargs...)
-MethylAcetate(; kwargs...) = _attributedchemical(MethylAcetate; kwargs...)
-MethylFormate(; kwargs...) = _attributedchemical(MethylFormate; kwargs...)
-Fluoride(; kwargs...) = _attributedchemical(Fluoride; kwargs...)
-Chloride(; kwargs...) = _attributedchemical(Chloride; kwargs...)
-Methenium(; kwargs...) = _attributedchemical(Methenium; kwargs...)
+Electron(; kwargs...) = make_attributedchemical(Electron; kwargs...)
+Proton(; kwargs...) = make_attributedchemical(Proton; kwargs...)
+Water(; kwargs...) = make_attributedchemical(Water; kwargs...)
+Ammonia(; kwargs...) = make_attributedchemical(Ammonia; kwargs...)
+Ammonium(; kwargs...) = make_attributedchemical(Ammonium; kwargs...)
+Sodium(; kwargs...) = make_attributedchemical(Sodium; kwargs...)
+Potassium(; kwargs...) = make_attributedchemical(Potassium; kwargs...)
+Lithium(; kwargs...) = make_attributedchemical(Lithium; kwargs...)
+Silver(; kwargs...) = make_attributedchemical(Silver; kwargs...)
+Acetate(; kwargs...) = make_attributedchemical(Acetate; kwargs...)
+Formate(; kwargs...) = make_attributedchemical(Formate; kwargs...)
+AceticAcid(; kwargs...) = make_attributedchemical(AceticAcid; kwargs...)
+FormicAcid(; kwargs...) = make_attributedchemical(FormicAcid; kwargs...)
+MethylAcetate(; kwargs...) = make_attributedchemical(MethylAcetate; kwargs...)
+MethylFormate(; kwargs...) = make_attributedchemical(MethylFormate; kwargs...)
+Fluoride(; kwargs...) = make_attributedchemical(Fluoride; kwargs...)
+Chloride(; kwargs...) = make_attributedchemical(Chloride; kwargs...)
+Methenium(; kwargs...) = make_attributedchemical(Methenium; kwargs...)
 
 push!(StandardChemical, Electron => Electron(; new_attr = false))
 push!(StandardChemical, Proton => Proton(; new_attr = false))

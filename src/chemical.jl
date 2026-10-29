@@ -71,11 +71,11 @@ For chemicals, their names, elemental compositions, and other attributes for wra
 For scehemes, internal chemicals and other attributes for wrapper types are compared.
 """
 istransformedchemicalequal(x::AbstractChemicalScheme, y::AbstractChemicalScheme) = false
-istransformedchemicalequal(x::AbstractChemical, y::AbstractChemical) = chemicalname(x) == chemicalname(y) && _chemicalelements_equal(chemicalelements(x), chemicalelements(y))
+istransformedchemicalequal(x::AbstractChemical, y::AbstractChemical) = chemicalname(x) == chemicalname(y) && chemicalelements_equal(chemicalelements(x), chemicalelements(y))
 istransformedchemicalequal(x::AbstractScheme, y::AbstractScheme) = isequal(x, y)
 istransformedchemicalequal(x::AbstractAdductIon, y::AbstractAdductIon) = ischemicalequal(ionadduct(x), ionadduct(y)) && ischemicalequal(ioncore(x), ioncore(y))
-istransformedchemicalequal(x::Chemical, y::Chemical) = x.name == y.name && _chemicalelements_equal(x.elements, y.elements)
-istransformedchemicalequal(x::FormulaChemical, y::FormulaChemical) = _chemicalelements_equal(x.elements, y.elements)
+istransformedchemicalequal(x::Chemical, y::Chemical) = x.name == y.name && chemicalelements_equal(x.elements, y.elements)
+istransformedchemicalequal(x::FormulaChemical, y::FormulaChemical) = chemicalelements_equal(x.elements, y.elements)
 istransformedchemicalequal(x::AbstractChemicalWrapper, y::AbstractChemical) = false
 istransformedchemicalequal(x::AbstractChemical, y::AbstractChemicalWrapper) = false
 istransformedchemicalequal(x::AbstractChemicalWrapper, y::AbstractChemicalWrapper) = x == y
@@ -613,7 +613,17 @@ detectedcharge(ct::AbstractVector; kwargs...) =
 
 # GenericChemical attribute search
 # structural -> complete, elemental -> complete
+"""
+    schemetransform_complete(chemical, precursor_schemes, product_schemes::AbstractChemicalScheme)
+
+Transform `product_schemes` into the appropriate complete scheme based on the scheme transformer of `chemical` and `precursor_schemes`.
+"""
 schemetransform_complete(chemical, precursor_schemes, product_schemes::CompleteSchemes) = product_schemes
+"""
+    schemetransform_elemental(chemical, precursor_schemes, product_schemes::AbstractChemicalScheme)
+
+Transform `product_schemes` into the appropriate elemental scheme based on the scheme transformer of `chemical` and `precursor_schemes`.
+"""
 schemetransform_elemental(chemical, precursor_schemes, product_schemes::IsotopomerizedSchemes) = IsotopomerizedSchemes(schemetransform_elemental(chemical, precursor_schemes, product_schemes.parent), product_schemes.isotopes)
 schemetransform_complete(chemical, precursor_schemes, product_schemes::IsotopomerizedSchemes) = IsotopomerizedSchemes(schemetransform_complete(chemical, precursor_schemes, product_schemes.parent), product_schemes.isotopes)
 schemetransform_elemental(chemical, precursor_schemes, product_schemes::ChemicalSchemes) = ChemicalSchemes([schemetransform_elemental(chemical, precursor_schemes, k) for k in product_schemes.schemes], product_schemes.number)
@@ -671,7 +681,6 @@ function schemetransform(chemical::AbstractChemicalScheme, precursor_schemes, pr
 end
 
 # scheme -> complete
-
 """
     schememerger(chemical::AbstractChemicalScheme) -> Union{SchemeVector, Nothing}
     schememerger(chemical::AbstractChemicalScheme, precursor_schemes) -> Union{Pair, Nothing}
@@ -774,31 +783,17 @@ end
 function pushschemevector!(schemevec::SchemeVector, pre, value...)
     id = findfirst(==(pre) ∘ first, schemevec.vector)
     if isnothing(id)
-        topush = pre => _scheme_vec_pair(value...)
-        # if topush isa eltype(schemevec.vector)
-            push!(schemevec.vector, topush)
-            sort!(schemevec.vector; by = first)
-        # else
-            # schemevec.vector = vcat(schemevec.vector, topush)
-        # end
+        push!(schemevec.vector, pre => _scheme_vec_pair(value...))
+        sort!(schemevec.vector; by = first)
     else
         schemes = last(schemevec.vector[id])
         topush = _scheme_pair(value...)
         id2 = findfirst(==(first(topush)) ∘ first, schemes)
         if isnothing(id2)
-            # if topush isa eltype(schemes)
-                push!(schemes, topush)
-                sort!(schemes; by = first)
-            # else
-                # topush = pre => vcat(schemes, topush)
-                # schemevec.vector = vcat(deleteat!(schemevec.vector, id), topush)
-            # end
-        # elseif topush isa eltype(schemes)
+            push!(schemes, topush)
+            sort!(schemes; by = first)
         else
             schemes[id2] = topush 
-        # else
-            # topush = pre => vcat(deleteat!(schemes, id2), topush)
-            # schemevec.vector = vcat(deleteat!(schemevec.vector, id), topush)
         end
     end
 end

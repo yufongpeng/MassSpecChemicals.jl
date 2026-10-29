@@ -1,5 +1,11 @@
 # ==========================================================================================================================
 # Mid level MS2
+"""
+    isotopologues_elements_ms2(precise::Val{true}, precursor, product_sch, product, it1, element_precursor_dictionary, element_precursor, element_product, abundance, abtype, proportion, threshold, iter, gain, loss, sort; normalize = true)
+    isotopologues_elements_ms2(precise::Val{false}, precursor, product_sch, product, it1, element_precursor_dictionary, element_precursor, element_product, abundance, abtype, proportion, threshold, iter, gain, loss, sort; normalize = true)
+
+Generate MS/MS transition isotopologues from MS1 data.
+"""
 function isotopologues_elements_ms2(precise::Val, precursor, product_sch, product, it1, element_precursor_dictionary, element_precursor, element_product, abundance, abtype, proportion, threshold, iter, gain, loss, sort; normalize = true)
     net_charge = charge(product)
     abs_charge = max(1, abs(net_charge))
@@ -141,7 +147,11 @@ function isotopologues_elements_ms2(precise::Val, precursor, product_sch, produc
         end
     end
 end
+"""
+    isotopologues_elements_single_ms2(precursor_dictionary::Dict, first_abundance, element_product, isotopes, nisotopes, iid, msfix, threshold, precise, abs_charge)
 
+Generate MS/MS isotopologues for a single MS1 isotopologue.
+"""
 function isotopologues_elements_single_ms2(precursor_dictionary::Dict, first_abundance, element_product, isotopes, nisotopes, iid, msfix, threshold, precise, abs_charge)
     first_element = element_product[iid]
     first_mass = (deltammi(isotopes, element_product) + msfix) / abs_charge
@@ -157,7 +167,11 @@ function isotopologues_elements_single_ms2(precursor_dictionary::Dict, first_abu
     rec_exchangeisotopes!(element_vec, mass_vec, abundance_vec, element_product, precursor_dictionary, isotopes, nisotopes, iid, 2, 1, 1, first_mass, first_abundance, threshold, (true, true), precise, abs_charge)
     element_vec, mass_vec, abundance_vec, nothing
 end
+"""
+    isotopologues_elements_single_ms2_iter(precursor_dictionary::Dict, first_abundance, element_product, isotopes, nisotopes, iid, msfix, threshold, precise, abs_charge)
 
+Generate MS/MS isotopologues for a single MS1 isotopologue, and data for further iteration.
+"""
 function isotopologues_elements_single_ms2_iter(precursor_dictionary::Dict, first_abundance, element_product, isotopes, nisotopes, iid, msfix, threshold, precise, abs_charge)
     first_element = element_product[iid]
     first_mass = (deltammi(isotopes, element_product) + msfix) / abs_charge
@@ -176,24 +190,45 @@ function isotopologues_elements_single_ms2_iter(precursor_dictionary::Dict, firs
     rec_exchangeisotopes_iter!(element_vec, mass_vec, abundance_vec, preab_vec, element_product, precursor_dictionary, isotopes, nisotopes, iid, 2, 1, 1, first_mass, first_abundance, first_preab, threshold, (true, true), precise, abs_charge)
     element_vec, mass_vec, abundance_vec, preab_vec
 end
+"""
+    product_id_sort(it1, idp, element_vec, mass_vec, isotopes, precursor_isotopes, product_isotopes, precursor, product_sch)
 
+Combine computed MS/MS product isotopologues into sereies of transition isotopologues and sort them by mass.
+"""
 function product_id_sort(it1, idp, element_vec, mass_vec, isotopes, precursor_isotopes, product_isotopes, precursor, product_sch) 
     id = sortperm(mass_vec) 
     [vcat(precursor[idp], isotopomerize(product_sch, ElementsVector(product_isotopes, element_vec[i]))) for i in id], id 
 end
-product_id(it1, idp, element_vec, mass_vec, isotopes, precursor_isotopes, product_isotopes, precursor, product_sch) = [vcat(precursor[idp], isotopomerize(product_sch, ElementsVector(product_isotopes, element))) for element in element_vec], nothing
+"""
+    product_id(it1, idp, element_vec, mass_vec, isotopes, precursor_isotopes, product_isotopes, precursor, product_sch)
 
+Combine computed MS/MS product isotopologues into sereies of transition isotopologues without sorting.
+"""
+product_id(it1, idp, element_vec, mass_vec, isotopes, precursor_isotopes, product_isotopes, precursor, product_sch) = [vcat(precursor[idp], isotopomerize(product_sch, ElementsVector(product_isotopes, element))) for element in element_vec], nothing
+"""
+    loss_id_sort(it1, idp, element_vec, mass_vec, isotopes, precursor_isotopes, product_isotopes, precursor, product_sch)
+
+Combine computed MS/MS loss isotopologues into sereies of transition isotopologues and sort them by mass.
+"""
 function loss_id_sort(it1, idp, element_vec, mass_vec, isotopes, precursor_isotopes, product_isotopes, precursor, product_sch)  
     id = sortperm(mass_vec)
     element_vec = number_loss_elements(isotopes, element_vec, precursor_isotopes, precursor_loss(precursor_isotopes, it1.Element[idp]), id)
     [vcat(precursor[idp], isotopomerize(product_sch, ElementsVector(product_isotopes, element))) for element in element_vec], id
 end
+"""
+    loss_id(it1, idp, element_vec, mass_vec, isotopes, precursor_isotopes, product_isotopes, precursor, product_sch)
 
+Combine computed MS/MS loss isotopologues into sereies of transition isotopologues without sorting.
+"""
 function loss_id(it1, idp, element_vec, mass_vec, isotopes, precursor_isotopes, product_isotopes, precursor, product_sch)
     element_vec = number_loss_elements(isotopes, element_vec, precursor_isotopes, precursor_loss(precursor_isotopes, it1.Element[idp]), eachindex(mass_vec))
     [vcat(precursor[idp], isotopomerize(product_sch, ElementsVector(product_isotopes, element))) for element in element_vec], nothing
 end
+"""
+    precursor_loss(precursor_isotopes, elements)
 
+Compute the loss of precursor isotopologues based on the given elements.
+"""
 function precursor_loss(precursor_isotopes, elements)
     precursor_vec = zeros(Int, length(precursor_isotopes))
     for (k, v) in elements
@@ -203,7 +238,11 @@ function precursor_loss(precursor_isotopes, elements)
     end
     precursor_vec
 end
+"""
+    number_loss_elements(product_isotopes, product_vec, precursor_isotopes, precursor_vec, id)
 
+Compute the number of lost elements for each product isotopologue relative to the precursor isotopologues.
+"""
 function number_loss_elements(product_isotopes, product_vec, precursor_isotopes, precursor_vec, id)
     new_vps = [copy(precursor_vec) for _ in id]
     for (ie, e) in enumerate(product_isotopes)

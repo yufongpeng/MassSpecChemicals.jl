@@ -117,6 +117,11 @@ function parse_adduction(chemicalparser, name, core; chemicalgain = nothing, kwa
     (corechemical, sch, ncore)
 end
 
+"""
+    assemble_chemical(chemicalgain, corechemical, sch, ncore)
+
+Assembles a chemical entity or scheme based on the provided gain, core chemical, scheme, and number of core units.
+"""
 assemble_chemical(chemicalgain, corechemical, sch::Nothing, ncore) = ncore > 1 ? ChemicalSchemes([ElementalScheme(chemicalgain, corechemical)], [ncore]) : ElementalScheme(chemicalgain, corechemical)
 assemble_chemical(chemicalgain::Nothing, corechemical, sch::Nothing, ncore) = ncore > 1 ? throw(ArgumentError("Number of chemicals > 1 is not allowed without any chemical wrapper.")) : corechemical 
 assemble_chemical(chemicalgain, corechemical::Nothing, sch, ncore) = throw(ArgumentError("Cannot loss or gain a scheme."))

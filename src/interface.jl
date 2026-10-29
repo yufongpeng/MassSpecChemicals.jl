@@ -1,9 +1,19 @@
 # implement copy, ==, and hash for concrete type 
-_chemicalattributes_equal(x::Nothing, y::Nothing) = true
-_chemicalattributes_equal(x::ChemicalAttribute, y::Nothing) = isnothing(x.attribute) || isempty(x.attribute)
-_chemicalattributes_equal(x::Nothing, y::ChemicalAttribute) = isnothing(y.attribute) || isempty(y.attribute)
-_chemicalattributes_equal(x::ChemicalAttribute, y::ChemicalAttribute) = x == y
-function _chemicalelements_equal(x::Vector{Pair{String, Int}}, y::Vector{Pair{String, Int}}) 
+"""
+    chemicalattribute_equal(x, y) -> Bool
+
+Checks if two chemical attributes are equal, handling `Nothing` values appropriately.
+"""
+chemicalattribute_equal(x::Nothing, y::Nothing) = true
+chemicalattribute_equal(x::ChemicalAttribute, y::Nothing) = isnothing(x.attribute) || isempty(x.attribute)
+chemicalattribute_equal(x::Nothing, y::ChemicalAttribute) = isnothing(y.attribute) || isempty(y.attribute)
+chemicalattribute_equal(x::ChemicalAttribute, y::ChemicalAttribute) = x == y
+"""
+    chemicalelements_equal(x, y) -> Bool
+
+Checks if two chemical elements are equal, ignoring order and elements with zero counts.
+"""
+function chemicalelements_equal(x::Vector{Pair{String, Int}}, y::Vector{Pair{String, Int}}) 
     x = unique_elements(x)
     y = unique_elements(y)
     length(x) == length(y) || return false
@@ -11,7 +21,12 @@ function _chemicalelements_equal(x::Vector{Pair{String, Int}}, y::Vector{Pair{St
     sort!(x) == sort!(y)
 end
 
-function _chemicalelements_isless_equal(x::Vector{Pair{String, Int}}, y::Vector{Pair{String, Int}}) 
+"""
+    chemicalelements_isless_equal(x, y) -> Union{Bool, Nothing}
+
+Checks if the chemical elements in `x` are less than or equal to those in `y`. If `x` equals `y`, it returns `nothing`.
+"""
+function chemicalelements_isless_equal(x::Vector{Pair{String, Int}}, y::Vector{Pair{String, Int}}) 
     x = unique_elements(x)
     y = unique_elements(y)
     if length(x) == length(y) 
@@ -56,11 +71,16 @@ function isless(x::AbstractChemicalScheme, y::AbstractChemicalScheme)
     nx = chemicalname(x) 
     ny = chemicalname(y)
     nx == ny || return nx < ny 
-    leq = _chemicalelements_isless_equal(chemicalelements(x), chemicalelements(y)) 
+    leq = chemicalelements_isless_equal(chemicalelements(x), chemicalelements(y)) 
     isnothing(leq) || return leq
     x == y ? false : hash_isless(x, y)
 end
 
+"""
+    hash_isless(x, y) -> Bool
+
+Compares two objects `x` and `y` based on their hashed property values.
+"""
 function hash_isless(x::S, y::T) where {S, T}
     px = propertynames(x)
     py = propertynames(y)
@@ -81,15 +101,15 @@ function hash_isless(x::S, y::T) where {S, T}
 end
 
 ==(x::Chemical, y::Chemical) =
-    x.name == y.name && _chemicalelements_equal(x.elements, y.elements) && _chemicalattributes_equal(x.attribute, y.attribute)
+    x.name == y.name && chemicalelements_equal(x.elements, y.elements) && chemicalattribute_equal(x.attribute, y.attribute)
 ==(x::FormulaChemical, y::FormulaChemical) =
-    _chemicalelements_equal(x.elements, y.elements) && _chemicalattributes_equal(x.attribute, y.attribute)
+    chemicalelements_equal(x.elements, y.elements) && chemicalattribute_equal(x.attribute, y.attribute)
 function ==(x::T, y::T) where {T<:AttributedChemical}
     fields = fieldnames(T)
     attrname = getchemicalattrname(T)
     all(getfield(x, f) == getfield(y, f) for f in fields if f != :elements && f != attrname) &&
-        _chemicalelements_equal(x.elements, y.elements) &&
-        _chemicalattributes_equal(getchemicalattr(x, attrname, nothing), getchemicalattr(y, attrname, nothing))
+        chemicalelements_equal(x.elements, y.elements) &&
+        chemicalattribute_equal(getchemicalattr(x, attrname, nothing), getchemicalattr(y, attrname, nothing))
 end
 ==(x::ChemicalTransition, y::ChemicalTransition) = x.transition == y.transition
 ==(x::Isobars, y::Isobars) = x.chemicals == y.chemicals && all(splat(isapprox), zip(x.abundance, y.abundance))
@@ -130,6 +150,13 @@ function ==(x::ElementsVector, y::ElementsVector)
 end
 
 const ABUNDANCE_ROUNDING_DIGITS = 4
+"""
+    abundance_rounding_digits() -> Int
+
+Returns the number of digits used for rounding abundance values when comparing objects using `==` functions.
+
+The default value is defined by the constant `ABUNDANCE_ROUNDING_DIGITS`, which is `4`.
+"""
 abundance_rounding_digits() = ABUNDANCE_ROUNDING_DIGITS
 
 function hash(x::SchemeVector, h::UInt)
@@ -229,14 +256,17 @@ function hash(x::ElementsVector, h::UInt)
     h
 end
 
-stringcopy(x::T) where T = copy(x)
-stringcopy(x::AbstractString) = x
-stringcopy(x::Nothing) = x
+"""
+    safecopy(x)
 
-copy(x::SchemeVector) = SchemeVector(stringcopy(x.vector))
-copy(x::SchemeStructure) = SchemeStructure(stringcopy(x.transformer), stringcopy(x.merger))
-copy(x::ChemicalAttribute) = ChemicalAttribute(stringcopy(x.attribute))
-copy(x::T) where {T<:AbstractChemicalScheme} = T((stringcopy(getfield(x, f)) for f in fieldnames(T))...)
+Copy the input if possible, otherwise return it as is.
+"""
+safecopy(x) = applicable(copy, x) ? copy(x) : x
+
+copy(x::SchemeVector) = SchemeVector(safecopy(x.vector))
+copy(x::SchemeStructure) = SchemeStructure(safecopy(x.transformer), safecopy(x.merger))
+copy(x::ChemicalAttribute) = ChemicalAttribute(safecopy(x.attribute))
+copy(x::T) where {T<:AbstractChemicalScheme} = T((safecopy(getfield(x, f)) for f in fieldnames(T))...)
 copy(x::ChemicalTransition) = ChemicalTransition(copy(x.transition))
 copy(x::Isobars) = Isobars(copy(x.chemicals), copy(x.abundance))
 copy(x::Isotopomers) = Isotopomers(copy(x.parent), copy(x.isotopes))

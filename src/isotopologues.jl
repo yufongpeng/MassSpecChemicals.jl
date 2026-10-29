@@ -346,7 +346,12 @@ function TandemIsotopologues(input_chemical::AbstractChemical;
     end
     Table(tbl; Chemical = [ChemicalTransition(x...) for x in tbl.Chemical])
 end
+"""
+    TandemIsotopologues_precursor(precise::Val{true}, precursor_info, id, abundance; chemicalparser, abtype, threshold, iter, sort)
+    TandemIsotopologues_precursor(precise::Val{false}, precursor_info, id, abundance; chemicalparser, abtype, threshold, iter, sort)
 
+Initiate isotopologues computation for each MS stage.
+"""
 function TandemIsotopologues_precursor(precise::Val, precursor_info, id, abundance; 
             chemicalparser = ChemicalTransitionParser(ChemicalExpressionParser(; charge = 1, loss = 0, gain = 0)),
             abtype = Max(), 
@@ -382,7 +387,12 @@ function TandemIsotopologues_precursor(precise::Val, precursor_info, id, abundan
     end
     precursor_table
 end
+"""
+    TandemIsotopologues_product(precise::Val{true}, precursor_table, itp, element_precursor_dictionary, id, precursor_info, product_info, proportion, abundance, abtype, threshold, iter, chemical_loss, sort; check_product = false)
+    TandemIsotopologues_product(precise::Val{false}, precursor_table, itp, element_precursor_dictionary, id, precursor_info, product_info, proportion, abundance, abtype, threshold, iter, chemical_loss, sort; check_product = false)
 
+Complete isotopologues computation for a single product or scheme.
+"""
 function TandemIsotopologues_product(precise::Val, precursor_table, itp, element_precursor_dictionary, id, precursor_info, product_info, proportion, abundance, abtype, threshold, iter, chemical_loss, sort; check_product = false)
     precursor_sch, precursor, element_precursor = precursor_info
     product_sch, product, element_product = product_info

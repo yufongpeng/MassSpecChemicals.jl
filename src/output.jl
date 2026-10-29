@@ -55,6 +55,11 @@ Default name for `chemical` when no attribute is set and no specialized [`chemic
 defaultname(::T) where {T<:AbstractChemical} = string(T)
 defaultname(::T) where {T<:AbstractScheme} = string(T)
 
+"""
+    post_decorator(chemical::ElementalScheme; delim = "")
+
+Post-decorator for name of a chemical in an elemental scheme.
+"""
 post_decorator(::ElementalScheme{false}; delim = "") = delim
 post_decorator(::ElementalScheme{false, <:FormulaChemical}; delim = "") = ""
 post_decorator(::ElementalScheme{false, <:Isotopomers{<:FormulaChemical}}; delim = "") = ""
@@ -67,20 +72,23 @@ post_decorator(::ElementalScheme{true, <:Isotopomers{<:FormulaChemical}}; delim 
 post_decorator(::ElementalScheme{true, <:Isotopomers{<:AbstractAdductIon{<:FormulaChemical}}}; delim = "") = ""
 post_decorator(::ElementalScheme{true, <:Groupedisotopomers{<:FormulaChemical}}; delim = "") = ""
 post_decorator(::ElementalScheme{true, <:Groupedisotopomers{<:AbstractAdductIon{<:FormulaChemical}}}; delim = "") = ""
+"""
+    pre_decorator(chemical::ElementalScheme; loss = false, delim = "")
 
-decorator(::ElementalScheme{false}; loss = false, delim = "") = string(delim, loss ? "Gain_" : "Loss_")
-decorator(::ElementalScheme{false, <:FormulaChemical}; loss = false, delim = "") = loss ? "+" : "-"
-decorator(::ElementalScheme{false, <:Isotopomers{<:FormulaChemical}}; loss = false, delim = "") = loss ? "+" : "-"
-decorator(::ElementalScheme{false, <:Isotopomers{<:AbstractAdductIon{<:FormulaChemical}}}; loss = false, delim = "") = loss ? "+" : "-"
-decorator(::ElementalScheme{false, <:Groupedisotopomers{<:FormulaChemical}}; loss = false, delim = "") = loss ? "+" : "-"
-decorator(::ElementalScheme{false, <:Groupedisotopomers{<:AbstractAdductIon{<:FormulaChemical}}}; loss = false, delim = "") = loss ? "+" : "-"
-
-decorator(::ElementalScheme{true}; loss = false, delim = "") = string(delim, loss ? "Loss_" : "Gain_")
-decorator(::ElementalScheme{true, <:FormulaChemical}; loss = false, delim = "") = loss ? "-" : "+"
-decorator(::ElementalScheme{true, <:Isotopomers{<:FormulaChemical}}; loss = false, delim = "") = loss ? "-" : "+"
-decorator(::ElementalScheme{true, <:Isotopomers{<:AbstractAdductIon{<:FormulaChemical}}}; loss = false, delim = "") = loss ? "-" : "+"
-decorator(::ElementalScheme{true, <:Groupedisotopomers{<:FormulaChemical}}; loss = false, delim = "") = loss ? "-" : "+"
-decorator(::ElementalScheme{true, <:Groupedisotopomers{<:AbstractAdductIon{<:FormulaChemical}}}; loss = false, delim = "") = loss ? "-" : "+"
+Pre-decorator for name of a chemical in an elemental scheme.
+"""
+pre_decorator(::ElementalScheme{false}; loss = false, delim = "") = string(delim, loss ? "Gain_" : "Loss_")
+pre_decorator(::ElementalScheme{false, <:FormulaChemical}; loss = false, delim = "") = loss ? "+" : "-"
+pre_decorator(::ElementalScheme{false, <:Isotopomers{<:FormulaChemical}}; loss = false, delim = "") = loss ? "+" : "-"
+pre_decorator(::ElementalScheme{false, <:Isotopomers{<:AbstractAdductIon{<:FormulaChemical}}}; loss = false, delim = "") = loss ? "+" : "-"
+pre_decorator(::ElementalScheme{false, <:Groupedisotopomers{<:FormulaChemical}}; loss = false, delim = "") = loss ? "+" : "-"
+pre_decorator(::ElementalScheme{false, <:Groupedisotopomers{<:AbstractAdductIon{<:FormulaChemical}}}; loss = false, delim = "") = loss ? "+" : "-"
+pre_decorator(::ElementalScheme{true}; loss = false, delim = "") = string(delim, loss ? "Loss_" : "Gain_")
+pre_decorator(::ElementalScheme{true, <:FormulaChemical}; loss = false, delim = "") = loss ? "-" : "+"
+pre_decorator(::ElementalScheme{true, <:Isotopomers{<:FormulaChemical}}; loss = false, delim = "") = loss ? "-" : "+"
+pre_decorator(::ElementalScheme{true, <:Isotopomers{<:AbstractAdductIon{<:FormulaChemical}}}; loss = false, delim = "") = loss ? "-" : "+"
+pre_decorator(::ElementalScheme{true, <:Groupedisotopomers{<:FormulaChemical}}; loss = false, delim = "") = loss ? "-" : "+"
+pre_decorator(::ElementalScheme{true, <:Groupedisotopomers{<:AbstractAdductIon{<:FormulaChemical}}}; loss = false, delim = "") = loss ? "-" : "+"
 
 charge_repr(c) = c == 0 ? "" : string(abs(c) > 1 ? abs(c) : "", c > 0 ? "+" : "-") 
 isotope_repr(isotopes) = isempty(unique_elements(isotopes)) ? "" : string("[", replace(chemicalformula(isotopes; delim = ","), "[" => "", "]" => ""), "]")
@@ -98,8 +106,8 @@ chemicalname(isotopomers::Groupedisotopomers; n = 1, kwargs...) = string(chemica
 chemicalname(ct::ChemicalTransition; kwargs...) = join(chemicalname.(chemicaltransition(ct); kwargs...), " -> ")
 
 chemicalname(sch::StructuralElementalScheme; n = 1, kwargs...) = chemicalname(elementalscheme(sch); n, kwargs...)
-chemicalname(sch::ElementalScheme{true}; n = 1, loss = false, delim = "", predelim = false, postdelim = false, kwargs...) = string(decorator(sch; loss, delim = predelim ? delim : ""), chemicalname(sch.chemical; n, loss, kwargs...), post_decorator(sch; delim = postdelim ? delim : ""))
-chemicalname(sch::ElementalScheme{false}; n = 1, loss = false, delim = "", predelim = false, postdelim = false, kwargs...) = string(decorator(sch; loss, delim = predelim ? delim : ""), chemicalname(sch.chemical; n, loss = !loss, kwargs...), post_decorator(sch; delim = postdelim ? delim : ""))
+chemicalname(sch::ElementalScheme{true}; n = 1, loss = false, delim = "", predelim = false, postdelim = false, kwargs...) = string(pre_decorator(sch; loss, delim = predelim ? delim : ""), chemicalname(sch.chemical; n, loss, kwargs...), post_decorator(sch; delim = postdelim ? delim : ""))
+chemicalname(sch::ElementalScheme{false}; n = 1, loss = false, delim = "", predelim = false, postdelim = false, kwargs...) = string(pre_decorator(sch; loss, delim = predelim ? delim : ""), chemicalname(sch.chemical; n, loss = !loss, kwargs...), post_decorator(sch; delim = postdelim ? delim : ""))
 chemicalname(sch::IsotopomerizedSchemes; n = 1, loss = false, bracket = true, delim = "|", kwargs...) = string(chemicalname(chemicalparent(sch); n, loss, bracket, delim, kwargs...), isotope_repr(sch.isotopes))
 function chemicalname(sch::ChemicalSchemes; n = 1, loss = false, bracket = false, delim = "|", kwargs...) 
     v = [chemicalname(k; n = n * v, loss, bracket = true, delim, predelim = true, postdelim = true, kwargs...) for (k, v) in zip(sch.schemes, sch.number)]

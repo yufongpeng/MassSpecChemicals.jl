@@ -179,38 +179,44 @@ _isobar_species_attr(fn, isobars::Isobars, args...; kwargs...) = mean(fn.(chemic
 
 element_mmi(x) = elements_mass()[x]
 
-function _mass_isotope(isotopes; loss = false, kwargs...) 
+"""
+    deltammi(isotopes; loss = false, kwargs...) -> AbstractFloat
+    deltammi(isotopes, abundance; loss = false, kwargs...) -> AbstractFloat
+
+Calculate the delta mass of isotopes relative to their parent elements.
+"""
+function deltammi(isotopes; loss = false, kwargs...) 
     m = sum((element_mmi(x) - element_mmi(elements_parents()[x])) * n for (x, n) in isotopes; init = 0)
     loss ? -m : m
 end
-function _mass_isotope(isotopes, abundance; loss = false, kwargs...) 
+function deltammi(isotopes, abundance; loss = false, kwargs...) 
     m = mean([sum((element_mmi(x) - element_mmi(elements_parents()[x])) * n for (x, n) in iso; init = 0) for iso in isotopes], weights(abundance))
     loss ? -m : m
 end
 
 mmi(isobars::Isobars; kwargs...) = _isobar_species_attr(mmi, isobars; kwargs...)
-mmi(x::Isotopomers; kwargs...) = mmi(chemicalparent(x); kwargs...) + _mass_isotope(x.isotopes; kwargs...)
-mmi(x::Groupedisotopomers; kwargs...) = mmi(chemicalparent(x); kwargs...) + _mass_isotope(x.isotopes, x.abundance; kwargs...)
+mmi(x::Isotopomers; kwargs...) = mmi(chemicalparent(x); kwargs...) + deltammi(x.isotopes; kwargs...)
+mmi(x::Groupedisotopomers; kwargs...) = mmi(chemicalparent(x); kwargs...) + deltammi(x.isotopes, x.abundance; kwargs...)
 mmi(ct::ChemicalTransition; kwargs...) = mmi(analyzedchemical(ct); kwargs...)::float(Int)
 
 mmi(x::ElementalScheme{false}; loss = false, kwargs...) = mmi(x.chemical; loss = !loss, kwargs...) 
 mmi(x::ElementalScheme{true}; loss = false, kwargs...) = mmi(x.chemical; loss, kwargs...)
 mmi(x::ChemicalSchemes; kwargs...) = sum(mmi(k; kwargs...) * v for (k, v) in zip(x.schemes, x.number)) 
-mmi(x::IsotopomerizedSchemes; kwargs...) = mmi(chemicalparent(x); kwargs...) + _mass_isotope(x.isotopes; kwargs...)
-mmi(x::Groupedisotopomerizedschemes; kwargs...) = mmi(chemicalparent(x); kwargs...) + _mass_isotope(x.isotopes, x.abundance; kwargs...)
+mmi(x::IsotopomerizedSchemes; kwargs...) = mmi(chemicalparent(x); kwargs...) + deltammi(x.isotopes; kwargs...)
+mmi(x::Groupedisotopomerizedschemes; kwargs...) = mmi(chemicalparent(x); kwargs...) + deltammi(x.isotopes, x.abundance; kwargs...)
 
-vec_mmi_fix(x, y; kwargs...) = [mmi(m) + y for m in x]
+# vec_mmi_fix(x, y; kwargs...) = [mmi(m) + y for m in x]
 
 molarmass(isobars::Isobars; kwargs...) = _isobar_species_attr(molarmass, isobars; kwargs...)
-molarmass(x::Isotopomers; kwargs...) = molarmass(chemicalparent(x); kwargs...) + _mass_isotope(x.isotopes; kwargs...)
-molarmass(x::Groupedisotopomers; kwargs...) = molarmass(chemicalparent(x); kwargs...) + _mass_isotope(x.isotopes, x.abundance; kwargs...)
+molarmass(x::Isotopomers; kwargs...) = molarmass(chemicalparent(x); kwargs...) + deltammi(x.isotopes; kwargs...)
+molarmass(x::Groupedisotopomers; kwargs...) = molarmass(chemicalparent(x); kwargs...) + deltammi(x.isotopes, x.abundance; kwargs...)
 molarmass(ct::ChemicalTransition; kwargs...) = molarmass(analyzedchemical(ct); kwargs...)::float(Int)
 
 molarmass(x::ElementalScheme{false}; loss = false, kwargs...) = molarmass(x.chemical; loss = !loss, kwargs...) 
 molarmass(x::ElementalScheme{true}; loss = false, kwargs...) = molarmass(x.chemical; loss, kwargs...) 
 molarmass(x::ChemicalSchemes; kwargs...) = sum(molarmass(k; kwargs...) * v for (k, v) in zip(x.schemes, x.number))
-molarmass(x::IsotopomerizedSchemes; kwargs...) = molarmass(chemicalparent(x); kwargs...) + _mass_isotope(x.isotopes; kwargs...)
-molarmass(x::Groupedisotopomerizedschemes; kwargs...) = molarmass(chemicalparent(x); kwargs...) + _mass_isotope(x.isotopes, x.abundance; kwargs...)
+molarmass(x::IsotopomerizedSchemes; kwargs...) = molarmass(chemicalparent(x); kwargs...) + deltammi(x.isotopes; kwargs...)
+molarmass(x::Groupedisotopomerizedschemes; kwargs...) = molarmass(chemicalparent(x); kwargs...) + deltammi(x.isotopes, x.abundance; kwargs...)
 
 mz(ct::ChemicalTransition; kwargs...) = mz(analyzedchemical(ct); kwargs...)::float(Int)
 mz(ct::ChemicalTransition, adduct; kwargs...) = mz(analyzedchemical(ct), adduct; kwargs...)::float(Int)
