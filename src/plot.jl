@@ -167,7 +167,8 @@ Other keyword arguments control the plot settings.
 """
 plot_resolving_power(mz_range, ms::AbstractMSAnalyzer; n = 1000, label = msanalyzer_name(ms), kwargs...) = 
     _plot_resolving_power(mz_range, ms; n, label, kwargs...)
-plot_resolving_power(ms::AbstractMSAnalyzer; n = 1000, label = msanalyzer_name(ms), kwargs...) = plot_resolving_power(nothing, ms; n, label, kwargs...)
+plot_resolving_power(ms::AbstractMSAnalyzer; n = 1000, label = msanalyzer_name(ms), kwargs...) = 
+    plot_resolving_power(nothing, ms; n, label, kwargs...)
 
 """
     plot_resolving_power!(mz_range = nothing, ms::AbstractMSAnalyzer; n = 1000, label = msanalyzer_name(ms), kwargs...)
@@ -182,7 +183,8 @@ Other keyword arguments control the plot settings.
 """
 plot_resolving_power!(mz_range, ms::AbstractMSAnalyzer; n = 1000, label = msanalyzer_name(ms), kwargs...) = 
     _plot_resolving_power(mz_range, ms; n, label, kwargs..., fn = plot!)
-plot_resolving_power!(ms::AbstractMSAnalyzer; n = 1000, label = msanalyzer_name(ms), kwargs...) = plot_resolving_power!(nothing, ms; n, label, kwargs...)
+plot_resolving_power!(ms::AbstractMSAnalyzer; n = 1000, label = msanalyzer_name(ms), kwargs...) = 
+    plot_resolving_power!(nothing, ms; n, label, kwargs...)
 
 function _plot_resolving_power(mz_range, ms::AbstractMSAnalyzer; fn = plot, n = 1000, label = msanalyzer_name(ms), kwargs...)
     if isnothing(mz_range)
@@ -238,7 +240,8 @@ Other keyword arguments control the plot settings.
 plot_window!(window::AbstractWindow; fwhm = 0.7, binsize = 0.01, stepsize = 1, height = 0.01, label = window_name(window), kwargs...) = 
     _plot_window(window; fn = plot!, fwhm, binsize, stepsize, height, label, kwargs...)
 
-function _plot_window(window::AbstractWindow; fn = plot, fwhm = 0.7, binsize = 0.01, stepsize = 1, height = 0.01, label = window_name(window), kwargs...)
+function _plot_window(window::AbstractWindow; fn = plot, fwhm = 0.7, binsize = 0.01, stepsize = 1, 
+        height = 0.01, label = window_name(window), kwargs...)
     y = discrete_window(window, fwhm, binsize, stepsize, height)
     x = (eachindex(y) .- (length(y) ÷ 2 + 1)) .* binsize
     kwargs = Dict(kwargs...)

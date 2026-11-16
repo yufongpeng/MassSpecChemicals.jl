@@ -62,7 +62,8 @@ end
 """
     ms_filter!(ci::CoelutingIsobars)
 
-Filter `ci.tables` for each target chemical using `ci.msanalyzer`. No filtering is applied for any MS stage whose corresponding analyzer is `nothing`.
+Filter `ci.tables` for each target chemical using `ci.msanalyzer`. 
+No filtering is applied for any MS stage whose corresponding analyzer is `nothing`.
 """
 function ms_filter!(ci::CoelutingIsobars)
     (isempty(ci.tables) || length(ci.target) != length(ci.tables)) && throw(ArgumentError("Run `elution_filter!` first."))
@@ -84,7 +85,13 @@ function ms_filter!(ci::CoelutingIsobars)
 end
 
 """
-    isobar_table(ci::CoelutingIsobars; isotope = "[13C]", threshold = rcrit(1e-4), error_elution = measure_error.(ci.elution), error_mz = measure_error.(ci.msanalyzer)) -> Table
+    isobar_table(
+        ci::CoelutingIsobars; 
+        isotope = "[13C]", 
+        threshold = rcrit(1e-4), 
+        error_elution = measure_error.(ci.elution), 
+        error_mz = measure_error.(ci.msanalyzer)
+    ) -> Table
 
 A table listing each target chemical and its isobars, grouped by [`mass_shift_index`](@ref) using `isotope` as the reference from `ci`.
 

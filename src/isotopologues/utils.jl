@@ -61,7 +61,8 @@ end
     maximal_abundance_elements_composition(precise::Val{true}, elements, prev = 1.0) -> Tuple{Vector{<:AbstractFloat}, Vector{Vector{Int}}}
     maximal_abundance_elements_composition(precise::Val{false}, elements, prev = 1.0) -> Tuple{Vector{<:AbstractFloat}, Vector{Vector{Int}}}
 
-Isotope composition of maximal abundance for each subisotopologues. `precise` determines whether to use big integer and floating-point arithmetic.
+Isotope composition of maximal abundance for each subisotopologues. 
+    `precise` determines whether to use big integer and floating-point arithmetic.
 """
 function maximal_abundance_elements_composition(precise::Val, elements)
     max_vps = Vector(undef, length(elements))
@@ -90,7 +91,10 @@ function maximal_abundance_elements_composition(precise::Val, elements)
             end
         end
         max_vps[iem] = ns
-        max_abs[iem] = return_abundance(precise, safe_multinomial(precise, ns) * prod(precise_exp(precise, elements_abundance()[y], x) for (x, y) in zip(ns, xs)))
+        max_abs[iem] = return_abundance(
+            precise, 
+            safe_multinomial(precise, ns) * prod(precise_exp(precise, elements_abundance()[y], x) for (x, y) in zip(ns, xs))
+        )
     end
     max_abs, max_vps
 end
@@ -99,7 +103,8 @@ end
     maximal_abundance_elements_composition_check(precise::Val{true}, elements::Vector, abtype) -> Tuple{Vector{<:AbstractFloat}, Vector{Vector{Int}}}
     maximal_abundance_elements_composition_check(precise::Val{false}, elements::Vector, abtype) -> Tuple{Vector{<:AbstractFloat}, Vector{Vector{Int}}}
 
-Isotope composition of maximal abundance for each subisotopologues with additional floating point error check. `precise` determines whether to use big integer and floating-point arithmetic.
+Isotope composition of maximal abundance for each subisotopologues with additional floating point error check. 
+    `precise` determines whether to use big integer and floating-point arithmetic.
 """
 function maximal_abundance_elements_composition_check(precise::Val, element_vp, abtype)
     first_proportion = isotopicabundance(precise, element_vp)
@@ -125,7 +130,8 @@ end
     distribute_element(update_fn, precise::Val{true}, prev, e::String, element_precursor::Dict, pn::Int) -> Tuple{AbstractFloat, Vector{Int}}
     distribute_element(update_fn, precise::Val{false}, prev, e::String, element_precursor::Dict, pn::Int) -> Tuple{AbstractFloat, Vector{Int}}
 
-For parent element `e`, distribute isotopes from `element_precursor` into product containing `pn` amount of `e`; then update value `prev` using `update_fn`. `precise` determines whether to use big integer and floating-point arithmetic.
+For parent element `e`, distribute isotopes from `element_precursor` into product containing `pn` amount of `e`; 
+then update value `prev` using `update_fn`. `precise` determines whether to use big integer and floating-point arithmetic.
 """
 function distribute_element(update_fn, precise, prev, e, element_precursor, pn)
     pre = [get(element_precursor, x, 0) for x in elements_isotopes()[e]]
@@ -171,7 +177,8 @@ end
     update_maximal_proportion(precise::Val{true}, proportion, pre, pro) -> AbstractFloat
     update_maximal_proportion(precise::Val{false}, proportion, pre, pro) -> AbstractFloat
 
-Update the maximal proportion for isotopic abundance based on the previous `proportion`, precursor counts `pre`, and product counts `pro`. `precise` determines whether to use big integer and floating-point arithmetic.
+Update the maximal proportion for isotopic abundance based on the previous `proportion`, precursor counts `pre`, 
+and product counts `pro`. `precise` determines whether to use big integer and floating-point arithmetic.
 """
 update_maximal_proportion(::Val{true}, p, pre, pro) = 
     p * multinomial((big(x) for x in pro)...) / multinomial((big(x) for x in pre)...) * multinomial((big(x) - y for (x, y) in zip(pre, pro))...)
@@ -386,7 +393,9 @@ nmmi(isotopes::Vector{String}, v) = sum(elements_mass()[x] * n for (x, n) in zip
     update_abundance(precise::Val{true}, prev_abundance, old_element, new_element, nold, nnew) -> AbstractFloat
     update_abundance(precise::Val{false}, prev_abundance, old_element, new_element, nold, nnew) -> AbstractFloat
 
-Update `prev_abundance` after replacing one `old_element` with `new_element`. `nold` and `nnew` are the respective element counts before replacement. `precise` determines whether to use big integer and floating-point arithmetic.
+Update `prev_abundance` after replacing one `old_element` with `new_element`. 
+`nold` and `nnew` are the respective element counts before replacement. 
+`precise` determines whether to use big integer and floating-point arithmetic.
 """
 function update_abundance(precise::Val, prev_abundance::T, old_element, new_element, nold, nnew) where T
     x = get(elements_abundance(), old_element, one(T))
@@ -405,7 +414,9 @@ update_abundance1(::Val{false}, prev_abundance, x, y, nold, nnew) = prev_abundan
     update_proportion(precise::Val{true}, prev_proportion, nold, nnew) -> AbstractFloat
     update_proportion(precise::Val{false}, prev_proportion, nold, nnew) -> AbstractFloat
     
-Update `prev_proportion` after replacing one element with another. `nold` and `nnew` are the respective element counts before replacement. `precise` determines whether to use big integer and floating-point arithmetic.
+Update `prev_proportion` after replacing one element with another. 
+`nold` and `nnew` are the respective element counts before replacement. 
+`precise` determines whether to use big integer and floating-point arithmetic.
 """
 update_proportion(::Val{true}, prev_proportion, nold, nnew) = prev_proportion * (big(nold) / (nnew + 1)) 
 update_proportion(::Val{false}, prev_proportion, nold, nnew) = prev_proportion * (nold / (nnew + 1)) 
@@ -414,7 +425,9 @@ update_proportion(::Val{false}, prev_proportion, nold, nnew) = prev_proportion *
     update_inverse_proportion(precise::Val{true}, prev_inverse_proportion, nold, nnew) -> AbstractFloat
     update_inverse_proportion(precise::Val{false}, prev_inverse_proportion, nold, nnew) -> AbstractFloat
 
-Update `prev_inverse_proportion` after replacing one element with another. `nold` and `nnew` are the respective element counts before replacement. `precise` determines whether to use big integer and floating-point arithmetic.
+Update `prev_inverse_proportion` after replacing one element with another. 
+`nold` and `nnew` are the respective element counts before replacement. 
+`precise` determines whether to use big integer and floating-point arithmetic.
 """
 update_inverse_proportion(::Val{true}, prev_inverse_proportion, nold, nnew) = prev_inverse_proportion * (big(nnew + 1) / nold) 
 update_inverse_proportion(::Val{false}, prev_inverse_proportion, nold, nnew) = prev_inverse_proportion * ((nnew + 1) / nold) 

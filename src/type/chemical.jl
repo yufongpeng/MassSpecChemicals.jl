@@ -1,7 +1,8 @@
 """
     AttributedChemical <: AbstractChemical
 
-Abstract type for chemicals with additional attributes. The storage can be accessed by [`getchemicalattr`](@ref), and the property name can be accessed by [`getchemicalattrname`](@ref).
+Abstract type for chemicals with additional attributes. The storage can be accessed by [`getchemicalattr`](@ref), 
+and the property name can be accessed by [`getchemicalattrname`](@ref).
 
 For Base functions, `copy`, `hash`, and `==`, generic methods are defined.
 """
@@ -210,7 +211,8 @@ Chemicals with similar m/z.
 
 # Fields 
 * `chemicals::Vector{T}`: a vector of chemicals.
-* `abundnace::VecOrMat{N}`: the abundance of each chemical. If chemicals are trasitions, this should be a matrix, and each column is the abundance of each ms stage.
+* `abundnace::VecOrMat{N}`: the abundance of each chemical. 
+    If chemicals are trasitions, this should be a matrix, and each column is the abundance of each ms stage.
 
 # Constructors 
     Isobars(chemicals::Vector, abundance::Vector)
@@ -357,7 +359,8 @@ Electron.
 * `attribute::Union{Nothing, ChemicalAttribute}`
 
 # Constructors
-    Electron(; kwfn = defaultchemicalkwargs, newattr = true, name = "Electron", elements = Pair{String, Int}[], abbreviation = "e", kwargs...)
+    Electron(; kwfn = defaultchemicalkwargs, newattr = true, name = "Electron", 
+        elements = Pair{String, Int}[], abbreviation = "e", kwargs...)
 
 ## Arguments
 * `kwfn`: the function to generate default keyword arguments.
@@ -385,7 +388,8 @@ Proton.
 * `attribute::Union{Nothing, ChemicalAttribute}`
 
 # Constructors
-    Proton(; kwfn = defaultchemicalkwargs, newattr = true, name = "Proton", elements = ["H" => 1], abbreviation = "H", kwargs...)
+    Proton(; kwfn = defaultchemicalkwargs, newattr = true, name = "Proton", 
+        elements = ["H" => 1], abbreviation = "H", kwargs...)
 
 ## Arguments
 * `kwfn`: the function to generate default keyword arguments.
@@ -413,7 +417,8 @@ Water.
 * `attribute::Union{Nothing, ChemicalAttribute}`
 
 # Constructors
-    Water(; kwfn = defaultchemicalkwargs, newattr = true, name = "Water", elements = ["H" => 2, "O" => 1], abbreviation = "H2O", kwargs...)
+    Water(; kwfn = defaultchemicalkwargs, newattr = true, name = "Water", 
+        elements = ["H" => 2, "O" => 1], abbreviation = "H2O", kwargs...)
 
 ## Arguments
 * `kwfn`: the function to generate default keyword arguments.
@@ -441,7 +446,8 @@ Ammonia.
 * `attribute::Union{Nothing, ChemicalAttribute}`
 
 # Constructors
-    Ammonia(; kwfn = defaultchemicalkwargs, newattr = true, name = "Ammonia", elements = ["N" => 1, "H" => 3], abbreviation = "NH3", kwargs...)
+    Ammonia(; kwfn = defaultchemicalkwargs, newattr = true, name = "Ammonia", 
+        elements = ["N" => 1, "H" => 3], abbreviation = "NH3", kwargs...)
 
 ## Arguments
 * `kwfn`: the function to generate default keyword arguments.
@@ -469,7 +475,8 @@ Ammonium.
 * `attribute::Union{Nothing, ChemicalAttribute}`
 
 # Constructors
-    Ammonium(; kwfn = defaultchemicalkwargs, newattr = true, name = "Ammonium", elements = ["N" => 1, "H" => 4], abbreviation = "NH4", kwargs...)
+    Ammonium(; kwfn = defaultchemicalkwargs, newattr = true, name = "Ammonium", 
+        elements = ["N" => 1, "H" => 4], abbreviation = "NH4", kwargs...)
 
 ## Arguments
 * `kwfn`: the function to generate default keyword arguments.
@@ -497,7 +504,8 @@ Sodium.
 * `attribute::Union{Nothing, ChemicalAttribute}`
 
 # Constructors
-    Sodium(; kwfn = defaultchemicalkwargs, newattr = true, name = "Sodium", elements = ["Na" => 1], abbreviation = "Na", kwargs...)
+    Sodium(; kwfn = defaultchemicalkwargs, newattr = true, name = "Sodium", 
+        elements = ["Na" => 1], abbreviation = "Na", kwargs...)
 
 ## Arguments
 * `kwfn`: the function to generate default keyword arguments.
@@ -525,7 +533,8 @@ Potassium.
 * `attribute::Union{Nothing, ChemicalAttribute}`
 
 # Constructors
-    Potassium(; kwfn = defaultchemicalkwargs, newattr = true, name = "Potassium", elements = ["K" => 1], abbreviation = "K", kwargs...)
+    Potassium(; kwfn = defaultchemicalkwargs, newattr = true, name = "Potassium", 
+        elements = ["K" => 1], abbreviation = "K", kwargs...)
 
 ## Arguments
 * `kwfn`: the function to generate default keyword arguments.
@@ -553,7 +562,8 @@ Lithium.
 * `attribute::Union{Nothing, ChemicalAttribute}`
 
 # Constructors
-    Lithium(; kwfn = defaultchemicalkwargs, newattr = true, name = "Lithium", elements = ["Li" => 1], abbreviation = "Li", kwargs...)
+    Lithium(; kwfn = defaultchemicalkwargs, newattr = true, name = "Lithium", 
+        elements = ["Li" => 1], abbreviation = "Li", kwargs...)
 
 ## Arguments
 * `kwfn`: the function to generate default keyword arguments.
@@ -609,7 +619,8 @@ Acetate.
 * `attribute::Union{Nothing, ChemicalAttribute}`
 
 # Constructors
-    Acetate(; kwfn = defaultchemicalkwargs, newattr = true, name = "Acetate", elements = ["C" => 1, "H" => 3, "C" => 1, "O" => 1, "O" => 1], abbreviation = "OAc", kwargs...)
+    Acetate(; kwfn = defaultchemicalkwargs, newattr = true, name = "Acetate", 
+        elements = ["C" => 1, "H" => 3, "C" => 1, "O" => 1, "O" => 1], abbreviation = "OAc", kwargs...)
 
 ## Arguments
 * `kwfn`: the function to generate default keyword arguments.
@@ -637,7 +648,8 @@ Formate.
 * `attribute::Union{Nothing, ChemicalAttribute}`
 
 # Constructors
-    Formate(; kwfn = defaultchemicalkwargs, newattr = true, name = "Formate", elements = ["H" => 1, "C" => 1, "O" => 1, "O" => 1], abbreviation = "OFo", kwargs...)
+    Formate(; kwfn = defaultchemicalkwargs, newattr = true, name = "Formate", 
+        elements = ["H" => 1, "C" => 1, "O" => 1, "O" => 1], abbreviation = "OFo", kwargs...)
 
 ## Arguments
 * `kwfn`: the function to generate default keyword arguments.
@@ -665,7 +677,8 @@ Acetic acid.
 * `attribute::Union{Nothing, ChemicalAttribute}`
 
 # Constructors
-    AceticAcid(; kwfn = defaultchemicalkwargs, newattr = true, name = "Acetic Acid", elements = ["C" => 1, "H" => 3, "C" => 1, "O" => 1, "O" => 1, "H" => 1], abbreviation = "HOAc", kwargs...)
+    AceticAcid(; kwfn = defaultchemicalkwargs, newattr = true, name = "Acetic Acid", 
+        elements = ["C" => 1, "H" => 3, "C" => 1, "O" => 1, "O" => 1, "H" => 1], abbreviation = "HOAc", kwargs...)
 
 ## Arguments
 * `kwfn`: the function to generate default keyword arguments.
@@ -693,7 +706,8 @@ Formic acid.
 * `attribute::Union{Nothing, ChemicalAttribute}`
 
 # Constructors
-    FormicAcid(; kwfn = defaultchemicalkwargs, newattr = true, name = "Formic Acid", elements = ["H" => 1, "C" => 1, "O" => 1, "O" => 1, "H" => 1], abbreviation = "HOFo", kwargs...)
+    FormicAcid(; kwfn = defaultchemicalkwargs, newattr = true, name = "Formic Acid", 
+        elements = ["H" => 1, "C" => 1, "O" => 1, "O" => 1, "H" => 1], abbreviation = "HOFo", kwargs...)
 
 ## Arguments
 * `kwfn`: the function to generate default keyword arguments.
@@ -721,7 +735,8 @@ Methyl acetate.
 * `attribute::Union{Nothing, ChemicalAttribute}`
 
 # Constructors
-    MethylAcetate(; kwfn = defaultchemicalkwargs, newattr = true, name = "Methyl Acetate", elements = ["C" => 1, "H" => 3, "C" => 1, "O" => 1, "O" => 1, "C" => 1, "H" => 3], abbreviation = "MeOAc", kwargs...)
+    MethylAcetate(; kwfn = defaultchemicalkwargs, newattr = true, name = "Methyl Acetate", 
+        elements = ["C" => 1, "H" => 3, "C" => 1, "O" => 1, "O" => 1, "C" => 1, "H" => 3], abbreviation = "MeOAc", kwargs...)
 
 ## Arguments
 * `kwfn`: the function to generate default keyword arguments.
@@ -749,7 +764,8 @@ Methyl formate.
 * `attribute::Union{Nothing, ChemicalAttribute}`
 
 # Constructors
-    MethylFormate(; kwfn = defaultchemicalkwargs, newattr = true, name = "Methyl Formate", elements = ["H" => 1, "C" => 1, "O" => 1, "O" => 1, "C" => 1, "H" => 3], abbreviation = "MeOFo", kwargs...)
+    MethylFormate(; kwfn = defaultchemicalkwargs, newattr = true, name = "Methyl Formate", 
+        elements = ["H" => 1, "C" => 1, "O" => 1, "O" => 1, "C" => 1, "H" => 3], abbreviation = "MeOFo", kwargs...)
 
 ## Arguments
 * `kwfn`: the function to generate default keyword arguments.
@@ -777,7 +793,8 @@ Fluoride.
 * `attribute::Union{Nothing, ChemicalAttribute}`
 
 # Constructors
-    Fluoride(; kwfn = defaultchemicalkwargs, newattr = true, name = "Fluoride", elements = ["F" => 1], abbreviation = "F", kwargs...)
+    Fluoride(; kwfn = defaultchemicalkwargs, newattr = true, name = "Fluoride", 
+        elements = ["F" => 1], abbreviation = "F", kwargs...)
 
 ## Arguments
 * `kwfn`: the function to generate default keyword arguments.
@@ -805,7 +822,8 @@ Chloride.
 * `attribute::Union{Nothing, ChemicalAttribute}`
 
 # Constructors
-    Chloride(; kwfn = defaultchemicalkwargs, newattr = true, name = "Chloride", elements = ["Cl" => 1], abbreviation = "Cl", kwargs...)
+    Chloride(; kwfn = defaultchemicalkwargs, newattr = true, name = "Chloride", 
+        elements = ["Cl" => 1], abbreviation = "Cl", kwargs...)
 
 ## Arguments
 * `kwfn`: the function to generate default keyword arguments.
@@ -833,7 +851,8 @@ Methenium.
 * `attribute::Union{Nothing, ChemicalAttribute}`
 
 # Constructors
-    Methenium(; kwfn = defaultchemicalkwargs, newattr = true, name = "Methenium", elements = ["C" => 1, "H" => 3], abbreviation = "Me", kwargs...)
+    Methenium(; kwfn = defaultchemicalkwargs, newattr = true, name = "Methenium", 
+        elements = ["C" => 1, "H" => 3], abbreviation = "Me", kwargs...)
 
 ## Arguments
 * `kwfn`: the function to generate default keyword arguments.
@@ -906,7 +925,8 @@ defaultchemicalkwargs(::Type{Methenium}; kwargs...) = (; name = "Methenium", ele
 """
     make_attributedchemical(::Type{T}; kwfn = defaultchemicalkwargs, newattr = true, kwargs...) -> AttributedChemical
 
-Create an attributed chemical of type `T` with default and user-provided keyword arguments. Default values are taken from [`defaultchemicalkwargs`](@ref) by default.
+Create an attributed chemical of type `T` with default and user-provided keyword arguments. 
+Default values are taken from [`defaultchemicalkwargs`](@ref) by default.
 
 # Arguments
 * `::Type{T}`: the type of the attributed chemical to create.

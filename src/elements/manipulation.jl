@@ -10,15 +10,16 @@ Elements container with no duplicated element keys or zeros.
 unique_elements(elements::T) where T = unique_elements(T, elements)
 unique_elements(::Type{<:Dictionary}, elements) = filter!(!=(0), dictionary_elements(Dictionary, elements))
 unique_elements(::Type{<:Dict}, elements) = Dict(pairs(unique_elements(Dictionary, elements)))
-unique_elements(::Type{<:Vector{<:Pair}}, elements) = collect(pairs(unique_elements(Dictionary, elements)))
+unique_elements(::Type{<:Vector{<:Pair}}, elements) = sort!(collect(pairs(unique_elements(Dictionary, elements))); by = first)
 unique_elements(::Type{<:Dict}, elements::Dict) = filter(x -> last(x) != 0, elements)
-unique_elements(::Type{<:Vector{<:Pair}}, elements::Dict) = filter!(x -> last(x) != 0, collect(elements))
+unique_elements(::Type{<:Vector{<:Pair}}, elements::Dict) = sort!(filter!(x -> last(x) != 0, collect(elements)); by = first)
 unique_elements(::Type{<:Dictionary}, elements::Dictionary) = filter(!=(0), elements)
 function unique_elements(::Type{<:ElementsVector}, elements::ElementsVector) 
     id = findall(!=(0), elements.numbers)
+    # sort?
     ElementsVector(elements.elements[id], elements.numbers[id])
 end
-unique_elements(::Type{<:Vector{<:Pair}}, elements::ElementsVector) = filter!(x -> last(x) != 0, collect(elements))
+unique_elements(::Type{<:Vector{<:Pair}}, elements::ElementsVector) = sort!(filter!(x -> last(x) != 0, collect(elements)); by = first)
 
 sort_unique_elements(x) = sort!(unique_elements(x))
 
@@ -28,7 +29,9 @@ sort_unique_elements(x) = sort!(unique_elements(x))
     dictionary_elements(Dicttype = Dict, elements::Dictionary) -> Dicttype
     dictionary_elements(Dicttype = Dict, elements::ElementsVector) -> Dicttype
 
-Create a dictionary from any elements containers. As elements can be duplicated in some containers and no duplication in a dictionary, the new dictionary is convenient for updating elements number.
+Create a dictionary from any elements containers. 
+As elements can be duplicated in some containers and no duplication in a dictionary, 
+the new dictionary is convenient for updating elements number.
 """
 dictionary_elements(elements) = dictionary_elements(Dict, elements)
 dictionary_elements(::Type{Dict}, elements::Vector{<:Pair}) = Dict(pairs(dictionary_elements(Dictionary, elements)))
@@ -122,6 +125,11 @@ function __gain_elements!(elements::ElementsVector, y)
     elements
 end
 
+"""
+    parallel_gain_elements!(els::Vector{Vector{ElementsVector}}) -> Vector{Vector{ElementsVector}}
+
+Add elements of element vector from behind accumulatively. This function works in parallel for each vector in `els`.
+"""
 function parallel_gain_elements!(els::Vector{Vector{ElementsVector}})
     prev_el = String[]
     prev_ns = Vector{Int}[] 
@@ -138,14 +146,27 @@ function parallel_gain_elements!(els::Vector{Vector{ElementsVector}})
         for (ie, e) in enumerate(prev_el) 
             j = findfirst(==(e), iter_el)
             if isnothing(j)
-                if pushed
-                    push!(curr_el, e)
+                k = findfirst(x -> elements_order(x) > elements_order(e), curr_el)
+                if isnothing(k)
+                    if pushed
+                        push!(curr_el, e)
+                    else
+                        curr_el = push!(copy(curr_el), e)
+                        pushed = true
+                    end
+                    for (curr_n, prev_n) in zip(curr_ns, prev_ns)
+                        push!(curr_n, prev_n[ie])
+                    end
                 else
-                    curr_el = push!(copy(curr_el), e)
-                    pushed = true
-                end
-                for (curr_n, prev_n) in zip(curr_ns, prev_ns)
-                    push!(curr_n, prev_n[ie])
+                    if pushed
+                        insert!(curr_el, k, e)
+                    else
+                        curr_el = insert!(copy(curr_el), k, e)
+                        pushed = true
+                    end
+                    for (curr_n, prev_n) in zip(curr_ns, prev_ns)
+                        insert!(curr_n, k, prev_n[ie])
+                    end
                 end
             else 
                 for (curr_n, prev_n) in zip(curr_ns, prev_ns)
@@ -153,7 +174,10 @@ function parallel_gain_elements!(els::Vector{Vector{ElementsVector}})
                 end
             end
         end
-        for (j, el) in enumerate(els) 
+        # ord = sortperm(curr_el; by = elements_order)
+        # curr_el_new = curr_el[ord]
+        for (j, el) in enumerate(els)
+            # el[i] = ElementsVector(curr_el_new, curr_ns[j][ord])
             el[i] = ElementsVector(curr_el, curr_ns[j])
         end
         prev_el = curr_el
@@ -244,6 +268,11 @@ function __loss_elements!(elements::ElementsVector, y)
     elements
 end
 
+"""
+    universal_loss_elements!(els::Vector{Vector{ElementsVector}}) -> Vector{Vector{ElementsVector}}
+
+Subtract elements of the last element vector from previous element vectors. This function works in parallel for each vector in `els`.
+"""
 function universal_loss_elements!(els::Vector{Vector{ElementsVector}})
     prev_el = els[begin][end].elements
     isempty(prev_el) && return els

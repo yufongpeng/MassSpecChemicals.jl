@@ -1,12 +1,18 @@
 # ==========================================================================================================================
 # Mid level MS2
 """
-    isotopologues_elements_ms2(precise::Val{true}, precursor, product_sch, product, it1, element_precursor_dictionary, element_precursor, element_product, abundance, abtype, proportion, threshold, iter, gain, loss, sort; normalize = true)
-    isotopologues_elements_ms2(precise::Val{false}, precursor, product_sch, product, it1, element_precursor_dictionary, element_precursor, element_product, abundance, abtype, proportion, threshold, iter, gain, loss, sort; normalize = true)
+    isotopologues_elements_ms2(precise::Val{true}, precursor, product_sch, product, it1, 
+        element_precursor_dictionary, element_precursor, element_product, abundance, abtype, proportion, threshold, 
+        iter, gain, loss, sort; normalize = true)
+    isotopologues_elements_ms2(precise::Val{false}, precursor, product_sch, product, it1, 
+        element_precursor_dictionary, element_precursor, element_product, abundance, abtype, proportion, threshold, 
+        iter, gain, loss, sort; normalize = true)
 
 Generate MS/MS transition isotopologues from MS1 data.
 """
-function isotopologues_elements_ms2(precise::Val, precursor, product_sch, product, it1, element_precursor_dictionary, element_precursor, element_product, abundance, abtype, proportion, threshold, iter, gain, loss, sort; normalize = true)
+function isotopologues_elements_ms2(precise::Val, precursor, product_sch, product, it1, 
+        element_precursor_dictionary, element_precursor, element_product, abundance, abtype, proportion, threshold, 
+        iter, gain, loss, sort; normalize = true)
     net_charge = charge(product)
     abs_charge = max(1, abs(net_charge))
     isempty(element_product) && throw(ArgumentError("Product chemical must contain at least one element."))
@@ -14,9 +20,12 @@ function isotopologues_elements_ms2(precise::Val, precursor, product_sch, produc
     if gain 
         msfix = get_fixmass(element_product)
         element_dictionary = get_element_dictionary(element_precursor)
-        proportion_cutoff = isvar(abundance) ? minimum(makecrit_value(threshold, isotopicabundance(element_precursor))) : minimum(makecrit_value(threshold, abundance)) * isotopicabundance(element_precursor) / abundance
-        it2 = isotopologues_elements_ms1(precise, product_sch, element_dictionary, msfix, 1, Total(), proportion_cutoff, iter, sort; net_charge)
-        abundance_cutoff = isvar(abundance) ? minimum(makecrit_value(threshold, maximum(it2.Abundance) * maximum(it1.Abundance))) : minimum(makecrit_value(threshold, abundance)) * maximum(it2.Abundance) * maximum(it1.Abundance) / abundance
+        proportion_cutoff = isvar(abundance) ? minimum(makecrit_value(threshold, isotopicabundance(element_precursor))) : 
+            minimum(makecrit_value(threshold, abundance)) * isotopicabundance(element_precursor) / abundance
+        it2 = isotopologues_elements_ms1(precise, product_sch, element_dictionary, msfix, 
+            1, Total(), proportion_cutoff, iter, sort; net_charge)
+        abundance_cutoff = isvar(abundance) ? minimum(makecrit_value(threshold, maximum(it2.Abundance) * maximum(it1.Abundance))) : 
+            minimum(makecrit_value(threshold, abundance)) * maximum(it2.Abundance) * maximum(it1.Abundance) / abundance
         data = (
             Vector{Vector{Any}}(undef, length(precursor)),
             Vector{Vector{float(Int)}}(undef, length(precursor)),
@@ -47,9 +56,11 @@ function isotopologues_elements_ms2(precise::Val, precursor, product_sch, produc
         msfix = mmi(element_product) - (net_charge == 0 ? 0 : net_charge * ME)
         leftover = [k for (k, v) in element_precursor_dictionary if isnothing(findfirst(x -> first(x) == k, element_product_vp))]
         @inbounds ab_dict = map(eachindex(IndexLinear(), precursor)) do idp
-            maximal_combination_composition(precise, it1.Element[idp], element_product_vp, leftover, it1.Abundance[idp] * proportion * it1.Preab[idp])
+            maximal_combination_composition(precise, it1.Element[idp], element_product_vp, leftover, 
+                it1.Abundance[idp] * proportion * it1.Preab[idp])
         end
-        proportion_cutoff = isvar(abundance) ? minimum(makecrit_value(threshold, maximum(first, ab_dict))) : maximum(first, ab_dict) * minimum(makecrit_value(threshold, abundance)) / abundance
+        proportion_cutoff = isvar(abundance) ? minimum(makecrit_value(threshold, maximum(first, ab_dict))) : 
+            maximum(first, ab_dict) * minimum(makecrit_value(threshold, abundance)) / abundance
         if iter 
             fn_main = isotopologues_elements_single_ms2_iter
             fn_push = sort ? push_data_iter_sort! : push_data_iter!
@@ -79,8 +90,13 @@ function isotopologues_elements_ms2(precise::Val, precursor, product_sch, produc
             product_isotopes = detected_isotopes
         end
         @inbounds for idp in eachindex(IndexLinear(), precursor)
-            element_vec, mass_vec, abundance_vec, preab_vec = fn_main(it1.Element[idp], ab_dict[idp]..., isotopes, nisotopes, iid, msfix, proportion_cutoff, precise, abs_charge)
-            chemical_vec, id = fn_id(it1, idp, element_vec, mass_vec, detected_isotopes, precursor_isotopes, product_isotopes, precursor, product_sch)
+            element_vec, mass_vec, abundance_vec, preab_vec = fn_main(
+                it1.Element[idp], ab_dict[idp]..., isotopes, nisotopes, 
+                iid, msfix, proportion_cutoff, precise, abs_charge
+            )
+            chemical_vec, id = fn_id(it1, idp, element_vec, mass_vec, 
+                detected_isotopes, precursor_isotopes, product_isotopes, precursor, product_sch
+            )
             fn_push(data, idp, chemical_vec, mass_vec, abundance_vec, preab_vec, id)
         end
     else
@@ -93,7 +109,8 @@ function isotopologues_elements_ms2(precise::Val, precursor, product_sch, produc
         @inbounds ab_dict = map(eachindex(IndexLinear(), precursor)) do idp 
             maximal_proportion_composition(precise, it1.Element[idp], element_product_vp, leftover, it1.Abundance[idp] * proportion)
         end
-        proportion_cutoff = isvar(abundance) ? minimum(makecrit_value(threshold, maximum(first, ab_dict))) : maximum(first, ab_dict) * minimum(makecrit_value(threshold, abundance)) / abundance 
+        proportion_cutoff = isvar(abundance) ? minimum(makecrit_value(threshold, maximum(first, ab_dict))) : 
+        maximum(first, ab_dict) * minimum(makecrit_value(threshold, abundance)) / abundance 
         if iter 
             fn_main = isotopologues_elements_single_ms2_iter
             fn_push = sort ? push_data_iter_sort! : push_data_iter!
@@ -123,15 +140,20 @@ function isotopologues_elements_ms2(precise::Val, precursor, product_sch, produc
             product_isotopes = detected_isotopes
         end
         @inbounds for idp in eachindex(IndexLinear(), precursor)
-            element_vec, mass_vec, abundance_vec, preab_vec = fn_main(it1.Element[idp], ab_dict[idp]..., isotopes, nisotopes, iid, msfix, proportion_cutoff, precise, abs_charge)
-            chemical_vec, id = fn_id(it1, idp, element_vec, mass_vec, detected_isotopes, precursor_isotopes, product_isotopes, precursor, product_sch)
+            element_vec, mass_vec, abundance_vec, preab_vec = fn_main(
+                it1.Element[idp], ab_dict[idp]..., isotopes, nisotopes, 
+                iid, msfix, proportion_cutoff, precise, abs_charge
+            )
+            chemical_vec, id = fn_id(it1, idp, element_vec, mass_vec, 
+                detected_isotopes, precursor_isotopes, product_isotopes, precursor, product_sch
+            )
             fn_push(data, idp, chemical_vec, mass_vec, abundance_vec, preab_vec, id)
         end
     end
+    id_pair = ChainedVector([[i for _ in eachindex(x)] for (i, x) in enumerate(data[1])])
     chemical = ChainedVector(data[1])
     mass_product = ChainedVector(data[2])
     abundance_pair = ChainedVector(data[3])
-    id_pair = ChainedVector([[i for _ in eachindex(x)] for (i, x) in enumerate(data[1])])
     abtype = abtyped(abtype)
     if isempty(abundance_pair) 
         if iter
@@ -148,11 +170,13 @@ function isotopologues_elements_ms2(precise::Val, precursor, product_sch, produc
     end
 end
 """
-    isotopologues_elements_single_ms2(precursor_dictionary::Dict, first_abundance, element_product, isotopes, nisotopes, iid, msfix, threshold, precise, abs_charge)
+    isotopologues_elements_single_ms2(precursor_dictionary::Dict, first_abundance, element_product, 
+        isotopes, nisotopes, iid, msfix, threshold, precise, abs_charge)
 
 Generate MS/MS isotopologues for a single MS1 isotopologue.
 """
-function isotopologues_elements_single_ms2(precursor_dictionary::Dict, first_abundance, element_product, isotopes, nisotopes, iid, msfix, threshold, precise, abs_charge)
+function isotopologues_elements_single_ms2(precursor_dictionary::Dict, first_abundance, element_product, 
+        isotopes, nisotopes, iid, msfix, threshold, precise, abs_charge)
     first_element = element_product[iid]
     first_mass = (deltammi(isotopes, element_product) + msfix) / abs_charge
     if first_abundance < threshold
@@ -164,15 +188,19 @@ function isotopologues_elements_single_ms2(precursor_dictionary::Dict, first_abu
         mass_vec = [first_mass]
         abundance_vec = [first_abundance]
     end
-    rec_exchangeisotopes!(element_vec, mass_vec, abundance_vec, element_product, precursor_dictionary, isotopes, nisotopes, iid, 2, 1, 1, first_mass, first_abundance, threshold, (true, true), precise, abs_charge)
+    rec_exchangeisotopes!(element_vec, mass_vec, abundance_vec, element_product, precursor_dictionary, 
+        isotopes, nisotopes, iid, 2, 1, 1, first_mass, first_abundance, threshold, (true, true), precise, abs_charge
+    )
     element_vec, mass_vec, abundance_vec, nothing
 end
 """
-    isotopologues_elements_single_ms2_iter(precursor_dictionary::Dict, first_abundance, element_product, isotopes, nisotopes, iid, msfix, threshold, precise, abs_charge)
+    isotopologues_elements_single_ms2_iter(precursor_dictionary::Dict, first_abundance, element_product, 
+        isotopes, nisotopes, iid, msfix, threshold, precise, abs_charge)
 
 Generate MS/MS isotopologues for a single MS1 isotopologue, and data for further iteration.
 """
-function isotopologues_elements_single_ms2_iter(precursor_dictionary::Dict, first_abundance, element_product, isotopes, nisotopes, iid, msfix, threshold, precise, abs_charge)
+function isotopologues_elements_single_ms2_iter(precursor_dictionary::Dict, first_abundance, element_product, 
+        isotopes, nisotopes, iid, msfix, threshold, precise, abs_charge)
     first_element = element_product[iid]
     first_mass = (deltammi(isotopes, element_product) + msfix) / abs_charge
     first_preab = isotopologue_inverse_combination(precise, element_product, isotopes)
@@ -187,7 +215,9 @@ function isotopologues_elements_single_ms2_iter(precursor_dictionary::Dict, firs
         abundance_vec = [first_abundance]
         preab_vec = [first_preab]
     end
-    rec_exchangeisotopes_iter!(element_vec, mass_vec, abundance_vec, preab_vec, element_product, precursor_dictionary, isotopes, nisotopes, iid, 2, 1, 1, first_mass, first_abundance, first_preab, threshold, (true, true), precise, abs_charge)
+    rec_exchangeisotopes_iter!(element_vec, mass_vec, abundance_vec, preab_vec, element_product, precursor_dictionary, 
+        isotopes, nisotopes, iid, 2, 1, 1, first_mass, first_abundance, first_preab, threshold, (true, true), precise, abs_charge
+    )
     element_vec, mass_vec, abundance_vec, preab_vec
 end
 """
@@ -204,7 +234,8 @@ end
 
 Combine computed MS/MS product isotopologues into sereies of transition isotopologues without sorting.
 """
-product_id(it1, idp, element_vec, mass_vec, isotopes, precursor_isotopes, product_isotopes, precursor, product_sch) = [vcat(precursor[idp], isotopomerize(product_sch, ElementsVector(product_isotopes, element))) for element in element_vec], nothing
+product_id(it1, idp, element_vec, mass_vec, isotopes, precursor_isotopes, product_isotopes, precursor, product_sch) = 
+    [vcat(precursor[idp], isotopomerize(product_sch, ElementsVector(product_isotopes, element))) for element in element_vec], nothing
 """
     loss_id_sort(it1, idp, element_vec, mass_vec, isotopes, precursor_isotopes, product_isotopes, precursor, product_sch)
 
@@ -212,7 +243,9 @@ Combine computed MS/MS loss isotopologues into sereies of transition isotopologu
 """
 function loss_id_sort(it1, idp, element_vec, mass_vec, isotopes, precursor_isotopes, product_isotopes, precursor, product_sch)  
     id = sortperm(mass_vec)
-    element_vec = number_loss_elements(isotopes, element_vec, precursor_isotopes, precursor_loss(precursor_isotopes, it1.Element[idp]), id)
+    element_vec = number_loss_elements(isotopes, element_vec, precursor_isotopes, 
+        precursor_loss(precursor_isotopes, it1.Element[idp]), id
+    )
     [vcat(precursor[idp], isotopomerize(product_sch, ElementsVector(product_isotopes, element))) for element in element_vec], id
 end
 """
@@ -221,7 +254,9 @@ end
 Combine computed MS/MS loss isotopologues into sereies of transition isotopologues without sorting.
 """
 function loss_id(it1, idp, element_vec, mass_vec, isotopes, precursor_isotopes, product_isotopes, precursor, product_sch)
-    element_vec = number_loss_elements(isotopes, element_vec, precursor_isotopes, precursor_loss(precursor_isotopes, it1.Element[idp]), eachindex(mass_vec))
+    element_vec = number_loss_elements(isotopes, element_vec, precursor_isotopes, 
+        precursor_loss(precursor_isotopes, it1.Element[idp]), eachindex(mass_vec)
+    )
     [vcat(precursor[idp], isotopomerize(product_sch, ElementsVector(product_isotopes, element))) for element in element_vec], nothing
 end
 """
@@ -323,7 +358,11 @@ function rec_exchangeisotopes!(
     iter = isotope_position < lastindex(isotopes)
     iter_e = iter && (isotope_position < element_position + nisotopes[n_position] - 1)
     if iter && (prev_proportion >= threshold || all(current))
-        next_proportion = rec_exchangeisotopes!(element_vec, mass_vec, abundance_vec, element_vp, element_precursor_dictionary, isotopes, nisotopes, iid, isotope_position + 1, element_position, n_position, prev_mass, prev_proportion, threshold, current, precise, abs_charge)
+        next_proportion = rec_exchangeisotopes!(
+            element_vec, mass_vec, abundance_vec, element_vp, element_precursor_dictionary, 
+            isotopes, nisotopes, iid, isotope_position + 1, element_position, n_position, 
+            prev_mass, prev_proportion, threshold, current, precise, abs_charge
+        )
         max_proportion = max(max_proportion, next_proportion)
     end
     e = isotopes[element_position]
@@ -367,7 +406,11 @@ function rec_exchangeisotopes!(
                 push!(element_vec, element_vp[iid])
                 push!(abundance_vec, proportion)
                 push!(mass_vec, mass) 
-                backward_next_proportion = rec_exchangeisotopes!(element_vec, mass_vec, abundance_vec, element_vp, element_precursor_dictionary, isotopes, nisotopes, iid, isotope_position + 1, element_position, n_position, mass, proportion, threshold, next, precise, abs_charge)
+                backward_next_proportion = rec_exchangeisotopes!(
+                    element_vec, mass_vec, abundance_vec, element_vp, element_precursor_dictionary, 
+                    isotopes, nisotopes, iid, isotope_position + 1, element_position, n_position, 
+                    mass, proportion, threshold, next, precise, abs_charge
+                )
                 backward_max_proportion = max(proportion, backward_next_proportion)
             elseif proportion >= threshold
                 element_vp[isotope_position] = pis
@@ -378,7 +421,11 @@ function rec_exchangeisotopes!(
             elseif iter 
                 element_vp[isotope_position] = pis
                 element_vp[element_position] = pel
-                backward_next_proportion = rec_exchangeisotopes!(element_vec, mass_vec, abundance_vec, element_vp, element_precursor_dictionary, isotopes, nisotopes, iid, isotope_position + 1, element_position, n_position, mass, proportion, threshold, next, precise, abs_charge)
+                backward_next_proportion = rec_exchangeisotopes!(
+                    element_vec, mass_vec, abundance_vec, element_vp, element_precursor_dictionary, 
+                    isotopes, nisotopes, iid, isotope_position + 1, element_position, n_position, 
+                    mass, proportion, threshold, next, precise, abs_charge
+                )
                 backward_max_proportion = max(proportion, backward_next_proportion)
             else
                 backward_max_proportion = proportion
@@ -423,7 +470,11 @@ function rec_exchangeisotopes!(
                 push!(element_vec, element_vp[iid])
                 push!(abundance_vec, proportion)
                 push!(mass_vec, mass)
-                forward_next_proportion = rec_exchangeisotopes!(element_vec, mass_vec, abundance_vec, element_vp, element_precursor_dictionary, isotopes, nisotopes, iid, isotope_position + 1, element_position, n_position, mass, proportion, threshold, next, precise, abs_charge)
+                forward_next_proportion = rec_exchangeisotopes!(
+                    element_vec, mass_vec, abundance_vec, element_vp, element_precursor_dictionary, 
+                    isotopes, nisotopes, iid, isotope_position + 1, element_position, n_position, 
+                    mass, proportion, threshold, next, precise, abs_charge
+                )
                 forward_max_proportion = max(proportion, forward_next_proportion) 
             elseif proportion >= threshold 
                 element_vp[isotope_position] = pis
@@ -434,7 +485,11 @@ function rec_exchangeisotopes!(
             elseif iter 
                 element_vp[isotope_position] = pis
                 element_vp[element_position] = pel
-                forward_next_proportion = rec_exchangeisotopes!(element_vec, mass_vec, abundance_vec, element_vp, element_precursor_dictionary, isotopes, nisotopes, iid, isotope_position + 1, element_position, n_position, mass, proportion, threshold, next, precise, abs_charge)
+                forward_next_proportion = rec_exchangeisotopes!(
+                    element_vec, mass_vec, abundance_vec, element_vp, element_precursor_dictionary, 
+                    isotopes, nisotopes, iid, isotope_position + 1, element_position, n_position, 
+                    mass, proportion, threshold, next, precise, abs_charge
+                )
                 forward_max_proportion = max(proportion, forward_next_proportion) 
             else
                 forward_max_proportion = proportion
@@ -485,7 +540,11 @@ function rec_exchangeisotopes_iter!(
     iter = isotope_position < lastindex(isotopes)
     iter_e = iter && (isotope_position < element_position + nisotopes[n_position] - 1)
     if iter && (prev_proportion >= threshold || all(current))
-        next_proportion = rec_exchangeisotopes_iter!(element_vec, mass_vec, abundance_vec, preab_vec, element_vp, element_precursor_dictionary, isotopes, nisotopes, iid, isotope_position + 1, element_position, n_position, prev_mass, prev_proportion, prev_preab, threshold, current, precise, abs_charge)
+        next_proportion = rec_exchangeisotopes_iter!(
+            element_vec, mass_vec, abundance_vec, preab_vec, element_vp, element_precursor_dictionary, 
+            isotopes, nisotopes, iid, isotope_position + 1, element_position, n_position, 
+            prev_mass, prev_proportion, prev_preab, threshold, current, precise, abs_charge
+        )
         max_proportion = max(max_proportion, next_proportion)
     end
     e = isotopes[element_position]
@@ -532,7 +591,11 @@ function rec_exchangeisotopes_iter!(
                 push!(preab_vec, preab)
                 push!(abundance_vec, proportion)
                 push!(mass_vec, mass) 
-                backward_next_proportion = rec_exchangeisotopes_iter!(element_vec, mass_vec, abundance_vec, preab_vec, element_vp, element_precursor_dictionary, isotopes, nisotopes, iid, isotope_position + 1, element_position, n_position, mass, proportion, preab, threshold, next, precise, abs_charge)
+                backward_next_proportion = rec_exchangeisotopes_iter!(
+                    element_vec, mass_vec, abundance_vec, preab_vec, element_vp, element_precursor_dictionary, 
+                    isotopes, nisotopes, iid, isotope_position + 1, element_position, n_position, 
+                    mass, proportion, preab, threshold, next, precise, abs_charge
+                )
                 backward_max_proportion = max(proportion, backward_next_proportion)
             elseif proportion >= threshold
                 element_vp[isotope_position] = pis
@@ -544,7 +607,11 @@ function rec_exchangeisotopes_iter!(
             elseif iter 
                 element_vp[isotope_position] = pis
                 element_vp[element_position] = pel
-                backward_next_proportion = rec_exchangeisotopes_iter!(element_vec, mass_vec, abundance_vec, preab_vec, element_vp, element_precursor_dictionary, isotopes, nisotopes, iid, isotope_position + 1, element_position, n_position, mass, proportion, preab, threshold, next, precise, abs_charge)
+                backward_next_proportion = rec_exchangeisotopes_iter!(
+                    element_vec, mass_vec, abundance_vec, preab_vec, element_vp, element_precursor_dictionary, 
+                    isotopes, nisotopes, iid, isotope_position + 1, element_position, n_position, 
+                    mass, proportion, preab, threshold, next, precise, abs_charge
+                )
                 backward_max_proportion = max(proportion, backward_next_proportion)
             else
                 backward_max_proportion = proportion
@@ -592,7 +659,11 @@ function rec_exchangeisotopes_iter!(
                 push!(preab_vec, preab)
                 push!(abundance_vec, proportion)
                 push!(mass_vec, mass)
-                forward_next_proportion = rec_exchangeisotopes_iter!(element_vec, mass_vec, abundance_vec, preab_vec, element_vp, element_precursor_dictionary, isotopes, nisotopes, iid, isotope_position + 1, element_position, n_position, mass, proportion, preab, threshold, next, precise, abs_charge)
+                forward_next_proportion = rec_exchangeisotopes_iter!(
+                    element_vec, mass_vec, abundance_vec, preab_vec, element_vp, element_precursor_dictionary, 
+                    isotopes, nisotopes, iid, isotope_position + 1, element_position, n_position, 
+                    mass, proportion, preab, threshold, next, precise, abs_charge
+                )
                 forward_max_proportion = max(proportion, forward_next_proportion) 
             elseif proportion >= threshold 
                 element_vp[isotope_position] = pis
@@ -604,7 +675,11 @@ function rec_exchangeisotopes_iter!(
             elseif iter 
                 element_vp[isotope_position] = pis
                 element_vp[element_position] = pel
-                forward_next_proportion = rec_exchangeisotopes_iter!(element_vec, mass_vec, abundance_vec, preab_vec, element_vp, element_precursor_dictionary, isotopes, nisotopes, iid, isotope_position + 1, element_position, n_position, mass, proportion, preab, threshold, next, precise, abs_charge)
+                forward_next_proportion = rec_exchangeisotopes_iter!(
+                    element_vec, mass_vec, abundance_vec, preab_vec, element_vp, element_precursor_dictionary, 
+                    isotopes, nisotopes, iid, isotope_position + 1, element_position, n_position, 
+                    mass, proportion, preab, threshold, next, precise, abs_charge
+                )
                 forward_max_proportion = max(proportion, forward_next_proportion) 
             else
                 forward_max_proportion = proportion

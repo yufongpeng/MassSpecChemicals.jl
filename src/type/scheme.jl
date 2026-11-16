@@ -45,17 +45,20 @@ end
     ElementalScheme(gain::Bool, chemical::T) = ElementalScheme{gain, T}(chemical)
     
 Single scheme involving a chemical change. The elements are fixed, and can be replaced by minor isotopes.
-* `ElementalScheme{false}`: chemical loss from a precursor. This product is not detected in MS; the other part of precursor is detected instead.
+* `ElementalScheme{false}`: chemical loss from a precursor. This product is not detected in MS; 
+    the other part of precursor is detected instead.
 * `ElementalScheme{true}`: chemical gain to a precursor. This product is not detected in MS; the merged chemical is detected instead.
 
 # Fields 
 * `chemical::T`: chemical involved in scheme.
 
 Single isotopomer can be set by using [`Isotopomers`](@ref) as field `chemical`. 
-Elemental scheme can be redirected to the corresponding isotopic labeled scheme in [`AdductIon`](@ref) by dispatching on core chemical and existing scheme, 
+Elemental scheme can be redirected to the corresponding isotopic labeled scheme in [`AdductIon`](@ref) by 
+dispatching on core chemical and existing scheme, 
 or looking up the `property` for generic [`Chemical`](@ref).
 
-For any types `T` being entry of `StandardChemical` or having zero-argument method, calling `ElementalScheme(::Bool, T)` gives the scheme with `StandardChemical[T]` or `T()`.
+For any types `T` being entry of `StandardChemical` or having zero-argument method, 
+calling `ElementalScheme(::Bool, T)` gives the scheme with `StandardChemical[T]` or `T()`.
 """
 struct ElementalScheme{Bool, T<:AbstractChemical} <: AbstractElementalScheme
     chemical::T

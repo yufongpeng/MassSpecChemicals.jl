@@ -96,7 +96,8 @@ makecrit_value(c::Criteria{A, Missing}, x) where A = (c.aval, )
 """
     makecrit_delta(crit::Criteria, x) -> Tuple
 
-Create a tuple of criteria based on input value `x`. The relative criterion is multiplied by `x`, and both criteria are offset by `x` as they represent difference.
+Create a tuple of criteria based on input value `x`. The relative criterion is multiplied by `x`, 
+and both criteria are offset by `x` as they represent difference.
 
 # Example 
 julia> c = crit(10, 0.1) 

@@ -7,7 +7,8 @@ import Base: show, length, +, -, *, /, isless, isequal, in, union, intersect, it
 
 export 
     # Types
-    AbstractChemical, AttributedChemical, ChemicalAttribute, Chemical, FormulaChemical, ChemicalTransition, ChemicalSeries, Isobars, Isotopomers,
+    AbstractChemical, AttributedChemical, ChemicalAttribute, Chemical, FormulaChemical, 
+    ChemicalTransition, ChemicalSeries, Isobars, Isotopomers,
     AbstractAdductIon, AdductIon,
     AbstractScheme, AbstractElementalScheme, AbstractStructuralScheme, StructuralChemicalScheme, AbstractCompleteScheme, 
     ElementalScheme, ChemicalGain, ChemicalLoss, 
@@ -43,7 +44,8 @@ export
 
     # Parser
     parse_chemical, parse_adduct, 
-    ChemicalParser, FormulaChemicalParser, AdductParser, ChemicalExpressionParser, ChemicalTransitionParser, ChemicalEntityParser, ChemicalSchemeParser, 
+    ChemicalParser, FormulaChemicalParser, AdductParser, ChemicalExpressionParser, ChemicalTransitionParser, 
+    ChemicalEntityParser, ChemicalSchemeParser, 
 
     # Attributes manipulation
     getchemicalattr, getchemicalattrname, pushchemicalattr!, 
@@ -52,7 +54,8 @@ export
     pushschemetransformer!, pushschememerger!, schemetransformer, schemetransform, schememerger, schememerge, 
 
     # Attributes
-    chemicalformula, chemicalelements, chemicalname, chemicalabbr, chemicalsmiles, ioncore, ionadduct, ncore, charge, ncharge, retentiontime,
+    chemicalformula, chemicalelements, chemicalname, chemicalabbr, chemicalsmiles, ioncore, ionadduct, ncore, 
+    charge, ncharge, retentiontime,
     mmi, molarmass, mz, 
     chemicalentity, chemicalspecies, chemicalpair, 
     chemicalparent, isotopomersisotopes, groupedisotopomersisotopes, groupedisotopomersabundance,
@@ -70,7 +73,8 @@ export
     
     # MS analysis 
     Ionization, Spectrum, MSScan, AllIons, Isolation, SelectedIonMonitor, Fragmentation, peak_table, 
-    MSAnalyzer, Quadrupole, QuadrupoleIonTrap, QIT, LinearIonTrap, LIT, TimeOfFlight, TOF, Orbitrap, FourierTransformIonCyclotronResonance, FTICR, 
+    MSAnalyzer, Quadrupole, QuadrupoleIonTrap, QIT, LinearIonTrap, LIT, TimeOfFlight, TOF, Orbitrap, 
+    FourierTransformIonCyclotronResonance, FTICR, 
     resolving_power, 
 
     # Co-elution

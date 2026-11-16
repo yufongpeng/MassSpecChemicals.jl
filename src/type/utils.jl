@@ -1,7 +1,8 @@
 """
     Criteria{A, R}
 
-A type for creating criteria for numeric values. A criterion may be a cutoff value, a relative tolerance around an input value, or an acceptable interval (or set of intervals).
+A type for creating criteria for numeric values. 
+    A criterion may be a cutoff value, a relative tolerance around an input value, or an acceptable interval (or set of intervals).
 
 # Fields
 * `aval`: criterion for the absolute value (unnormalized).

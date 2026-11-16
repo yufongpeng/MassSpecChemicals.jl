@@ -1,18 +1,25 @@
 # ==========================================================================================================================
 # Mid level MS1
 """
-    isotopologues_elements_ms1(precise, input_chemical, input_formula::AbstractString, abundance, abtype, threshold, iter, sort; net_charge = charge(input_chemical))
-    isotopologues_elements_ms1(precise, input_chemical, input_chemical::Vector, abundance, abtype, threshold, iter, sort; net_charge = charge(input_chemical))
-    isotopologues_elements_ms1(precise::Val{true}, input_chemical, element_dictionary::Dict, msfix, abundance, abtype, threshold, iter, sort; net_charge = charge(input_chemical))
-    isotopologues_elements_ms1(precise::Val{false}, input_chemical, element_dictionary::Dict, msfix, abundance, abtype, threshold, iter, sort; net_charge = charge(input_chemical))
+    isotopologues_elements_ms1(precise, input_chemical, input_formula::AbstractString, 
+        abundance, abtype, threshold, iter, sort; net_charge = charge(input_chemical))
+    isotopologues_elements_ms1(precise, input_chemical, input_chemical::Vector, 
+        abundance, abtype, threshold, iter, sort; net_charge = charge(input_chemical))
+    isotopologues_elements_ms1(precise::Val{true}, input_chemical, element_dictionary::Dict, msfix, 
+        abundance, abtype, threshold, iter, sort; net_charge = charge(input_chemical))
+    isotopologues_elements_ms1(precise::Val{false}, input_chemical, element_dictionary::Dict, msfix, 
+        abundance, abtype, threshold, iter, sort; net_charge = charge(input_chemical))
 
 Generate isotopologues for the given chemical.
 """
-isotopologues_elements_ms1(precise::Val, input_chemical, x::AbstractString, abundance, abtype, threshold, iter, sort; net_charge = charge(input_chemical)) = 
+isotopologues_elements_ms1(precise::Val, input_chemical, x::AbstractString, 
+    abundance, abtype, threshold, iter, sort; net_charge = charge(input_chemical)) = 
     isotopologues_elements(precise, input_chemical, chemicalelements(x), abundance, abtype, threshold, iter, sort; net_charge)
-isotopologues_elements_ms1(precise::Val, input_chemical, input_element::Vector, abundance, abtype, threshold, iter, sort; net_charge = charge(input_chemical)) = 
+isotopologues_elements_ms1(precise::Val, input_chemical, input_element::Vector, 
+    abundance, abtype, threshold, iter, sort; net_charge = charge(input_chemical)) = 
     isotopologues_elements_ms1(precise, input_chemical, get_element_dictionary_fixmass(input_element)..., abundance, abtype, threshold, iter, sort; net_charge)
-function isotopologues_elements_ms1(precise::Val, input_chemical, element_dictionary::Dict, msfix, abundance, abtype, threshold, iter, sort; net_charge = charge(input_chemical))
+function isotopologues_elements_ms1(precise::Val, input_chemical, element_dictionary::Dict, msfix, 
+        abundance, abtype, threshold, iter, sort; net_charge = charge(input_chemical))
     abs_charge = max(1, abs(net_charge))
     msfix -= net_charge * ME
     msfix /= abs_charge
@@ -26,9 +33,13 @@ function isotopologues_elements_ms1(precise::Val, input_chemical, element_dictio
         end
     else
         element_vp = collect(element_dictionary)
+        sort!(element_vp; by = first)
         abtype = abtyped(abtype)
         max_proportion, max_vp = maximal_abundance_elements_composition_check(precise, element_vp, abtype)
-        isotopes, els, mass, abv, preab = isotopologues_elements_single(precise, element_vp, msfix, abundance, abtype, threshold, max_proportion, max_vp, iter, abs_charge)
+        isotopes, els, mass, abv, preab = isotopologues_elements_single(
+            precise, element_vp, msfix, abundance, abtype, threshold, 
+            max_proportion, max_vp, iter, abs_charge
+        )
         if sort 
             idm = sortperm(mass)
             abv = abv[idm]
@@ -51,11 +62,13 @@ function isotopologues_elements_ms1(precise::Val, input_chemical, element_dictio
     end
 end
 """
-    isotopologues_elements_single(precise, element_vp, msfix, abundance, abtype, threshold, max_proportion, max_vp, iter, abs_charge);
+    isotopologues_elements_single(precise, element_vp, msfix, 
+        abundance, abtype, threshold, max_proportion, max_vp, iter, abs_charge)
 
 Generate isotopologues for a single element composition `element_vp`.
 """
-function isotopologues_elements_single(precise::Val, element_vp::Vector, msfix, abundance, abtype, threshold, max_proportion, max_vp::Vector, iter, abs_charge)
+function isotopologues_elements_single(precise::Val, element_vp::Vector, msfix, 
+        abundance, abtype, threshold, max_proportion, max_vp::Vector, iter, abs_charge)
     total, abundance_cutoff, proportion_cutoff = abundance_threshold_vec(abtype, abundance, threshold, max_proportion, element_vp)
     max_proportion[begin] *= total
     if iter 
@@ -65,9 +78,19 @@ function isotopologues_elements_single(precise::Val, element_vp::Vector, msfix, 
         fn_sub = subisotopologues
         fn_comb = combinesubisotopologues
     end
-    tbls = map(fn_sub, element_vp, [1.0 for _ in eachindex(element_vp)], max_vp, [proportion_cutoff for _ in eachindex(element_vp)], [precise for _ in eachindex(element_vp)], [abs_charge for _ in eachindex(element_vp)])
+    # element_vp = sort(element_vp; by = first)
+    tbls = map(
+        fn_sub, 
+        element_vp, 
+        [1.0 for _ in eachindex(element_vp)], 
+        max_vp, 
+        [proportion_cutoff for _ in eachindex(element_vp)], 
+        [precise for _ in eachindex(element_vp)], 
+        [abs_charge for _ in eachindex(element_vp)]
+    )
     els, mass, abv, preab = fn_comb(precise, tbls, abundance_cutoff, msfix, prod(max_proportion), 1.0)
-    vcat((tbl.Isotope for tbl in tbls)...), els, mass, abv, preab
+    isotopes = vcat((tbl.Isotope for tbl in tbls)...)
+    isotopes, els, mass, abv, preab
 end
 """
     subisotopologues(element_vp, max_proportion, max_vp, proportioon_cutoff, precise, abs_charge)
@@ -78,14 +101,25 @@ function subisotopologues(element_vp, max_proportion, max_vp, proportioon_cutoff
     isempty(element_vp) && return (; Isotope = String[], Number = Int[empty(max_vp)], Mass = [mmi(element_vp)], Abundance = [float(1)])
     isotopes = elements_isotopes()[first(element_vp)]
     if length(isotopes) < 2 
-        return (; Isotope = empty(isotopes), Number = [empty(max_vp)], Mass = [nmmi(isotopes, max_vp) / abs_charge], Abundance = [max_proportion])
+        return (; 
+            Isotope = empty(isotopes), 
+            Number = [empty(max_vp)], 
+            Mass = [nmmi(isotopes, max_vp) / abs_charge], 
+            Abundance = [max_proportion]
+        )
     end
     element_chemical = [max_vp[begin + 1:end]]
     mass_chemical = [nmmi(isotopes, max_vp) / abs_charge]
     abundance_chemical = [max_proportion]
-    addminusisotopes!(element_chemical, mass_chemical, abundance_chemical, max_vp, isotopes, 2, first(mass_chemical), first(abundance_chemical), proportioon_cutoff, (true, true), precise, abs_charge)
+    addminusisotopes!(element_chemical, mass_chemical, abundance_chemical, max_vp, isotopes, 2, 
+        first(mass_chemical), first(abundance_chemical), proportioon_cutoff, (true, true), precise, abs_charge)
     id = sortperm(abundance_chemical; rev = true)
-    (; Isotope = isotopes[begin + 1:end], Number = element_chemical[id], Mass = mass_chemical[id], Abundance = abundance_chemical[id]) 
+    (; 
+        Isotope = isotopes[begin + 1:end], 
+        Number = element_chemical[id], 
+        Mass = mass_chemical[id], 
+        Abundance = abundance_chemical[id]
+    ) 
 end
 """
     subisotopologues_iter(element_vp, max_proportion, max_vp, proportioon_cutoff, precise, abs_charge)
@@ -96,15 +130,28 @@ function subisotopologues_iter(element_vp, max_proportion, max_vp, proportioon_c
     isempty(element_vp) && return (; Isotope = String[], Number = Int[empty(max_vp)], Mass = [mmi(element_vp)], Abundance = [float(1)], Preab = [float(1)])
     isotopes = elements_isotopes()[first(element_vp)]
     if length(isotopes) < 2 
-        return (; Isotope = empty(isotopes), Number = [empty(max_vp)], Mass = [nmmi(isotopes, max_vp) / abs_charge], Abundance = [max_proportion], Preab = [isotopologue_inverse_combination(precise, max_vp, isotopes)])
+        return (; 
+            Isotope = empty(isotopes), 
+            Number = [empty(max_vp)], 
+            Mass = [nmmi(isotopes, max_vp) / abs_charge], 
+            Abundance = [max_proportion], 
+            Preab = [isotopologue_inverse_combination(precise, max_vp, isotopes)]
+        )
     end
     element_chemical = [max_vp[begin + 1:end]]
     mass_chemical = [nmmi(isotopes, max_vp) / abs_charge]
     abundance_chemical = [max_proportion]
     preab_chemical = [isotopologue_inverse_combination(precise, max_vp, isotopes)]
-    addminusisotopes_iter!(element_chemical, mass_chemical, abundance_chemical, preab_chemical, max_vp, isotopes, 2, first(mass_chemical), first(abundance_chemical), first(preab_chemical), proportioon_cutoff, (true, true), precise, abs_charge)
+    addminusisotopes_iter!(element_chemical, mass_chemical, abundance_chemical, preab_chemical, max_vp, isotopes, 2, 
+        first(mass_chemical), first(abundance_chemical), first(preab_chemical), proportioon_cutoff, (true, true), precise, abs_charge)
     id = sortperm(abundance_chemical; rev = true)
-    (; Isotope = isotopes[begin + 1:end], Number = element_chemical[id], Mass = mass_chemical[id], Abundance = abundance_chemical[id], Preab = preab_chemical[id]) 
+    (; 
+        Isotope = isotopes[begin + 1:end], 
+        Number = element_chemical[id], 
+        Mass = mass_chemical[id], 
+        Abundance = abundance_chemical[id], 
+        Preab = preab_chemical[id]
+    ) 
 end
 
 # ==========================================================================================================================
@@ -128,7 +175,10 @@ function addminusisotopes!(
     max_abundance = prev_abundance
     next_abundance = prev_abundance
     if (iter && (prev_abundance >= threshold || all(current)))
-        next_abundance = addminusisotopes!(element_vec, mass_vec, abundance_vec, element_vp, isotopes, isotope_position + 1, prev_mass, prev_abundance, threshold, current, precise, abs_charge)
+        next_abundance = addminusisotopes!(
+            element_vec, mass_vec, abundance_vec, element_vp, isotopes, isotope_position + 1, 
+            prev_mass, prev_abundance, threshold, current, precise, abs_charge
+        )
         max_abundance = max(max_abundance, next_abundance)
     end
     ne = first(element_vp)
@@ -165,7 +215,10 @@ function addminusisotopes!(
                 push!(element_vec, element_vp[begin + 1:end])
                 push!(abundance_vec, abundance)
                 push!(mass_vec, mass)
-                backward_next_abundance = addminusisotopes!(element_vec, mass_vec, abundance_vec, element_vp, isotopes, isotope_position + 1, mass, abundance, threshold, next, precise, abs_charge)
+                backward_next_abundance = addminusisotopes!(
+                    element_vec, mass_vec, abundance_vec, element_vp, isotopes, isotope_position + 1, 
+                    mass, abundance, threshold, next, precise, abs_charge
+                )
                 backward_max_abundance = max(abundance, backward_next_abundance)
             elseif abundance >= threshold
                 element_vp[isotope_position] = cni
@@ -176,7 +229,10 @@ function addminusisotopes!(
             elseif iter 
                 element_vp[isotope_position] = cni
                 element_vp[begin] = cne
-                backward_next_abundance = addminusisotopes!(element_vec, mass_vec, abundance_vec, element_vp, isotopes, isotope_position + 1, mass, abundance, threshold, next, precise, abs_charge)
+                backward_next_abundance = addminusisotopes!(
+                    element_vec, mass_vec, abundance_vec, element_vp, isotopes, isotope_position + 1, 
+                    mass, abundance, threshold, next, precise, abs_charge
+                )
                 backward_max_abundance = max(abundance, backward_next_abundance)
             else
                 backward_max_abundance = abundance
@@ -216,7 +272,10 @@ function addminusisotopes!(
                 push!(element_vec, element_vp[begin + 1:end])
                 push!(abundance_vec, abundance)
                 push!(mass_vec, mass)
-                forward_next_abundance = addminusisotopes!(element_vec, mass_vec, abundance_vec, element_vp, isotopes, isotope_position + 1, mass, abundance, threshold, next, precise, abs_charge)
+                forward_next_abundance = addminusisotopes!(
+                    element_vec, mass_vec, abundance_vec, element_vp, isotopes, isotope_position + 1, 
+                    mass, abundance, threshold, next, precise, abs_charge
+                )
                 forward_max_abundance = max(abundance, forward_next_abundance)
             elseif abundance >= threshold
                 element_vp[isotope_position] = cni
@@ -227,7 +286,10 @@ function addminusisotopes!(
             elseif iter
                 element_vp[isotope_position] = cni
                 element_vp[begin] = cne
-                forward_next_abundance = addminusisotopes!(element_vec, mass_vec, abundance_vec, element_vp, isotopes, isotope_position + 1, mass, abundance, threshold, next, precise, abs_charge)
+                forward_next_abundance = addminusisotopes!(
+                    element_vec, mass_vec, abundance_vec, element_vp, isotopes, isotope_position + 1, 
+                    mass, abundance, threshold, next, precise, abs_charge
+                )
                 forward_max_abundance = max(abundance, forward_next_abundance)
             else
                 forward_max_abundance = abundance
@@ -261,7 +323,10 @@ function addminusisotopes_iter!(
     max_abundance = prev_abundance
     next_abundance = prev_abundance
     if (iter && (prev_abundance >= threshold || all(current)))
-        next_abundance = addminusisotopes_iter!(element_vec, mass_vec, abundance_vec, preab_vec, element_vp, isotopes, isotope_position + 1, prev_mass, prev_abundance, prev_preab, threshold, current, precise, abs_charge)
+        next_abundance = addminusisotopes_iter!(
+            element_vec, mass_vec, abundance_vec, preab_vec, element_vp, isotopes, isotope_position + 1, 
+            prev_mass, prev_abundance, prev_preab, threshold, current, precise, abs_charge
+        )
         max_abundance = max(max_abundance, next_abundance)
     end
     ne = first(element_vp)
@@ -301,7 +366,10 @@ function addminusisotopes_iter!(
                 push!(preab_vec, preab)
                 push!(abundance_vec, abundance)
                 push!(mass_vec, mass)
-                backward_next_abundance = addminusisotopes_iter!(element_vec, mass_vec, abundance_vec, preab_vec, element_vp, isotopes, isotope_position + 1, mass, abundance, preab, threshold, next, precise, abs_charge)
+                backward_next_abundance = addminusisotopes_iter!(
+                    element_vec, mass_vec, abundance_vec, preab_vec, element_vp, isotopes, isotope_position + 1, 
+                    mass, abundance, preab, threshold, next, precise, abs_charge
+                )
                 backward_max_abundance = max(abundance, backward_next_abundance)
             elseif abundance >= threshold
                 element_vp[isotope_position] = cni
@@ -313,7 +381,10 @@ function addminusisotopes_iter!(
             elseif iter 
                 element_vp[isotope_position] = cni
                 element_vp[begin] = cne
-                backward_next_abundance = addminusisotopes_iter!(element_vec, mass_vec, abundance_vec, preab_vec, element_vp, isotopes, isotope_position + 1, mass, abundance, preab, threshold, next, precise, abs_charge)
+                backward_next_abundance = addminusisotopes_iter!(
+                    element_vec, mass_vec, abundance_vec, preab_vec, element_vp, isotopes, isotope_position + 1, 
+                    mass, abundance, preab, threshold, next, precise, abs_charge
+                )
                 backward_max_abundance = max(abundance, backward_next_abundance)
             else
                 backward_max_abundance = abundance
@@ -356,7 +427,10 @@ function addminusisotopes_iter!(
                 push!(preab_vec, preab)
                 push!(abundance_vec, abundance)
                 push!(mass_vec, mass)
-                forward_next_abundance = addminusisotopes_iter!(element_vec, mass_vec, abundance_vec, preab_vec, element_vp, isotopes, isotope_position + 1, mass, abundance, preab, threshold, next, precise, abs_charge)
+                forward_next_abundance = addminusisotopes_iter!(
+                    element_vec, mass_vec, abundance_vec, preab_vec, element_vp, isotopes, isotope_position + 1, 
+                    mass, abundance, preab, threshold, next, precise, abs_charge
+                )
                 forward_max_abundance = max(abundance, forward_next_abundance)
             elseif abundance >= threshold
                 element_vp[isotope_position] = cni
@@ -368,7 +442,10 @@ function addminusisotopes_iter!(
             elseif iter
                 element_vp[isotope_position] = cni
                 element_vp[begin] = cne
-                forward_next_abundance = addminusisotopes_iter!(element_vec, mass_vec, abundance_vec, preab_vec, element_vp, isotopes, isotope_position + 1, mass, abundance, preab, threshold, next, precise, abs_charge)
+                forward_next_abundance = addminusisotopes_iter!(
+                    element_vec, mass_vec, abundance_vec, preab_vec, element_vp, isotopes, isotope_position + 1, 
+                    mass, abundance, preab, threshold, next, precise, abs_charge
+                )
                 forward_max_abundance = max(abundance, forward_next_abundance)
             else
                 forward_max_abundance = abundance

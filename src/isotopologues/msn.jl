@@ -10,7 +10,15 @@ function isotopologues_elements_msn(precise::Val, element_vp_vec, msfix_vec, abu
     max_vp_vec = map(x -> maximal_abundance_elements_composition(precise, x), element_vp_vec)
     max_proportion = [prod(first(x)) for x in max_vp_vec]
     total, abundance_cutoff, proportion_cutoff = abundance_threshold_vec(abtype, abundance, threshold, max_proportion, element_vp_vec) 
-    tbls = map(isotopologues_elements_msx, element_vp_vec, msfix_vec, max_vp_vec, [proportion_cutoff for _ in eachindex(element_vp_vec)], [precise for _ in eachindex(element_vp_vec)], [1 for _ in eachindex(element_vp_vec)])
+    tbls = map(
+        isotopologues_elements_msx, 
+        element_vp_vec, 
+        msfix_vec, 
+        max_vp_vec, 
+        [proportion_cutoff for _ in eachindex(element_vp_vec)], 
+        [precise for _ in eachindex(element_vp_vec)], 
+        [1 for _ in eachindex(element_vp_vec)]
+    )
     max_proportion[begin] *= total
     els, mass, abv = combinemsx(precise, tbls, abundance_cutoff, prod(max_proportion))
     if sort
@@ -31,7 +39,8 @@ Generate isotopologues for a single element composition `element_vp`.
 """
 function isotopologues_elements_msx(element_vp, msfix, max_vp, proportion_cutoff, precise, abs_charge)
     isempty(element_vp) && return (; Element = [ElementsVector(String[], Int[])], Mass = [mmi(element_vp) + msfix], Abundance = [float(1)])
-    isotopes, els, mass, abv, _ = isotopologues_elements_single(precise, element_vp, msfix, 1.0, Max(), rcrit(proportion_cutoff), max_vp..., false, abs_charge)
+    isotopes, els, mass, abv, _ = isotopologues_elements_single(precise, element_vp, msfix, 
+        1.0, Max(), rcrit(proportion_cutoff), max_vp..., false, abs_charge)
     id = sortperm(abv; rev = true)
     (; Element = [ElementsVector(isotopes, els[i]) for i in id], Mass = mass[id], Abundance = abv[id]) 
 end

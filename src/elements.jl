@@ -32,6 +32,7 @@ function set_element!(element::AbstractString, mass, abundance; minor_name = not
     end
     id = sortperm(abundance; rev = true)
     elements_isotopes()[element] = isotopes[id]
+    init_elements_order!()
     MASS
 end
 
@@ -236,8 +237,10 @@ isotopomersisotopes(sch::ElementalScheme{false}; loss = false, kwargs...) = isot
 isotopomersisotopes(x::IsotopomerizedSchemes; loss = false, kwargs...) = collect(reverse_elements(x.isotopes, loss))
 isotopomersisotopes(x::Groupedisotopomerizedschemes; loss = false, kwargs...) = collect(reverse_elements(x.isotopes[begin], loss))
 
-mass_shift_index(sch::ElementalScheme{true}; isotope_unit = nothing, isotope = "[13C]", loss = false, kwargs...) = _mass_shift_index(isotopomersisotopes(sch; loss = false), isnothing(isotope_unit) ? elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]] : isotope_unit; loss, kwargs..., ischemical = false)
-mass_shift_index(sch::ElementalScheme{false}; isotope_unit = nothing, isotope = "[13C]", loss = false, kwargs...) = _mass_shift_index(isotopomersisotopes(sch; loss = false), isnothing(isotope_unit) ? elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]] : isotope_unit; loss = !loss, kwargs..., ischemical = false)
+mass_shift_index(sch::ElementalScheme{true}; isotope_unit = nothing, isotope = "[13C]", loss = false, kwargs...) = 
+    _mass_shift_index(isotopomersisotopes(sch; loss = false), isnothing(isotope_unit) ? elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]] : isotope_unit; loss, kwargs..., ischemical = false)
+mass_shift_index(sch::ElementalScheme{false}; isotope_unit = nothing, isotope = "[13C]", loss = false, kwargs...) = 
+    _mass_shift_index(isotopomersisotopes(sch; loss = false), isnothing(isotope_unit) ? elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]] : isotope_unit; loss = !loss, kwargs..., ischemical = false)
 
 function _mass_shift_index(isotopes::Vector, isotope_unit; ischemical = true, loss = false)
     ds = 0

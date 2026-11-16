@@ -142,7 +142,8 @@ Generic mass-spectrometer analyzer.
 * `accuracy`: m/z accuracy, specified as a number or a [`Criteria`](@ref).
 * `fwhm_mz`: function that maps an m/z value to its full width at half maximum.
 * `digits`: number of decimal places retained for m/z values. `nothing` means there is no limit.
-* `stepsize`: step size for a discrete mass scan, such as a quadrupole scan. It must be a multiple of `10 ^ (-digits)`. If `digits` is `nothing`, `stepsize` must also be `nothing`.
+* `stepsize`: step size for a discrete mass scan, such as a quadrupole scan. 
+    It must be a multiple of `10 ^ (-digits)`. If `digits` is `nothing`, `stepsize` must also be `nothing`.
 """
 struct MSAnalyzer{W, M} <: AbstractMSAnalyzer{W, M}
     window::W
@@ -168,16 +169,21 @@ Quadrupole mass analyzer.
 * `accuracy`: m/z accuracy, specified as a number or a [`Criteria`](@ref).
 * `fwhm::Real`: full width at half maximum in m/z.
 * `digits`: number of decimal places retained for m/z values. `nothing` means there is no limit.
-* `stepsize`: step size for the mass scan. It must be a multiple of `10 ^ (-digits)`. If `digits` is `nothing`, `stepsize` must also be `nothing`.
+* `stepsize`: step size for the mass scan. It must be a multiple of `10 ^ (-digits)`. 
+    If `digits` is `nothing`, `stepsize` must also be `nothing`.
 
 # Constructors
-    Quadrupole(mz = nothing; accuracy = 0.1, offset = 0, fwhm = 0.7, digits = nothing, stepsize = nothing, unit = 0.7, flatness = 100, taperproportion = 0.2)
+    Quadrupole(mz = nothing; accuracy = 0.1, offset = 0, 
+        fwhm = 0.7, digits = nothing, stepsize = nothing, unit = 0.7, 
+        flatness = 100, taperproportion = 0.2)
 
 ## Arguments
 * `offset::Real`: offset added to the window center; the resulting center is `mz + offset`.
-* `unit::Real`: unit-mass resolution (FWHM), the largest FWHM that uses a Gaussian window. For larger FWHM values, a flat-topped super-Gaussian window is used.
+* `unit::Real`: unit-mass resolution (FWHM), the largest FWHM that uses a Gaussian window. 
+    For larger FWHM values, a flat-topped super-Gaussian window is used.
 * `flatness::Real`: flatness of the super-Gaussian window's Gaussian falloff. Practical values range from 10 to 1000.
-* `taperproportion::Real`: proportion of the window occupied by the tapered region of a [`TukeyWindow`](@ref), used for single-m/z isolation. Values between 0 and 1 select a Tukey window; values of 1 or greater select a cosine window, and nonpositive values select a rectangular window.
+* `taperproportion::Real`: proportion of the window occupied by the tapered region of a [`TukeyWindow`](@ref), used for single-m/z isolation. 
+    Values between 0 and 1 select a Tukey window; values of 1 or greater select a cosine window, and nonpositive values select a rectangular window.
 """
 struct Quadrupole{W, M} <: AbstractMSAnalyzer{W, M}
     window::W
@@ -188,7 +194,9 @@ struct Quadrupole{W, M} <: AbstractMSAnalyzer{W, M}
     stepsize
 end 
 
-function Quadrupole(mz = nothing; accuracy = 0.1, offset = 0, fwhm = 0.7, digits = nothing, stepsize = nothing, unit = 0.7, flatness = 100, taperproportion = 0.2)
+function Quadrupole(mz = nothing; accuracy = 0.1, offset = 0, 
+        fwhm = 0.7, digits = nothing, stepsize = nothing, unit = 0.7, 
+        flatness = 100, taperproportion = 0.2)
     mz = isnothing(mz) ? mz : @.(mz + offset)
     if isnothing(mz) || mz isa Tuple
         if fwhm > unit
@@ -223,7 +231,8 @@ Quadrupole ion trap (QIT) mass analyzer.
 * `accuracy`: m/z accuracy, specified as a number or a [`Criteria`](@ref).
 * `fwhm::Real`: full width at half maximum in m/z.
 * `digits`: number of decimal places retained for m/z values. `nothing` means there is no limit.
-* `stepsize`: step size for the mass scan. It must be a multiple of `10 ^ (-digits)`. If `digits` is `nothing`, `stepsize` must also be `nothing`.
+* `stepsize`: step size for the mass scan. It must be a multiple of `10 ^ (-digits)`. 
+    If `digits` is `nothing`, `stepsize` must also be `nothing`.
 
 # Constructors
     QuadrupoleIonTrap(mz = nothing; accuracy = 0.1, offset = 0, fwhm = 0.7, stepsize = nothing, power = 4)
@@ -271,14 +280,16 @@ Linear ion trap (LIT) mass analyzer.
 * `accuracy`: m/z accuracy, specified as a number or a [`Criteria`](@ref).
 * `fwhm::Real`: full width at half maximum in m/z.
 * `digits`: number of decimal places retained for m/z values. `nothing` means there is no limit.
-* `stepsize`: step size for the mass scan. It must be a multiple of `10 ^ (-digits)`. If `digits` is `nothing`, `stepsize` must also be `nothing`.
+* `stepsize`: step size for the mass scan. It must be a multiple of `10 ^ (-digits)`. 
+    If `digits` is `nothing`, `stepsize` must also be `nothing`.
 
 # Constructors
     LinearIonTrap(mz = nothing; accuracy = 0.1, offset = 0, fwhm = 0.7, stepsize = nothing, taperproportion = 0.2)
 
 ## Arguments
 * `offset::Real`: offset added to the window center; the resulting center is `mz + offset`.
-* `taperproportion::Real`: proportion of the window occupied by the tapered region of a [`TukeyWindow`](@ref), used for SWIFT isolation. Values between 0 and 1 select a Tukey window; values of 1 or greater select a cosine window, and nonpositive values select a rectangular window.
+* `taperproportion::Real`: proportion of the window occupied by the tapered region of a [`TukeyWindow`](@ref), used for SWIFT isolation. 
+    Values between 0 and 1 select a Tukey window; values of 1 or greater select a cosine window, and nonpositive values select a rectangular window.
 """
 @doc doc_lit
 struct LinearIonTrap{W, M} <: AbstractMSAnalyzer{W, M} 
@@ -426,8 +437,10 @@ If `msanalyzer` has fewer entries than the transition has stages, stages without
     CoelutingIsobars(elution, msanalyzer, target::Table, isobar::Table; nfilter = 2)
 
 ## Arguments
-* `table::Table`: table of target chemicals not represented as [`Isotopomers`](@ref). The `target` and `isobar` tables are generated from this table.
-* `nfilter::Int`: number of filtering stages to apply. `0` disables filtering and leaves `tables` empty; `1` filters by `elution` only; `2` filters by both `elution` and `msanalyzer`.
+* `table::Table`: table of target chemicals not represented as [`Isotopomers`](@ref). 
+    The `target` and `isobar` tables are generated from this table.
+* `nfilter::Int`: number of filtering stages to apply. 
+    `0` disables filtering and leaves `tables` empty; `1` filters by `elution` only; `2` filters by both `elution` and `msanalyzer`.
 * Other keyword arguments are passed to [`Isotopologues`](@ref) to generate `isobar` from `table`.
 """
 struct CoelutingIsobars 

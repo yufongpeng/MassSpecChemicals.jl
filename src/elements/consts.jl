@@ -238,12 +238,15 @@ const DECODES = Dict{String, String}(
     # "Mgitnn"    => "[26Mg]"
 )
 
+const ORDER = Dict{String, Int}()
+
 elements_doc = """
     elements_mass()
     elements_abundance()
     elements_isotopes()
     elements_parents()
     elements_decodes()
+    elements_order()
 
 Access constants related to elements. 
 * `elements_mass`: atomic mass.
@@ -251,6 +254,7 @@ Access constants related to elements.
 * `elements_isotopes`: possible isotopes.
 * `elements_parents`: parent element for each isotope.
 * `elements_decodes`: decode encoded string for [`parse_compound`](@ref).
+* `elements_order`: order of elements and isotopes.
 
 # Parent Elements and Major isotopes
 |Symbol|Major isotopes|Atomic number|Mass number|
@@ -295,7 +299,8 @@ By default, parent elements are considered as major isotopes possibly replaced b
 * CO2 has a carbon-12 and two oxygen-16, but any minor isotopes replacements are possible.
 * [13C][16O]O has a carbon-13, an oxygen-16, and an oxygen-16 possibly replaced by other minor isotopes.
 
-One exception is that, in the `parent` chemical of [`Isotopomers`](@ref), parent elements are treated as major isotopes, and the number of replacements is restricted by the `isotopes` field.
+One exception is that, in the `parent` chemical of [`Isotopomers`](@ref), parent elements are treated as major isotopes, 
+and the number of replacements is restricted by the `isotopes` field.
 """
 
 @doc elements_doc
@@ -312,5 +317,34 @@ elements_parents() = PARENTS
 
 @doc elements_doc
 elements_decodes() = DECODES
+
+@doc elements_doc
+elements_order() = ORDER
+
+function init_elements_order!()
+    empty!(elements_order())
+    e = sort!(collect(keys(elements_isotopes())))
+    ord = 0
+    for element in e
+        elements_order()[element] = ord
+        ord += 1
+        for i in elements_isotopes()[element]
+            elements_order()[i] = ord
+            ord += 1
+        end
+    end
+end
+
+init_elements_order!()
+
+"""
+    elements_order(x) -> Int
+
+Return the order of the element or isotope `x`. If `x` is not found, a hash-based fallback integer is returned.
+"""
+function elements_order(e)
+    x = get(elements_order(), e, nothing)
+    isnothing(x) ? Int(hash(e)) : x
+end
 
 const ME = 0.00054857990924

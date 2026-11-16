@@ -55,7 +55,8 @@ Fetch `attr` from `chemical`.
 This function looks up `attr` and returns `default` when it is unavailable. The returned value is asserted to be of type `type`.
 
 It checks the chemical's properties before searching `chemicalattr(chemical)`;
-for [`AbstractAdductIon`](@ref), it checks the adduct itself first and then falls back to the core chemical when no specialized method is available;
+for [`AbstractAdductIon`](@ref), it checks the adduct itself first 
+and then falls back to the core chemical when no specialized method is available;
 If no matching name is found, it returns `default`.
 """
 getchemicalattr(chemical::AbstractChemicalScheme, attr::Symbol, default::T) where T = getchemicalattr(chemical, attr, default, T)
@@ -90,7 +91,8 @@ The name of `chemical`. This should be unique for each chemical object.
     * default: [`defaultname`](@ref).
 
 # Keyword arguments
-* `verbose::Bool` selects whether to include all names for a chemical species. If `verbose` is false, only the first, most abundant chemical is included.
+* `verbose::Bool` selects whether to include all names for a chemical species. 
+    If `verbose` is false, only the first, most abundant chemical is included.
 * `n::Int` selects the chemical count.
 * `loss::Bool` determines whether the chemical is part of a loss process, with sign changes propagated to the chemical.
 * `bracket::Bool` determines whether the output string is wrapped in "[...]" with the charge included.
@@ -243,7 +245,8 @@ The abbreviation of `chemical`.
     * default: [`chemicalname`](@ref).
 
 # Keyword arguments
-* `verbose::Bool` determines whether includes all abbreviations or not for chemical species. If `verbose` is false, only the first (most abundant) chemical is included.
+* `verbose::Bool` determines whether includes all abbreviations or not for chemical species. 
+    If `verbose` is false, only the first (most abundant) chemical is included.
 * `n::Int` selects the chemical count.
 * `loss::Bool` determines whether the chemical is part of a loss process, with sign changes propagated to the chemical.
 * `bracket::Bool` determines whether the output string is wrapped in "[...]" with the charge included.
@@ -345,7 +348,8 @@ ncore(adduct_ion::AbstractAdductIon; kwargs...) = getchemicalattr(adduct_ion, :n
 """
     charge(chemical::AbstractChemicalScheme; loss = false, kwargs...) -> Int
 
-The charge state of `chemical`; positive for a cation and negative for an anion. For example, `-2` for a dianion and `+3` for a trication.
+The charge state of `chemical`; positive for a cation and negative for an anion. 
+For example, `-2` for a dianion and `+3` for a trication.
 
 # Generic Methods
 * `AbstractChemicalScheme`: attribute seach.
@@ -564,8 +568,10 @@ A nominal index of mass shift between exact mass and monoisotopic mass using mas
 * `ischemical::Bool` determines whether the input represents a chemical or a scheme.
 * `loss::Bool` determines whether the chemical participates in a loss process, with sign flips propagated into `isotopomersisotopes`.
 """
-mass_shift_index(cc::AbstractChemical; isotope_unit = nothing, isotope = "[13C]", loss = false, ischemical = true, kwargs...) = _mass_shift_index(isotopomersisotopes(cc), isnothing(isotope_unit) ? elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]] : isotope_unit; loss, ischemical, kwargs...)
-mass_shift_index(cc::AbstractScheme; isotope_unit = nothing, isotope = "[13C]", loss = false, ischemical = false, kwargs...) = _mass_shift_index(isotopomersisotopes(cc), isnothing(isotope_unit) ? elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]] : isotope_unit; loss, ischemical, kwargs...)
+mass_shift_index(cc::AbstractChemical; isotope_unit = nothing, isotope = "[13C]", loss = false, ischemical = true, kwargs...) = 
+    _mass_shift_index(isotopomersisotopes(cc), isnothing(isotope_unit) ? elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]] : isotope_unit; loss, ischemical, kwargs...)
+mass_shift_index(cc::AbstractScheme; isotope_unit = nothing, isotope = "[13C]", loss = false, ischemical = false, kwargs...) = 
+    _mass_shift_index(isotopomersisotopes(cc), isnothing(isotope_unit) ? elements_mass()[isotope] - elements_mass()[elements_parents()[isotope]] : isotope_unit; loss, ischemical, kwargs...)
 
 @deprecate isotopomerstate mass_shift_index
 """
@@ -638,7 +644,8 @@ analyzedchemical(cc::AbstractScheme; kwargs...) = throw(ArgumentError("Scheme ca
 The single chemical entity detected directly at the end of the instrumental analysis.
 
 # Generic Methods
-* `AbstractChemical`: itself or precursor with scheme (scheme is derived from `detectedchemical` of `precursor` and itself as product using [`completescheme`](@ref)).
+* `AbstractChemical`: itself or precursor with scheme (scheme is derived from `detectedchemical` of `precursor` 
+    and itself as product using [`completescheme`](@ref)).
 * `AbstractScheme`: precursor with scheme. It requires a keyword argument `precursor`.
 
 # Specific Methods
@@ -791,7 +798,8 @@ molarmass(sch::AbstractCompleteScheme; loss = false, kwargs...) = molarmass(elem
     mz(chemical::AbstractChemical[, adduct]; loss = false, kwargs...) -> AbstractFloat
     mz(chemical::AbstractScheme; loss = false, kwargs...) -> AbstractFloat
 
-The mass to charge ratio (m/z) of charged chemical or chemical with adduct. It is equivalent to `mmi(charged_chemical) / ncharge(charged_chemical)`.
+The mass to charge ratio (m/z) of charged chemical or chemical with adduct. 
+It is equivalent to `mmi(charged_chemical) / ncharge(charged_chemical)`.
 
 # Generic Methods
 * `AbstractChemical`: calculated from [`mmi`](@ref) and [`charge`](@ref).

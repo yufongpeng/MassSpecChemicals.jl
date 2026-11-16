@@ -1,24 +1,35 @@
 """
-    Ionization(chemicaltable::Table; [adduct, abundance, proportion,] adduction = AdductIon, chemicalparser = ChemicalExpressionParser(), adductparser = AdductParser(), threshold = rcrit(1e-4), threading = nothing, kwargs...) -> Table
+    Ionization(chemicaltable::Table; [adduct, abundance, proportion,] adduction = AdductIon, 
+        chemicalparser = ChemicalExpressionParser(), adductparser = AdductParser(), threshold = rcrit(1e-4), 
+        threading = nothing, kwargs...
+    ) -> Table
     Ionization(chemical::AbstractString; chemicalparser = ChemicalExpressionParser(), kwargs...) -> Table
     Ionization(chemical::AbstractChemical; adduct, adduction = AdductIon, adductparser = AdductParser(), kwargs...) -> Table
     Ionization(chemical::AbstractAdductIon; kwargs...) -> Table
 
 Ionization of `chemicaltable.Chemical`. 
-The returned table contains isotopologues of adduct ions and can be further processed by other spectrum-related functions, such as [`MSScan`](@ref), [`Isolation`](@ref), and similar utilities.
+The returned table contains isotopologues of adduct ions and can be further processed by other spectrum-related functions, 
+such as [`MSScan`](@ref), [`Isolation`](@ref), and similar utilities.
 
 # Keyword Arguments
 * `adduction`: constructor for adduct ion. 
-* `chemicalparser::AbstractChemicalParser`: parser for `string` chemical input. The default parser is `ChemicalTransitionParser(ChemicalExpressionParser())` (See [`ChemicalTransitionParser`](@ref)).
+* `chemicalparser::AbstractChemicalParser`: parser for `string` chemical input. 
+    The default parser is `ChemicalTransitionParser(ChemicalExpressionParser())` (See [`ChemicalTransitionParser`](@ref)).
 * `adductparser::AbstractAdductParser`: parser for `string` adduct input. The default parser is `AdductParser()` (See [`AdductParser`](@ref)).
-* `adduct`: adducts being parsed by `adductparser`. The parsed adduct is a named tuple and used as keyword arguments of function `ionize` with argument `adduction` and each chemical. For individualizing adducts, use column `Adduct` in `chemicaltable`.
+* `adduct`: adducts being parsed by `adductparser`. 
+    The parsed adduct is a named tuple and used as keyword arguments of function `ionize` with argument `adduction` and each chemical. 
+    For individualizing adducts, use column `Adduct` in `chemicaltable`.
 * `abundance` sets the abundance of the chemical. It can also be column `Abundance` in `chemicaltable`. 
-* `proportion`: proportion of adduct ions relative to the original chemical. To individualize adducts, use the `Proportion` column in `chemicaltable`. The length of each element vector should match that of `adduct`.
+* `proportion`: proportion of adduct ions relative to the original chemical. 
+    To individualize adducts, use the `Proportion` column in `chemicaltable`. 
+    The length of each element vector should match that of `adduct`.
 * `threshold` can be a number or [`Criteria`](@ref), representing the lower limit of abundance (absolute and/or relative to maximal value of each spectrum). 
 * `threading`: force to use multiple threads (`true`) or single thread (`false`); `nothing` lets the program determine. 
 Other `kwargs` are used by function [`Isotopologues`](@ref).
 """
-function Ionization(mztable::Table; adduction = AdductIon, threading = nothing, chemicalparser = ChemicalExpressionParser(), adductparser = AdductParser(), threshold = rcrit(1e-4), kwargs...)
+function Ionization(mztable::Table; adduction = AdductIon, threading = nothing, 
+        chemicalparser = ChemicalExpressionParser(), adductparser = AdductParser(), 
+        threshold = rcrit(1e-4), kwargs...)
     :Chemical in propertynames(mztable) || throw(ArgumentError("No column `Chemical` in input table."))
     chemical = eltype(mztable.Chemical) <: AbstractChemical ? mztable.Chemical : parse_chemical.(Ref(chemicalparser), mztable.Chemical; kwargs...)
     kwargs = Dict(kwargs...)
@@ -83,8 +94,10 @@ function Ionization(mztable::Table; adduction = AdductIon, threading = nothing, 
 end
 
 Ionization(v::Vector; kwargs...) = Ionization(Table(; Chemical = v); kwargs...) 
-Ionization(x::AbstractString; chemicalparser = ChemicalExpressionParser(), kwargs...) = Ionization(parse_chemical(chemicalparser, x); kwargs...) 
-Ionization(x::AbstractChemical; adduction = AdductIon, adduct, adductparser = AdductParser(), kwargs...) = Isotopologues(ionize(adduction, x; parse_adduct(adductparser, adduct)...); kwargs...) 
+Ionization(x::AbstractString; chemicalparser = ChemicalExpressionParser(), kwargs...) = 
+    Ionization(parse_chemical(chemicalparser, x); kwargs...) 
+Ionization(x::AbstractChemical; adduction = AdductIon, adduct, adductparser = AdductParser(), kwargs...) = 
+    Isotopologues(ionize(adduction, x; parse_adduct(adductparser, adduct)...); kwargs...) 
 Ionization(x::AbstractAdductIon; kwargs...) = Isotopologues(x; kwargs...) 
 Ionization(::Isobars; kwargs...) = throw(ArgumentError("`Isobars` is not supported by `Ionization`."))
 Ionization(::Isotopomers; kwargs...) = throw(ArgumentError("`Isotopomers` is not supported by `Ionization`."))
@@ -211,7 +224,8 @@ function Isolation(msanalyzer::AbstractMSAnalyzer, mztable::Table; stage = nothi
     end
     _Isolation(msanalyzer, mztable, colmz, colab, threshold)
 end
-Isolation(msanalyzer::AbstractMSAnalyzer, spec::Spectrum; stage = nothing, threshold = rcrit(1e-4)) = Isolation(msanalyzer, spec.table; stage, threshold)
+Isolation(msanalyzer::AbstractMSAnalyzer, spec::Spectrum; stage = nothing, threshold = rcrit(1e-4)) = 
+    Isolation(msanalyzer, spec.table; stage, threshold)
 
 function _Isolation(msanalyzer::AbstractMSAnalyzer, mztable::Table, colmz::Symbol, colab::Symbol, threshold)
     params = [window_parameter(msanalyzer, mz) for mz in vectorize(msanalyzer.mz)]
@@ -282,7 +296,8 @@ Fragmentation of `precursor_table.Chemical` or `spectrum.table.Chemical` into `p
 # Arguments
 * `producttable::Table`: a table containing columns
     * `Product`: products of each precursor. 
-    * `Proportion`: proportion of fragmentation of each product relative to precursor signal. This column is optional; the default is that each product share precursor signals equally. 
+    * `Proportion`: proportion of fragmentation of each product relative to precursor signal. This column is optional; 
+        the default is that each product share precursor signals equally. 
 * `precursortable::Table`: a table containing columns
     * `ID`: ID tuples. Each element represents ID number of ions of each MS stage. 
     * `Chemical`: chemical objects. 
@@ -292,7 +307,8 @@ Fragmentation of `precursor_table.Chemical` or `spectrum.table.Chemical` into `p
 * `threshold` can be a number or [`Criteria`](@ref), representing the lower limit of abundance (absolute and/or relative to maximal value of each spectrum). 
 * `threading`: force to use multiple threads (`true`) or single thread (`false`); `nothing` lets the program determine. 
 """
-function Fragmentation(producttable::Table, mztable::Table; chemicalparser = ChemicalExpressionParser(), threading = nothing, threshold = rcrit(1e-4))
+function Fragmentation(producttable::Table, mztable::Table; chemicalparser = ChemicalExpressionParser(), 
+        threading = nothing, threshold = rcrit(1e-4))
     # group -> precursor_table, elements_precursor
     :ID in propertynames(mztable) || throw(ArgumentError("No column `ID` in precursor_table."))
     :Chemical in propertynames(mztable) || throw(ArgumentError("No column `Chemical` in precursor_table."))
@@ -310,7 +326,10 @@ function Fragmentation(producttable::Table, mztable::Table; chemicalparser = Che
             s = Symbol(string("Abundance", i))
             s => getproperty(mztable, s)
         end
-        return Table(; ID = mztable.ID, Chemical = mztable.Chemical, mspre..., [Symbol(string("MZ", n + 1)) => getproperty(mztable, :MZ1)]..., abpre..., [Symbol(string("Abundance", n + 1)) => getproperty(mztable, :Abundance1)]...) 
+        return Table(; ID = mztable.ID, Chemical = mztable.Chemical, 
+            mspre..., [Symbol(string("MZ", n + 1)) => getproperty(mztable, :MZ1)]..., 
+            abpre..., [Symbol(string("Abundance", n + 1)) => getproperty(mztable, :Abundance1)]...
+        ) 
     end
     in(:Chemical, propertynames(producttable)) || throw(ArgumentError("No column `Chemical` in product_table."))
     if !(eltype(producttable.Chemical) <: AbstractChemical)
@@ -396,8 +415,10 @@ Extract peaks from a [`Spectrum`](@ref) or [`SelectedIonMonitor`](@ref).
 * `groupedisotopomers`: whether group isotopologues by [`mass_shift_index`](@ref) using `isotope` as reference.
 * `isotope::String`: minor isotope.
 """
-peak_table(spectrum::Spectrum; alg = LocalMaxima(), abundance = 1, abtype = Max(), threshold = rcrit(1e-4)) = peak_table(spectrum.table, spectrum.spectrum, spectrum.initial_mass, spectrum.binsize, spectrum.stepsize; alg, abundance, abtype, threshold)
-function peak_table(mztable::Table, spectrum, initial_mass, binsize, nbin_multiplier; alg = LocalMaxima(), abundance = 1, abtype = Max(), threshold = rcrit(1e-4))
+peak_table(spectrum::Spectrum; alg = LocalMaxima(), abundance = 1, abtype = Max(), threshold = rcrit(1e-4)) = 
+    peak_table(spectrum.table, spectrum.spectrum, spectrum.initial_mass, spectrum.binsize, spectrum.stepsize; alg, abundance, abtype, threshold)
+function peak_table(mztable::Table, spectrum, initial_mass, binsize, nbin_multiplier; 
+        alg = LocalMaxima(), abundance = 1, abtype = Max(), threshold = rcrit(1e-4))
     maxbin = [find_nearest_peak(alg, spectrum, r.Bin_id, r.Convolution) for r in mztable] 
     if nbin_multiplier > 1
         maxbin = map(maxbin) do mbin 

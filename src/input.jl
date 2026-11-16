@@ -210,15 +210,19 @@ end
 
 parse_chemical(::AbstractChemicalParser, cc::AbstractChemicalScheme...; kwargs...) = ChemicalSeries(cc...)
 
-parse_chemical(::AbstractChemicalParser, cc::AbstractChemicalScheme, precursorcharge::Union{Int, Nothing}; kwargs...) = (cc, detectedcharge(cc; precursorcharge))
-parse_chemical(::AbstractChemicalParser, cc::ChemicalTransition, precursorcharge::Union{Int, Nothing}; kwargs...) = (cc.transition, detectedcharge(cc))
+parse_chemical(::AbstractChemicalParser, cc::AbstractChemicalScheme, precursorcharge::Union{Int, Nothing}; kwargs...) = 
+    (cc, detectedcharge(cc; precursorcharge))
+parse_chemical(::AbstractChemicalParser, cc::ChemicalTransition, precursorcharge::Union{Int, Nothing}; kwargs...) = 
+    (cc.transition, detectedcharge(cc))
 function parse_chemical(chemicalparser::AbstractChemicalParser, name::AbstractString, precursorcharge::Union{Int, Nothing}; kwargs...) 
     chemical = parse_chemical(chemicalparser, name; precursorcharge, kwargs...)
     chemical, detectedcharge(chemical; precursorcharge)
 end
 
-parse_chemical(chemicalparser::ChemicalTransitionParser, name::AbstractString...; kwargs...) = parse_chemical(chemicalparser, collect(name); kwargs...)
-parse_chemical(chemicalparser::ChemicalTransitionParser, name::AbstractString; kwargs...) = parse_chemical(chemicalparser, split(name, r"\s*->\s*"); kwargs...)
+parse_chemical(chemicalparser::ChemicalTransitionParser, name::AbstractString...; kwargs...) = 
+    parse_chemical(chemicalparser, collect(name); kwargs...)
+parse_chemical(chemicalparser::ChemicalTransitionParser, name::AbstractString; kwargs...) = 
+    parse_chemical(chemicalparser, split(name, r"\s*->\s*"); kwargs...)
 function parse_chemical(chemicalparser::ChemicalTransitionParser, name::AbstractVector; kwargs...) 
     trans = Any[]
     precursorcharge = nothing
@@ -262,7 +266,8 @@ end
     parse_adduct([adductparser::AbstractAdductParser,] adduct; kwargs...) 
 
 Parse a string into a `NamedTuple` or `Tuple` using `adductparser`.
-The default `AdductParser` first determines the number of cores (`"[2M+...]"` for 2 cores), then searches the string in `scheme_name()`, or parses it using `adductparser.chemicalparser`.
+The default `AdductParser` first determines the number of cores (`"[2M+...]"` for 2 cores), then searches the string in `scheme_name()`, 
+or parses it using `adductparser.chemicalparser`.
 """
 parse_adduct(adduct; kwargs...) = parse_adduct(AdductParser(), adduct; kwargs...)
 parse_adduct(adductparser::AdductParser, adduct::AbstractScheme; kwargs...) = return_adduct(adductparser, adduct, 1)
