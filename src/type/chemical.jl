@@ -256,6 +256,18 @@ Isobars(chemicals::AbstractVector, abundance::AbstractArray) = _Isobars(collect(
 _Isobars(chemicals::AbstractVector, abundance::AbstractArray) = Isobars(chemicals, collect(abundance))
 _Isobars(chemicals::AbstractVector, abundance::VecOrMat) = Isobars(chemicals, abundance)
 
+"""
+    ElementsVector
+
+Represents a vector of chemical elements and isotopes, and their corresponding numbers. The elements have to be sorted in the order [`elements_order`](@ref).
+
+# Fields
+* `elements::Vector{String}`.
+* `numbers::Vector{Int}`.
+
+# Constructors
+    ElementsVector()
+"""
 struct ElementsVector
     elements::Vector{String}
     numbers::Vector{Int}

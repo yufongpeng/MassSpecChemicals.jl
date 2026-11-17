@@ -122,25 +122,25 @@ end
 ==(x::IsotopomerizedSchemes, y::IsotopomerizedSchemes) = x.parent == y.parent && x.isotopes == y.isotopes 
 ==(x::Groupedisotopomerizedschemes, y::Groupedisotopomerizedschemes) = x.parent == y.parent && x.index == y.index && x.isotope == y.isotope && all(splat(==), zip(x.isotopes, y.isotopes)) && all(splat(isapprox), zip(x.abundance, y.abundance))
 function ==(x::ElementsVector, y::ElementsVector) 
-    ixs = sortperm(x.elements)
-    iys = sortperm(y.elements)
-    ix = 1
-    iy = 1
+    # ixs = eachindex(x.elements)
+    # iys = eachindex(y.elements)
+    ix = firstindex(x.elements)
+    iy = firstindex(y.elements)
     @inbounds while true
-        ix > lastindex(ixs) && iy > lastindex(iys) && break 
-        if ix > lastindex(ixs)
-            y.numbers[iys[iy]] == 0 || return false
+        ix > lastindex(x.elements) && iy > lastindex(y.elements) && break 
+        if ix > lastindex(x.elements)
+            y.numbers[iy] == 0 || return false
             iy += 1
-        elseif iy > lastindex(iys)
-            x.numbers[ixs[ix]] == 0 || return false
-            iy += 1
-        elseif x.elements[ixs[ix]] == y.elements[iys[iy]]
-            x.numbers[ixs[ix]] == y.numbers[iys[iy]] || return false
+        elseif iy > lastindex(y.elements)
+            x.numbers[ix] == 0 || return false
+            ix += 1
+        elseif x.elements[ix] == y.elements[iy]
+            x.numbers[ix] == y.numbers[iy] || return false
             ix += 1 
             iy += 1
-        elseif x.numbers[ixs[ix]] == 0
+        elseif x.numbers[ix] == 0
             ix += 1
-        elseif y.numbers[iys[iy]] == 0 
+        elseif y.numbers[iy] == 0 
             iy += 1 
         else
             return false

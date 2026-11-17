@@ -48,6 +48,11 @@ d2 = MSC.dictionary_elements(chemicalelements(outputchemical(itit5.Chemical[14])
 
 d3, d4, d5 = MSC.dictionary_elements.(last.(MSC.serieschemicaldata(itit6.Chemical[12])))
 
+itit23 = Isotopologues(AdductIon(SHexCer24, "[M+H-SO3]+") => AdductIon(SHexCer24, "[M+H-SO3-H2O]+"))
+itit24 = TandemIsotopologues(AdductIon(SHexCer24, "[M+H-SO3]+") => AdductIon(SHexCer24, "[M+H-SO3-H2O]+"))
+itit25 = Isotopologues(AdductIon(SHexCer24, "[M+H]+") => AdductIon(Cer24, "[M+H-H2O]+"))
+itit26 = TandemIsotopologues(AdductIon(SHexCer24, "[M+H]+") => AdductIon(Cer24, "[M+H-H2O]+"))
+
 @info "Running isotpologues function on large chemical"
 Isotopologues("C10000"; abtype = :total)
 Isotopologues("H10000"; abtype = :total)

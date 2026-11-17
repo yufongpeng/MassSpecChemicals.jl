@@ -139,12 +139,11 @@ function parallel_gain_elements!(els::Vector{Vector{ElementsVector}})
             prev_ns = [el[i].numbers for el in els]
             continue
         end
-        iter_el = els[begin][i].elements
         curr_el = els[begin][i].elements
         curr_ns = [copy(el[i].numbers) for el in els]
         pushed = false
         for (ie, e) in enumerate(prev_el) 
-            j = findfirst(==(e), iter_el)
+            j = findfirst(==(e), curr_el)
             if isnothing(j)
                 k = findfirst(x -> elements_order(x) > elements_order(e), curr_el)
                 if isnothing(k)
@@ -174,10 +173,7 @@ function parallel_gain_elements!(els::Vector{Vector{ElementsVector}})
                 end
             end
         end
-        # ord = sortperm(curr_el; by = elements_order)
-        # curr_el_new = curr_el[ord]
         for (j, el) in enumerate(els)
-            # el[i] = ElementsVector(curr_el_new, curr_ns[j][ord])
             el[i] = ElementsVector(curr_el, curr_ns[j])
         end
         prev_el = curr_el

@@ -140,7 +140,7 @@ function Isotopologues(ct::ChemicalTransition;
         @inbounds for m in it.Mass
             gain = m[end]
             m[end] = m[end - 1] 
-            for i in eachindex(m[begin:end - 1])
+            for i in eachindex(@view m[begin:end - 1])
                 m[i] = m[i] - gain
             end
         end
@@ -155,7 +155,7 @@ function Isotopologues(ct::ChemicalTransition;
     Table(; 
         ID = [id for _ in eachindex(chemical)], 
         Chemical = chemical, 
-        (colmz[i] => net_charge[i] == 0 ? [m[i] for m in it.Mass] : [m[i] / abs_charge[i] + (net_charge[i] < 0) * ME for m in it.Mass] for i in eachindex(precursor_info))..., 
+        (colmz[i] => net_charge[i] == 0 ? [m[i] for m in it.Mass] : [m[i] / abs_charge[i] + (net_charge[i] < 0 ? 2 : -1) * ME for m in it.Mass] for i in eachindex(precursor_info))..., 
         (colab => it.Abundance, )...
     ) 
 end
@@ -205,8 +205,9 @@ function Isotopologues(mztable::Table;
     end
     rn = min(length(mztable), Threads.nthreads())
     if isnothing(threading)
-        s = mean(length(chemicalelements(x)) for x in mztable.Chemical)
-        b = mean(mean(last, chemicalelements(x)) for x in mztable.Chemical)
+        m = unique(chemicalelements.(mztable.Chemical))
+        s = mean(length(m) for x in m)
+        b = mean(mean(last, m) for x in m)
         b = sum(b ^ (1/x) for x in 1:msstage(first(mztable.Chemical)))
         # println((0.02b + 0.2sqrt(-2 * b * log2(min(1, minimum(makecrit_value(crit(threshold), ab)) / ab)))) ^ 1.2s * (rn - 1))
         threading = (0.02b + 0.2sqrt(-2b * log2(min(1, minimum(makecrit_value(crit(threshold), ab)) / ab)))) ^ 1.2s * (rn - 1) > 1e6

@@ -23,7 +23,6 @@ losshserine = ChemicalLoss(AdductIon(cserine, "[M+H]+"))
 losshserinei = ChemicalLoss(AdductIon(cserinei, "[M+H]+"))
 losshserinegainwater = ChemicalSchemes(ChemicalLoss(AdductIon(cserine, "[M+H]+")), ChemicalGain(Water))
 losshserinegaincolossco = ChemicalSchemes(ChemicalLoss(AdductIon(cserine, "[M+H]+")), parse_chemical("+CO"), parse_chemical("-CO"))
-
 # Generic structure interface
 # Mix `[M-H]-` and neutral loss `lossserine` into `losshserine` for `AddductIon(cps, "[M-H]-")`
 pushschememerger!(cps, ChemicalLoss(Proton), lossserine, losshserine)
@@ -47,6 +46,9 @@ pushschemetransformer!(cpsi2, losshserine, ifa1 => ifa1i)
 pushschemetransformer!(cpsi2, ChemicalLoss(Proton), ifa1 => ifa1i)
 
 pushchemicalattr!(cpsi2, :retentiontime, 7.8)
+
+SHexCer24 = Chemical("SHexCer 18:1;O2/24:0", "C48H93NO11S"; abbreviation = "SHexCer24", retentiontime = 7.22)
+Cer24 = Chemical("Cer 18:1;O2/24:0", "C42H83NO3"; abbreviation = "Cer24")
 
 @info "Defining generic adduct ions"
 

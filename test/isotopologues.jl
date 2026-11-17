@@ -60,4 +60,7 @@
     @test isapprox(itit18.Abundance3[6] / itit18.Abundance3[7], 4)
     @test length(itit19) == length(itit20) == length(itit21) == length(itit22)
     @test isapprox(itl.Abundance1[begin], isotopicabundance(itl.Chemical[begin]); rtol = 1e-6)
+    @test all(x -> isapprox(x.MZ1, mz(x.Chemical)), itit26)
+    @test all(x -> isapprox(x.MZ1, mz(x.Chemical)), itit25)
+    @test all(in(itit24.Chemical), itit23.Chemical)
 end

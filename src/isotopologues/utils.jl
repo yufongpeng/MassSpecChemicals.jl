@@ -317,7 +317,7 @@ get_element_dictionary(input_element::Dict) = filter(iselement ∘ first, input_
 Element vector without isotopes.
 """
 function get_element(input_element) 
-    [e => n for (e, n) in input_element if iselement(e)]
+    [e => n for (e, n) in input_element if iselement(e) && n != 0]
 end
 
 """
@@ -338,7 +338,7 @@ end
 """
     get_element_dictionary_fixmass(input_element) -> Tuple{Dict{String, Int}, <:AbstractFloat}
 
-Element dictionary without isotopes, and mass of isotopes
+Element dictionary without isotopes, and mass of isotopes.
 """
 function get_element_dictionary_fixmass(input_element)
     element_dictionary = Dict{String, Int}()
@@ -350,13 +350,14 @@ function get_element_dictionary_fixmass(input_element)
             msfix += elements_mass()[e] * n
         end
     end
+    filter!(x -> last(x) != 0, element_dictionary)
     element_dictionary, msfix
 end
 
 """
     get_element_fixmass(input_element) -> Tuple{Vector{Pair{String, Int}}, <:AbstractFloat}
 
-Element vector without isotopes, and mass of isotopes
+Element vector without isotopes, and mass of isotopes.
 """
 function get_element_fixmass(input_element) 
     msfix = elements_mass()[""]
@@ -365,7 +366,7 @@ function get_element_fixmass(input_element)
             msfix += elements_mass()[e] * n
         end
     end
-    [e => n for (e, n) in input_element if iselement(e)], msfix
+    [e => n for (e, n) in input_element if iselement(e) && n != 0], msfix
 end
 
 """
